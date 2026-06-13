@@ -23,8 +23,11 @@ const moRoutes           = require('./modules/manufacturing/mo.routes');
 const inventoryRoutes    = require('./modules/inventory/inventory.routes');
 const auditRoutes        = require('./modules/audit/audit.routes');
 
+const path = require('path');
+
 const app = express();
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
