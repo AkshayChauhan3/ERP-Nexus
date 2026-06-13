@@ -108,6 +108,7 @@ export default function TopBar() {
 
   return (
     <header className="topbar">
+      {successMsg && <div className="global-toast global-toast--success">{successMsg}</div>}
       {}
       <div className="topbar-left">
         <span className="topbar-breadcrumb">{meta.breadcrumb}</span>
@@ -116,10 +117,16 @@ export default function TopBar() {
 
       {}
       <div className="topbar-right">
-        <button className="topbar-icon-btn" aria-label="Search">
+        <button className="topbar-icon-btn" aria-label="Search" onClick={() => {
+          setSuccessMsg('Global search functionality coming soon.');
+          setTimeout(() => setSuccessMsg(''), 2000);
+        }}>
           <Search size={18} strokeWidth={1.75} />
         </button>
-        <button className="topbar-icon-btn topbar-notif-btn" aria-label="Notifications">
+        <button className="topbar-icon-btn topbar-notif-btn" aria-label="Notifications" onClick={() => {
+          setSuccessMsg('You have 0 new notifications.');
+          setTimeout(() => setSuccessMsg(''), 2000);
+        }}>
           <Bell size={18} strokeWidth={1.75} />
           <span className="topbar-notif-badge" />
         </button>
@@ -260,11 +267,6 @@ export default function TopBar() {
                     disabled
                   />
                 </div>
-
-                {}
-                {successMsg && (
-                  <div className="profile-drawer-success-msg">{successMsg}</div>
-                )}
 
                 {}
                 <div className="profile-drawer-actions">

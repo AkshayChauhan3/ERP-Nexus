@@ -147,8 +147,8 @@ export default function OwnerUsers() {
           </button>
         </div>
 
-        {success && <div className="profile-drawer-success-msg" style={{ margin: 0 }}>{success}</div>}
-        {error && <div className="register-error" style={{ margin: 0 }}>{error}</div>}
+        {success && <div className="global-toast global-toast--success">{success}</div>}
+        {error && <div className="global-toast global-toast--error">{error}</div>}
 
         <div className="purchase-panel">
           {loading ? (

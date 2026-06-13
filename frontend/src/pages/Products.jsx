@@ -235,8 +235,8 @@ export default function Products() {
     <AppShell hideSidebar={activeModal !== null}>
       <div className="products-page animate-page">
         {/* Alerts */}
-        {successMsg && <div className="profile-drawer-success-msg" style={{ margin: '0 0 16px 0' }}>{successMsg}</div>}
-        {errorMsg && <div className="register-error" style={{ margin: '0 0 16px 0' }}>{errorMsg}</div>}
+        {successMsg && <div className="global-toast global-toast--success">{successMsg}</div>}
+        {errorMsg && <div className="global-toast global-toast--error">{errorMsg}</div>}
 
         {/* Header */}
         <div className="products-header">

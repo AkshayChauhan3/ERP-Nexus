@@ -47,6 +47,8 @@ export default function PurchaseVendorBills() {
     }
   };
 
+  const [successMsg, setSuccessMsg] = useState('');
+
   const handleSubmitBill = (e) => {
     e.preventDefault();
     const targetPO = pos.find(p => p.id === poId);
@@ -65,6 +67,8 @@ export default function PurchaseVendorBills() {
     setInvoiceNo('');
     setFileName('');
     loadData();
+    setSuccessMsg('Vendor Bill generated successfully.');
+    setTimeout(() => setSuccessMsg(''), 3000);
   };
 
   const filtered = bills.filter(b =>
@@ -88,6 +92,8 @@ export default function PurchaseVendorBills() {
             <Plus size={14} /> Upload Vendor Bill
           </button>
         </div>
+
+        {successMsg && <div className="global-toast global-toast--success">{successMsg}</div>}
 
         <div className="purchase-panel">
           <div className="purchase-panel-header">

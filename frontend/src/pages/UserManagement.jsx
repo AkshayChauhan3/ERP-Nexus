@@ -139,10 +139,10 @@ export default function UserManagement() {
       <div className="animate-page user-directory-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {}
       {success && (
-        <div className="profile-drawer-success-msg" style={{ margin: 0 }}>{success}</div>
+        <div className="global-toast global-toast--success">{success}</div>
       )}
       {error && (
-        <div className="register-error" style={{ margin: 0 }}>{error}</div>
+        <div className="global-toast global-toast--error">{error}</div>
       )}
 
       {}
