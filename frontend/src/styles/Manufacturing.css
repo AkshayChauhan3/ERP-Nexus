@@ -6,6 +6,40 @@
   gap: var(--space-5);
 }
 
+/* ── Role Context Banner ── */
+.mfg-role-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  /* border-left is set inline per role color */
+}
+
+.mfg-role-banner-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.mfg-role-banner-label {
+  font-size: 13px;
+  color: var(--color-secondary);
+  display: block;
+}
+
+.mfg-role-banner-label strong {
+  color: var(--color-primary);
+}
+
+.mfg-role-banner-desc {
+  font-size: 11px;
+  color: var(--color-secondary);
+  display: block;
+  margin-top: 2px;
+}
+
 /* ── Top Bar ── */
 .mfg-topbar {
   display: flex;

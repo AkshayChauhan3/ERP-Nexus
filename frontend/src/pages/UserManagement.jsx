@@ -135,8 +135,8 @@ export default function UserManagement() {
   };
 
   return (
-    <AppShell hideSidebar={activeModal === 'create'}>
-      <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+    <AppShell>
+      <div className="animate-page user-directory-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {}
       {success && (
         <div className="profile-drawer-success-msg" style={{ margin: 0 }}>{success}</div>

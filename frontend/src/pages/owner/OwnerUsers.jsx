@@ -132,8 +132,8 @@ export default function OwnerUsers() {
   };
 
   return (
-    <AppShell hideSidebar={activeModal !== null}>
-      <div className="animate-page owner-root">
+    <AppShell>
+      <div className="animate-page owner-root user-directory-page">
         <div className="owner-header">
           <div>
             <h2 className="owner-title">

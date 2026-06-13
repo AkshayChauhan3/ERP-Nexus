@@ -1,11 +1,11 @@
-# ERP-Nexus — Backend Architecture Guide
+# ERP-Nexus — Full-Stack Factory ERP
 
 > [!TIP]
-> To get the project set up and running locally, please refer to the **[Quick Start & Startup Guide](file:///home/akshaychauhan/Playground/ERP-Nexus/STARTUP.md)** first.
+> To get the project set up and running locally, please refer to the **[Quick Start & Startup Guide](STARTUP.md)** first.
 
 > **Project**: Shiv Furniture Works — Autonomous Factory ERP  
-> **Stack**: Node.js + Express · Prisma ORM · PostgreSQL  
-> **Purpose**: This document explains, step by step, how the entire backend is structured — from the database layer to the API routes — including the Purchase and Manufacturing modules.
+> **Stack**: React + Vite · Node.js + Express · Prisma ORM · PostgreSQL  
+> **Purpose**: A full-stack, role-based ERP system covering Sales, Purchase, Manufacturing, Inventory, and Owner analytics — with a premium glassmorphism UI.
 
 ---
 
@@ -13,17 +13,23 @@
 
 1. [High-Level Architecture](#1-high-level-architecture)
 2. [Project Folder Structure](#2-project-folder-structure)
-3. [Database Layer — Prisma ORM](#3-database-layer--prisma-orm)
-4. [Authentication & Authorization](#4-authentication--authorization)
-5. [Request Lifecycle](#5-request-lifecycle)
-6. [Module Deep-Dives](#6-module-deep-dives)
-   - [Purchase Module](#61-purchase-module)
-   - [Manufacturing Module](#62-manufacturing-module)
-7. [The Stock Engine — `stockMutations.js`](#7-the-stock-engine--stockmutationsjs)
-8. [Audit Trail](#8-audit-trail)
-9. [Superusers & Seeding](#9-superusers--seeding)
-10. [Running the Backend](#10-running-the-backend)
-11. [Critical Architecture Rules](#11-critical-architecture-rules)
+3. [Frontend Architecture](#3-frontend-architecture)
+   - [Design System](#31-design-system)
+   - [Layout & Navigation](#32-layout--navigation)
+   - [Pages & Modules](#33-pages--modules)
+   - [UI Patterns](#34-ui-patterns)
+4. [Database Layer — Prisma ORM](#4-database-layer--prisma-orm)
+5. [Authentication & Authorization](#5-authentication--authorization)
+6. [Request Lifecycle](#6-request-lifecycle)
+7. [Module Deep-Dives](#7-module-deep-dives)
+   - [Purchase Module](#71-purchase-module)
+   - [Manufacturing Module](#72-manufacturing-module)
+8. [The Stock Engine — `stockMutations.js`](#8-the-stock-engine--stockmutationsjs)
+9. [Audit Trail](#9-audit-trail)
+10. [Superusers & Seeding](#10-superusers--seeding)
+11. [Running the Project](#11-running-the-project)
+12. [API Route Reference](#12-api-route-reference)
+13. [Critical Architecture Rules](#13-critical-architecture-rules)
 
 ---
 
@@ -31,10 +37,14 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                       FRONTEND (React/Vite)                     │
+│                   FRONTEND (React + Vite)                       │
 │                      localhost:5173                             │
+│                                                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
+│  │  Sidebar │  │  TopBar  │  │  Pages   │  │  Owner Portal│   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
 └─────────────────────────┬───────────────────────────────────────┘
-                          │  HTTP (JSON)
+                          │  HTTP (JSON) via axios
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    EXPRESS API SERVER                           │
@@ -53,19 +63,16 @@
 │          ▼                    ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │              CONTROLLERS  (thin layer)                   │  │
-│  │   Parse req → call Service → send res                   │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │          │                                                       │
 │          ▼                                                       │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │        SERVICES  (ALL business logic lives here)         │  │
-│  │   Validation · Stock mutations · Prisma transactions     │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │          │                                                       │
 │          ▼                                                       │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │        UTILS  (stockMutations.js, etc.)                  │  │
-│  │   Atomic stock operations shared across all modules      │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────┬───────────────────────────────────────┘
                           │  Prisma Client (ORM)
@@ -90,55 +97,249 @@ ERP-Nexus/
 │   ├── seed/
 │   │   └── seed.js                ← Seeds super-users (admin, owner) and ERP modules
 │   │
-│   ├── src/
-│   │   ├── server.js              ← Starts HTTP server (calls app.listen)
-│   │   ├── app.js                 ← Express app setup, all routes mounted here
-│   │   │
-│   │   ├── config/
-│   │   │   ├── db.js              ← Prisma client singleton
-│   │   │   ├── jwt.js             ← signAccessToken / signRefreshToken
-│   │   │   └── swagger.js         ← OpenAPI spec config
-│   │   │
-│   │   ├── middleware/
-│   │   │   ├── authenticate.js    ← Verifies JWT, attaches req.user
-│   │   │   ├── authorize.js       ← Role-based access control (admin, owner)
-│   │   │   └── errorHandler.js    ← Global error catcher (last middleware)
-│   │   │
-│   │   ├── utils/
-│   │   │   └── stockMutations.js  ← *** ALL stock logic is HERE ***
-│   │   │
-│   │   └── modules/
-│   │       ├── auth/              ← register, login, refresh, logout
-│   │       ├── admin/             ← Approve/reject users, manage access
-│   │       ├── products/          ← CRUD for products (universal model)
-│   │       ├── vendors/           ← Vendor CRUD
-│   │       ├── customers/         ← Customer CRUD
-│   │       ├── sales/             ← Sales Orders (SO): draft → confirmed → delivered
-│   │       ├── purchase/          ← PO + Goods Receipts + Bills + Suggestions
-│   │       ├── manufacturing/     ← BOM + Manufacturing Orders (MO)
-│   │       ├── inventory/         ← Stock Ledger read-only views
-│   │       └── audit/             ← Audit logs
+│   ├── public/
+│   │   └── uploads/               ← Uploaded product images (served statically)
 │   │
-│   └── package.json
+│   └── src/
+│       ├── server.js              ← Starts HTTP server
+│       ├── app.js                 ← Express app setup, all routes mounted here
+│       │
+│       ├── config/
+│       │   ├── db.js              ← Prisma client singleton
+│       │   ├── jwt.js             ← signAccessToken / signRefreshToken
+│       │   └── swagger.js         ← OpenAPI spec config
+│       │
+│       ├── middleware/
+│       │   ├── authenticate.js    ← Verifies JWT, attaches req.user
+│       │   ├── authorize.js       ← Role-based access control (admin, owner)
+│       │   └── errorHandler.js    ← Global error catcher (last middleware)
+│       │
+│       ├── utils/
+│       │   ├── stockMutations.js  ← *** ALL stock logic is HERE ***
+│       │   └── procurementAutomation.js ← Auto-reorder suggestion logic
+│       │
+│       └── modules/
+│           ├── auth/              ← register, login, refresh, logout
+│           ├── admin/             ← Approve/reject users, manage access
+│           ├── products/          ← CRUD for products + image upload
+│           ├── vendors/           ← Vendor CRUD
+│           ├── customers/         ← Customer CRUD
+│           ├── sales/             ← Sales Orders (SO): draft → confirmed → delivered
+│           ├── purchase/          ← PO + Goods Receipts + Bills + Suggestions
+│           ├── manufacturing/     ← BOM + Manufacturing Orders (MO)
+│           ├── inventory/         ← Stock Ledger read-only views
+│           └── audit/             ← Audit logs
 │
-├── sql/                           ← Reference SQL docs ONLY. DO NOT execute manually.
-├── implementation_plan.md
-├── implementation_plan_purchase.md
-└── README.md                      ← (this file)
+├── frontend/
+│   ├── public/
+│   └── src/
+│       ├── App.jsx                ← Root router (React Router v6)
+│       ├── main.jsx               ← React entry point
+│       │
+│       ├── components/
+│       │   └── layout/
+│       │       ├── AppShell.jsx   ← Sidebar + page content wrapper
+│       │       ├── Sidebar.jsx    ← Collapsible navigation sidebar
+│       │       ├── Sidebar.css
+│       │       ├── TopBar.jsx     ← Header bar + user profile drawer
+│       │       └── TopBar.css
+│       │
+│       ├── pages/
+│       │   ├── Login.jsx / Login.css
+│       │   ├── Register.jsx / Register.css
+│       │   ├── Dashboard.jsx / Dashboard.css
+│       │   ├── Products.jsx / Products.css
+│       │   ├── UserManagement.jsx
+│       │   ├── Reports.jsx
+│       │   ├── AuditLogs.jsx
+│       │   ├── InventoryMonitor.jsx
+│       │   ├── ManufacturingMonitor.jsx
+│       │   ├── ProcurementMonitor.jsx
+│       │   ├── PurchaseMonitor.jsx
+│       │   ├── SalesMonitor.jsx
+│       │   ├── NewSalesOrder.jsx / NewSalesOrder.css
+│       │   │
+│       │   ├── purchase/          ← Purchase sub-pages
+│       │   ├── sales/             ← Sales sub-pages
+│       │   ├── manufacturing/     ← Manufacturing sub-pages
+│       │   ├── inventory/         ← Inventory sub-pages
+│       │   └── owner/             ← Full Owner Portal (14 pages)
+│       │       ├── OwnerDashboard.jsx
+│       │       ├── OwnerUsers.jsx
+│       │       ├── OwnerFinancials.jsx
+│       │       ├── OwnerSales.jsx
+│       │       ├── OwnerPurchase.jsx
+│       │       ├── OwnerManufacturing.jsx
+│       │       ├── OwnerInventory.jsx
+│       │       ├── OwnerApprovals.jsx
+│       │       ├── OwnerReports.jsx
+│       │       ├── OwnerAuditLogs.jsx
+│       │       ├── OwnerEmployees.jsx
+│       │       ├── OwnerNotifications.jsx
+│       │       ├── OwnerOverview.jsx
+│       │       └── OwnerSettings.jsx
+│       │
+│       ├── styles/
+│       │   ├── tokens.css         ← CSS design tokens (colors, spacing, radius)
+│       │   ├── global.css         ← Global resets and base styles
+│       │   ├── animations.css     ← Shared keyframe animations
+│       │   ├── AdminPages.css     ← Modal overlays, cards, admin UI
+│       │   ├── Purchase.css       ← Purchase module styles
+│       │   ├── Manufacturing.css  ← Manufacturing module styles
+│       │   ├── Inventory.css      ← Inventory module styles
+│       │   ├── Sales.css          ← Sales module styles
+│       │   └── Owner.css          ← Owner portal styles
+│       │
+│       └── utils/
+│           └── api.js             ← Axios instance with auth interceptors
+│
+├── README.md                      ← (this file)
+└── STARTUP.md                     ← Quick-start guide
 ```
-
-> **Each module follows the same 3-file pattern:**  
-> `*.routes.js` → defines endpoints and applies middleware  
-> `*.controller.js` → parses request, calls service, sends response  
-> `*.service.js` → all business logic and Prisma calls
 
 ---
 
-## 3. Database Layer — Prisma ORM
+## 3. Frontend Architecture
+
+### 3.1 Design System
+
+The entire frontend uses a **CSS custom property (token) based design system** defined in `styles/tokens.css`. No third-party CSS framework is used.
+
+#### Color Tokens
+```css
+--color-bg-primary      /* Main dark background */
+--color-bg-secondary    /* Card/panel background */
+--color-bg-tertiary     /* Input/hover backgrounds */
+--color-accent          /* Primary brand accent (indigo/violet) */
+--color-accent-hover    /* Hover state of accent */
+--color-primary         /* Primary text */
+--color-secondary       /* Muted/secondary text */
+--color-border          /* Subtle borders */
+--color-success / --color-warning / --color-danger
+```
+
+#### Spacing & Radius Tokens
+```css
+--space-1 through --space-8    /* 4px increments */
+--radius-sm / --radius-md / --radius-lg / --radius-xl
+```
+
+#### Typography
+- Font: **Inter** (Google Fonts) — loaded globally
+- Text scale tokens: `--text-label-sm-size`, `--text-label-md-size`, etc.
+
+---
+
+### 3.2 Layout & Navigation
+
+#### AppShell
+The `AppShell` component wraps every authenticated page. It renders the `Sidebar` on the left and passes the page content on the right.
+
+```
+┌─────────────────────────────────────────────┐
+│ Sidebar │           Page Content             │
+│ (fixed) │    TopBar + main scrollable area   │
+└─────────────────────────────────────────────┘
+```
+
+#### Sidebar (`Sidebar.jsx` / `Sidebar.css`)
+- **Collapsible**: A toggle button collapses it to icon-only mode (icon + tooltip on hover)
+- **Role-aware**: Navigation items are filtered by user role — regular users only see modules they've been granted access to; admins see all modules
+- **Active state**: Current route highlighted with accent background and left-border indicator
+- **Smooth transitions**: Padding and layout are constant between states — no layout shift on click
+- **Premium styling**: Glassmorphism panel, gradient logo area, hover micro-animations
+
+#### TopBar (`TopBar.jsx` / `TopBar.css`)
+- Displays page title, breadcrumb, and current user info
+- **User Profile Drawer**: Clicking the user avatar opens a slide-in drawer from the right with:
+  - Full-bleed backdrop blur effect over the entire page
+  - ID Card component showing name, role, login ID, and profile photo
+  - Action buttons: Edit Profile, Change Password, Logout
+- **Background blur on open**: When any modal or drawer is open, the entire background gets a `backdrop-filter: blur(8px)` overlay
+
+---
+
+### 3.3 Pages & Modules
+
+#### Admin Pages
+
+| Page | Route | Description |
+|---|---|---|
+| `Dashboard` | `/dashboard` | KPI cards, revenue charts, inventory overview, activity feed |
+| `Products` | `/products` | Full CRUD with image upload, card/table view toggle, search & filter |
+| `UserManagement` | `/users` | List, approve, reject users; assign module access; view user profiles |
+| `AuditLogs` | `/audit-logs` | Paginated audit trail with actor, action, and timestamp |
+| `Reports` | `/reports` | Cross-module analytics and export |
+| `InventoryMonitor` | `/inventory` | Real-time stock levels, free qty, reserved qty |
+| `PurchaseMonitor` | `/purchase` | Purchase order status board |
+| `SalesMonitor` | `/sales` | Sales order pipeline |
+| `ManufacturingMonitor` | `/manufacturing` | MO tracking and work order status |
+| `ProcurementMonitor` | `/procurement` | Procurement suggestion queue |
+| `NewSalesOrder` | `/sales/new` | Multi-step sales order creation |
+
+#### Owner Portal (`/owner/*`)
+
+A completely separate portal for the business owner, with 14 dedicated pages:
+
+| Page | Description |
+|---|---|
+| `OwnerDashboard` | High-level business overview |
+| `OwnerUsers` | User management with **full user creation card** (glassmorphism modal, same sidebar/blur behavior as other modals) |
+| `OwnerFinancials` | Bill payments, P&L, financial KPIs |
+| `OwnerSales` | Sales performance analytics |
+| `OwnerPurchase` | Procurement spend analysis |
+| `OwnerManufacturing` | Production efficiency metrics |
+| `OwnerInventory` | Inventory valuation and turnover |
+| `OwnerApprovals` | Pending approvals queue (bills, users) |
+| `OwnerReports` | Business intelligence reports |
+| `OwnerAuditLogs` | Full audit trail |
+| `OwnerEmployees` | Employee directory |
+| `OwnerNotifications` | System notifications |
+| `OwnerOverview` | Quick snapshot of all KPIs |
+| `OwnerSettings` | System and business settings |
+
+---
+
+### 3.4 UI Patterns
+
+#### Modal Overlays
+All modals and detail cards follow a unified pattern defined in `AdminPages.css`:
+
+```
+.admin-modal-overlay        ← Full-screen backdrop (rgba + blur(8px))
+  └── .admin-modal-card     ← Centered glassmorphism card (backdrop-filter: blur(20px))
+        ├── .admin-modal-header
+        ├── .admin-modal-body
+        └── .admin-modal-footer
+```
+
+- **Background blur**: When any card/modal opens, the sidebar, topbar, and all page content behind the overlay get blurred using `backdrop-filter: blur(8px)` on the overlay itself
+- **Sidebar stays visible**: The sidebar remains rendered and visible through the blur — it does NOT hide or collapse when modals open
+- **Consistent across all modules**: Products, Users, Purchase, Manufacturing all use the same overlay pattern
+
+#### Card Views
+Pages like Products and Users support a **card grid view** alongside a table view:
+
+```
+.admin-card-grid            ← CSS grid, responsive columns
+  └── .admin-product-card   ← Individual card with image, name, badges, actions
+```
+
+#### Select / Dropdown Styling
+All `<select>` elements are custom-styled via CSS to match the dark glassmorphism theme — no browser-default arrows or backgrounds.
+
+#### Animations (`animations.css`)
+Shared keyframe animations used across the app:
+- `fadeInUp` — cards and modals entering from below
+- `slideInRight` — drawers sliding in from the right
+- `shimmer` — loading skeleton effect
+- `pulse` — status indicator pulsing
+
+---
+
+## 4. Database Layer — Prisma ORM
 
 ### Why Prisma (not raw SQL)?
-
-The database schema is **100% managed by Prisma**. This is non-negotiable for three reasons:
 
 | Concern | Raw SQL | Prisma (our approach) |
 |---|---|---|
@@ -157,18 +358,18 @@ npx prisma db push
 npx prisma migrate dev --name "your_migration_name"
 ```
 
-> ⚠️ **NEVER run `/sql/*.sql` files manually** against the database. They are reference documents only. Running them alongside Prisma will cause duplicate tables, conflicting triggers, and double-counted stock.
+> ⚠️ **NEVER run `/sql/*.sql` files manually** against the database. They are reference documents only.
 
 ### Database Tables (from `schema.prisma`)
 
 | Table | Description |
 |---|---|
-| `users` | All users. Contains `is_admin`, `status` (PENDING/APPROVED/REJECTED), and `role` (admin/owner) |
+| `users` | All users. Contains `is_admin`, `status` (PENDING/APPROVED/REJECTED), and `role` |
 | `user_profiles` | Name, position, address, photo — 1:1 with users |
 | `modules` | ERP modules (sales, purchase, manufacturing, inventory) |
 | `user_module_access` | Which user has access to which module |
 | `refresh_tokens` | Hashed JWT refresh tokens for session management |
-| `products` | **Universal product table** — covers raw materials, finished goods, and components |
+| `products` | **Universal product table** — raw materials, finished goods, components |
 | `vendors` | Supplier records |
 | `customers` | Customer records |
 | `boms` | Bill of Materials (one BOM per finished product) |
@@ -191,12 +392,13 @@ npx prisma migrate dev --name "your_migration_name"
 Product
   ├── on_hand_qty    ← Physical stock in warehouse
   ├── reserved_qty   ← Committed to confirmed Sales Orders / MOs
+  ├── image_url      ← Uploaded product image (served from /public/uploads/)
   └── free_qty       ← COMPUTED in app layer: on_hand - reserved (NOT stored in DB)
 ```
 
 ---
 
-## 4. Authentication & Authorization
+## 5. Authentication & Authorization
 
 ### Flow Step by Step
 
@@ -224,30 +426,28 @@ Product
 | Role | `is_admin` | Access |
 |---|---|---|
 | `admin` | true | All structural operations: approve users, manage products, create POs, BOMs |
-| `owner` | true | Everything `admin` can do **plus** financial routes: bill approvals, payments |
+| `owner` | true | Everything `admin` can do **plus** financial routes: bill approvals, payments, owner portal |
 | Regular user | false | Only the modules explicitly granted by admin |
 
 ### New User Registration Flow
 
 ```
-User fills form → POST /api/auth/register
+User fills Register form → POST /api/auth/register
   → Status: PENDING (cannot login yet)
-  → Admin sees in dashboard → POST /api/admin/users/:id/approve
+  → Admin sees in UserManagement → POST /api/admin/users/:id/approve
   → Status: APPROVED → user can now login
 ```
 
 ---
 
-## 5. Request Lifecycle
-
-Here is what happens from the moment a request arrives to the moment a response is sent:
+## 6. Request Lifecycle
 
 ```
 POST /api/purchase-orders
   │
   ├─ 1. helmet   → Sets secure HTTP headers
   ├─ 2. cors     → Validates origin (localhost:5173 allowed)
-  ├─ 3. morgan   → Logs "POST /api/purchase-orders 201 45ms" to console
+  ├─ 3. morgan   → Logs "POST /api/purchase-orders 201 45ms"
   ├─ 4. express.json → Parses the JSON body
   │
   ├─ 5. authenticate  → Verifies JWT, attaches req.user
@@ -267,18 +467,18 @@ If any error is thrown:
 ```
   → errorHandler middleware catches it
   → BusinessLogicError → 422 Unprocessable Entity
-  → Prisma "not found" → 404 Not Found  
+  → Prisma "not found" → 404 Not Found
   → JWT errors → 401 Unauthorized
   → Everything else → 500 Internal Server Error
 ```
 
 ---
 
-## 6. Module Deep-Dives
+## 7. Module Deep-Dives
 
-### 6.1 Purchase Module
+### 7.1 Purchase Module
 
-The Purchase module manages the full procurement lifecycle. It is split into **4 sub-modules**, each with their own routes/controller/service.
+The Purchase module manages the full procurement lifecycle, split into **4 sub-modules**.
 
 #### Files
 
@@ -301,16 +501,16 @@ src/modules/purchase/
 #### Purchase Order State Machine
 
 ```
-  [draft] ──── confirm ───► [confirmed] ──── receive ───► [received]
-     │                           │
-     └── cancel ──────────────── ┘
+[draft] ──── confirm ───► [confirmed] ──── receive ───► [received]
+   │                           │
+   └── cancel ──────────────── ┘
 ```
 
 | Status | Meaning |
 |---|---|
 | `draft` | PO created, lines can still be edited |
 | `confirmed` | PO sent to vendor, stock is now expected |
-| `received` | All goods physically received (auto-set when all lines fully received) |
+| `received` | All goods physically received |
 
 #### Step-by-Step: Creating and Receiving a Purchase Order
 
@@ -318,40 +518,30 @@ src/modules/purchase/
 ```
 POST /api/purchase-orders
 Body: { vendor_id, lines: [{ product_id, ordered_qty, unit_price }] }
-
-Service does:
-  prisma.$transaction():
-    1. Create PurchaseOrder (status: draft)
-    2. Create PurchaseOrderLine for each product
 ```
 
 **Step 2 — Confirm the PO**
 ```
 POST /api/purchase-orders/:id/confirm
-
-Service does:
-  prisma.$transaction():
-    1. Check status === 'draft' (throws if not)
-    2. Update status to 'confirmed'
 ```
 
-**Step 3 — Create a Goods Receipt (physical delivery arrives)**
+**Step 3 — Create a Goods Receipt**
 ```
 POST /api/purchase/receipts
 Body: { po_id, delivery_note_ref, items: [{ product_id, quantity_received }] }
 
 Service does (in a single transaction):
   1. Validates PO status === 'confirmed'
-  2. Creates GoodsReceipt header (generates GRN-{timestamp} number)
+  2. Creates GoodsReceipt header (generates GRN-{timestamp})
   3. For each item:
      a. Creates GoodsReceiptLine
      b. Increments PurchaseOrderLine.received_qty
      c. Increments Product.on_hand_qty (via stockMutations.addStockOnReceipt)
      d. Creates StockLedger entry (movement_type: 'purchase_in')
-  4. Checks if all PO lines are now fully received → sets PO status to 'received'
+  4. Checks if all PO lines fully received → sets PO status to 'received'
 ```
 
-**Step 4 — Create a Vendor Bill (invoice)**
+**Step 4 — Create a Vendor Bill**
 ```
 POST /api/purchase/bills
 Body: { po_id, vendor_id, invoice_date, due_date, subtotal, tax, total_amount }
@@ -362,7 +552,7 @@ Only 'owner' role can mark a bill as paid.
 
 #### Procurement Suggestions (Auto-Reorder Alerts)
 
-When stock drops below the `reorder_level` set on a product, `stockMutations.js` **automatically creates a `ProcurementSuggestion`** record. The purchasing team can then:
+When stock drops below `reorder_level`, `procurementAutomation.js` **automatically creates a `ProcurementSuggestion`** record.
 
 ```
 GET  /api/purchase/suggestions          → see all pending suggestions
@@ -371,9 +561,7 @@ POST /api/purchase/suggestions/:id/convert → convert suggestion into a draft P
 
 ---
 
-### 6.2 Manufacturing Module
-
-The Manufacturing module handles production from Bill of Materials (BOM) definition through to finished goods.
+### 7.2 Manufacturing Module
 
 #### Files
 
@@ -381,28 +569,11 @@ The Manufacturing module handles production from Bill of Materials (BOM) definit
 src/modules/manufacturing/
   ├── bom.routes.js     → /api/boms
   ├── bom.controller.js
-  ├── bom.service.js    → BOM CRUD, BOM line management
+  ├── bom.service.js
   ├── mo.routes.js      → /api/manufacturing-orders
   ├── mo.controller.js
-  └── mo.service.js     → MO lifecycle + stock mutations
+  └── mo.service.js
 ```
-
-#### Bill of Materials (BOM)
-
-A BOM defines what components are needed to make one unit of a finished product.
-
-```
-BillOfMaterials
-  └── BOMLine[]
-       ├── component_product_id  ← raw material / sub-component
-       ├── qty_per_unit          ← how much is needed per finished unit
-       └── operation             ← 'assembly' | 'painting' | 'packing'
-```
-
-Example: To make 1 unit of "Wooden Chair":
-- `2.0 units` of "Timber Board" (assembly operation)
-- `0.5 L` of "Wood Varnish" (painting operation)
-- `1 unit` of "Packaging Box" (packing operation)
 
 #### Manufacturing Order State Machine
 
@@ -420,14 +591,10 @@ POST /api/boms
 Body: { product_id, lines: [{ component_product_id, qty_per_unit, operation }] }
 ```
 
-**Step 2 — Create a Manufacturing Order**
+**Step 2 — Create MO**
 ```
 POST /api/manufacturing-orders
 Body: { product_id, quantity }
-
-Service does:
-  1. Looks up BOM for product_id (throws if no BOM)
-  2. Creates ManufacturingOrder (status: draft)
 ```
 
 **Step 3 — Confirm the MO (Reserve Components)**
@@ -435,50 +602,29 @@ Service does:
 POST /api/manufacturing-orders/:id/confirm
 
 Service does (in a transaction):
-  1. Validates status === 'draft'
-  2. For each BOM line:
-     → reserveStock(tx, component_product_id, qty_per_unit × quantity)
-     → Increments Product.reserved_qty (ensures components can't be sold)
-  3. Auto-generates Work Orders for each unique operation (assembly, painting, etc.)
-  4. Updates status to 'confirmed'
+  1. For each BOM line: reserveStock(component, qty × quantity)
+  2. Auto-generates Work Orders per unique operation
+  3. Updates status to 'confirmed'
 ```
 
-**Step 4 — Complete the MO (Consume & Produce)**
+**Step 4 — Complete the MO**
 ```
 POST /api/manufacturing-orders/:id/complete
 
 Service does (in a transaction):
-  1. Validates status is 'confirmed' or 'in_progress'
-  2. For each BOM line:
-     → consumeComponentStock(tx, component_product_id, required_qty)
-     → Decrements BOTH on_hand_qty and reserved_qty (components are used up)
-  3. produceFinishedGoods(tx, product_id, quantity)
-     → Increments on_hand_qty of the finished product
-  4. Marks all pending Work Orders as completed
-  5. Updates MO status to 'completed'
-```
-
-**Cancel Flow (returns reserved stock)**
-```
-POST /api/manufacturing-orders/:id/cancel
-
-If status was 'confirmed' or 'in_progress':
-  → releaseReservation for all BOM components (undoes Step 3)
-  → Deletes Work Orders
-  → Sets status to 'cancelled'
+  1. consumeComponentStock for each BOM line (on_hand -= qty, reserved -= qty)
+  2. produceFinishedGoods (on_hand += quantity)
+  3. Marks all Work Orders complete
+  4. Status → 'completed'
 ```
 
 ---
 
-## 7. The Stock Engine — `stockMutations.js`
+## 8. The Stock Engine — `stockMutations.js`
 
 **File**: `src/utils/stockMutations.js`
 
-This is the **single most important utility file** in the backend. ALL operations that touch `product.on_hand_qty` or `product.reserved_qty` go through this file.
-
-### Why a Centralized File?
-
-Without this, stock logic would be copy-pasted in 5 different service files and could easily go out of sync. Bugs in one module wouldn't be caught consistently.
+ALL operations that touch `product.on_hand_qty` or `product.reserved_qty` go through this file.
 
 ### Invariants (Never Broken)
 
@@ -488,52 +634,36 @@ Without this, stock logic would be copy-pasted in 5 different service files and 
 3. reserved_qty  <= on_hand_qty (can't reserve more than you have)
 ```
 
-If any operation would violate an invariant, a `BusinessLogicError` is thrown and the entire `prisma.$transaction()` is rolled back automatically.
-
 ### Functions
 
 | Function | Called by | What it does |
 |---|---|---|
-| `reserveStock(tx, productId, qty)` | Sales Order confirm, MO confirm | `reserved_qty += qty` |
+| `reserveStock(tx, productId, qty)` | SO confirm, MO confirm | `reserved_qty += qty` |
 | `releaseReservation(tx, productId, qty)` | SO cancel, MO cancel | `reserved_qty -= qty` |
-| `deductStockOnDelivery(tx, productId, qty)` | Sales Order deliver | `on_hand -= qty`, `reserved -= qty` |
-| `addStockOnReceipt(tx, productId, qty)` | Goods Receipt create | `on_hand += qty` |
+| `deductStockOnDelivery(tx, productId, qty)` | SO deliver | `on_hand -= qty`, `reserved -= qty` |
+| `addStockOnReceipt(tx, productId, qty)` | Goods Receipt | `on_hand += qty` |
 | `consumeComponentStock(tx, productId, qty)` | MO complete | `on_hand -= qty`, `reserved -= qty` |
 | `produceFinishedGoods(tx, productId, qty)` | MO complete | `on_hand += qty` |
 
-> All functions take `tx` (a Prisma transaction client) as first argument, so they always run atomically inside the caller's transaction.
-
-### Auto-Reorder Logic
-
-After `deductStockOnDelivery` and `consumeComponentStock`, the system automatically calls `checkReorderLevel()`:
-
-```js
-if (product.on_hand_qty < product.reorder_level) {
-  // Create a ProcurementSuggestion if one doesn't already exist
-}
-```
-
-This means the purchasing team is **automatically notified** whenever stock falls below the configured threshold.
+> All functions take `tx` (Prisma transaction client) as first argument — always atomic.
 
 ---
 
-## 8. Audit Trail
+## 9. Audit Trail
 
-Every significant action is logged in the `audit_logs` table. The log contains:
+Every significant action is logged in `audit_logs`:
 
 | Field | Description |
 |---|---|
 | `user_id` | Who performed the action |
-| `model_name` | Which table was affected (e.g. `PurchaseOrder`) |
+| `model_name` | Which table was affected |
 | `record_id` | Which specific record |
 | `action` | `create` / `update` / `delete` / `status_change` |
 | `old_value` | JSON snapshot before the change |
 | `new_value` | JSON snapshot after the change |
 | `timestamp` | When it happened |
 
-Access audit logs via `GET /api/audit-logs` (admin only).
-
-Similarly, every stock movement is recorded in `stock_ledger`:
+Stock movements are separately tracked in `stock_ledger`:
 
 | Field | Description |
 |---|---|
@@ -544,14 +674,12 @@ Similarly, every stock movement is recorded in `stock_ledger`:
 
 ---
 
-## 9. Superusers & Seeding
-
-The backend ships with two built-in super-users. These are created by the seed script and bypass the normal PENDING → APPROVED registration flow.
+## 10. Superusers & Seeding
 
 | Login ID | Password | Role | Permissions |
 |---|---|---|---|
 | `admin` | `admin` | `admin` | User management, all module operations |
-| `owner` | `owner` | `owner` | Everything admin can do **plus** financial approvals (bill payment, PO financial sign-off) |
+| `owner` | `owner` | `owner` | Everything admin can do **plus** financial approvals + Owner Portal |
 
 ### Run the Seed
 
@@ -561,23 +689,19 @@ npm run seed
 # OR: node seed/seed.js
 ```
 
-The seed script also creates the 4 core ERP modules in the `modules` table:
-- `sales`
-- `purchase`
-- `manufacturing`
-- `inventory`
+The seed script creates the 4 core ERP modules: `sales`, `purchase`, `manufacturing`, `inventory`.
 
-Passwords are hashed with **bcrypt (cost factor 10/12)** before storage — plain text is never stored.
+Passwords are hashed with **bcrypt (cost factor 10/12)** — plain text is never stored.
 
 ---
 
-## 10. Running the Backend
+## 11. Running the Project
 
 ### Prerequisites
 
 - Node.js >= 18
 - PostgreSQL running
-- `.env` file configured (copy from `.env.example`)
+- `.env` file configured
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/erp_nexus"
@@ -587,27 +711,25 @@ PORT=3000
 NODE_ENV=development
 ```
 
-### Setup Commands
+### Backend Setup
 
 ```bash
-# 1. Install dependencies
 cd backend
 npm install
-
-# 2. Push the Prisma schema to PostgreSQL (creates all tables)
-npx prisma db push
-
-# 3. Seed the database (creates admin, owner, and modules)
-npm run seed
-
-# 4. Start the development server (with hot reload)
-npm run dev
-
-# 5. View the API docs (Swagger UI)
-# Open: http://localhost:3000/api/docs
+npx prisma db push       # Sync schema → PostgreSQL
+npm run seed             # Create admin, owner, and modules
+npm run dev              # Start dev server (nodemon)
 ```
 
-### All Available Scripts
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev              # Start Vite dev server at localhost:5173
+```
+
+### All Backend Scripts
 
 | Command | What it does |
 |---|---|
@@ -617,33 +739,10 @@ npm run dev
 | `npx prisma db push` | Sync schema.prisma → PostgreSQL tables |
 | `npx prisma studio` | Open visual database browser |
 | `npx prisma migrate dev` | Create a tracked migration file |
-| `npm test` | Run Jest tests |
 
 ---
 
-## 11. Critical Architecture Rules
-
-These rules **must not be broken** by any team member:
-
-### ✅ DO
-
-- **Use Prisma for ALL database operations** — `prisma.model.create()`, `prisma.model.update()`, etc.
-- **Use `prisma.$transaction()`** for any operation that touches more than one table.
-- **Route all stock changes through `stockMutations.js`** — never write raw `on_hand_qty` updates in a service file.
-- **Use `npx prisma db push`** to sync schema changes to the database.
-- **Put business logic in service files** — controllers only parse requests and call services.
-
-### ❌ DO NOT
-
-- **Do NOT execute `/sql/*.sql` files manually** against the database. They will conflict with Prisma's state and cause double-counting of stock.
-- **Do NOT write raw `pool.query('INSERT INTO ...')` calls** — we do not use a raw pg pool.
-- **Do NOT add stock-altering logic inside controllers** — it must go through `stockMutations.js`.
-- **Do NOT create database triggers** to manage stock — the Node.js layer does this already. Running both will double-count stock.
-- **Do NOT let regular users access financial routes** — bill payments and PO financial approvals require the `owner` role.
-
----
-
-## API Route Reference
+## 12. API Route Reference
 
 | Method | Route | Auth | Description |
 |---|---|---|---|
@@ -655,8 +754,13 @@ These rules **must not be broken** by any team member:
 | POST | `/api/admin/users/:id/approve` | Admin | Approve user registration |
 | GET | `/api/products` | Auth | List all products |
 | POST | `/api/products` | Admin | Create product |
+| PATCH | `/api/products/:id` | Admin | Update product |
+| DELETE | `/api/products/:id` | Admin | Delete product |
+| POST | `/api/products/:id/image` | Admin | Upload product image |
 | GET | `/api/vendors` | Auth | List vendors |
 | POST | `/api/vendors` | Admin | Create vendor |
+| GET | `/api/customers` | Auth | List customers |
+| POST | `/api/customers` | Admin | Create customer |
 | GET | `/api/purchase-orders` | Auth | List all POs |
 | POST | `/api/purchase-orders` | Admin | Create draft PO |
 | POST | `/api/purchase-orders/:id/confirm` | Admin | Confirm PO |
@@ -665,16 +769,40 @@ These rules **must not be broken** by any team member:
 | POST | `/api/purchase/bills` | Admin | Create vendor bill |
 | PATCH | `/api/purchase/bills/:id/pay` | **Owner** | Mark bill as paid |
 | GET | `/api/purchase/suggestions` | Auth | List procurement suggestions |
+| POST | `/api/purchase/suggestions/:id/convert` | Admin | Convert suggestion to PO |
 | GET | `/api/boms` | Auth | List BOMs |
 | POST | `/api/boms` | Admin | Create BOM |
 | GET | `/api/manufacturing-orders` | Auth | List MOs |
 | POST | `/api/manufacturing-orders` | Admin | Create MO |
 | POST | `/api/manufacturing-orders/:id/confirm` | Admin | Confirm MO (reserves stock) |
-| POST | `/api/manufacturing-orders/:id/complete` | Admin | Complete MO (consumes + produces) |
+| POST | `/api/manufacturing-orders/:id/complete` | Admin | Complete MO |
+| POST | `/api/manufacturing-orders/:id/cancel` | Admin | Cancel MO |
 | GET | `/api/stock-ledger` | Auth | View stock movements |
 | GET | `/api/audit-logs` | Admin | View audit trail |
 | GET | `/api/docs` | Public | Swagger API documentation |
 
 ---
 
-*Last updated: June 2026 — ERP-Nexus Backend Team*
+## 13. Critical Architecture Rules
+
+### ✅ DO
+
+- **Use Prisma for ALL database operations** — `prisma.model.create()`, `prisma.model.update()`, etc.
+- **Use `prisma.$transaction()`** for any operation that touches more than one table.
+- **Route all stock changes through `stockMutations.js`** — never write raw `on_hand_qty` updates in a service file.
+- **Use `npx prisma db push`** to sync schema changes to the database.
+- **Put business logic in service files** — controllers only parse requests and call services.
+- **Use the CSS token system** on the frontend — never hardcode colors or spacing values.
+
+### ❌ DO NOT
+
+- **Do NOT execute `/sql/*.sql` files manually** against the database.
+- **Do NOT write raw `pool.query('INSERT INTO ...')` calls** — we do not use a raw pg pool.
+- **Do NOT add stock-altering logic inside controllers** — it must go through `stockMutations.js`.
+- **Do NOT create database triggers** to manage stock — the Node.js layer does this already.
+- **Do NOT let regular users access financial routes** — bill payments require the `owner` role.
+- **Do NOT use inline styles or hardcoded colors** on the frontend — use CSS tokens.
+
+---
+
+*Last updated: June 2026 — ERP-Nexus Team*
