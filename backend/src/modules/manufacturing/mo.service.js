@@ -73,7 +73,7 @@ async function confirmMO(id) {
     }
     for (const line of mo.bom.lines) {
       const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
-      await reserveStock(tx, line.component_product_id, requiredQty);
+      await reserveStock(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Reserved for MO ${id}`);
     }
     const operations = [...new Set(mo.bom.lines.map(l => l.operation))];
     
@@ -107,9 +107,13 @@ async function completeMO(id) {
     }
     for (const line of mo.bom.lines) {
       const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
-      await consumeComponentStock(tx, line.component_product_id, requiredQty);
+      await consumeComponentStock(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Consumed for MO ${id}`);
     }
-    await produceFinishedGoods(tx, mo.product_id, mo.quantity);
+
+    // 2. Produce finished goods (adds on_hand)
+    await produceFinishedGoods(tx, mo.product_id, mo.quantity, 'MANUFACTURING_ORDER', id, `Produced finished product from MO ${id}`);
+
+    // 3. Mark all incomplete work orders as completed (auto-complete)
     await tx.workOrder.updateMany({
       where: { mo_id: id, status: { not: 'completed' } },
       data: { status: 'completed', completed_at: new Date() }
@@ -136,7 +140,7 @@ async function cancelMO(id) {
     if (mo.status === 'confirmed' || mo.status === 'in_progress') {
       for (const line of mo.bom.lines) {
         const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
-        await releaseReservation(tx, line.component_product_id, requiredQty);
+        await releaseReservation(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Released due to MO cancel`);
       }
     }
     await tx.workOrder.deleteMany({

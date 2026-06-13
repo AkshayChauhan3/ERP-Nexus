@@ -1,5 +1,5 @@
 const prisma = require('../../config/db');
-const { BusinessLogicError } = require('../../utils/stockMutations');
+const { BusinessLogicError, addStockOnReceipt } = require('../../utils/stockMutations');
 
 async function getAllReceipts() {
   return await prisma.goodsReceipt.findMany({
@@ -61,22 +61,9 @@ async function createReceipt(data, userId) {
         where: { id: poLine.id },
         data: { received_qty: { increment: qtyReceived } }
       });
-      const product = await tx.product.findUnique({ where: { id: item.product_id } });
-      const newOnHand = parseFloat(product.on_hand_qty) + qtyReceived;
-      await tx.product.update({
-        where: { id: item.product_id },
-        data: { on_hand_qty: newOnHand }
-      });
-      await tx.stockLedger.create({
-        data: {
-          product_id: item.product_id,
-          movement_type: 'purchase_in',
-          qty_change: qtyReceived,
-          reference_model: 'GoodsReceipt',
-          reference_id: receipt.id,
-          created_by: userId,
-        }
-      });
+
+      // c) Increment Product on_hand_qty and log in ledger via stockMutations
+      await addStockOnReceipt(tx, item.product_id, qtyReceived, 'GOODS_RECEIPT', receipt.id, item.remarks);
     }
     const updatedPoLines = await tx.purchaseOrderLine.findMany({
       where: { po_id: data.po_id }

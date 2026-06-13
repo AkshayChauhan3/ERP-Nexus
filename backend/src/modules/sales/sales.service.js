@@ -22,7 +22,7 @@ async function getSalesOrderById(id) {
       customer: true,
       user: { select: { id: true, name: true } },
       lines: {
-        include: { product: { select: { id: true, name: true, on_hand_qty: true, reserved_qty: true } } },
+        include: { product: { select: { id: true, name: true, inventory: { select: { on_hand_qty: true, reserved_qty: true } } } } },
       },
     },
   });
@@ -67,7 +67,7 @@ async function confirmSalesOrder(id) {
       include: { lines: true },
     });
     for (const line of updatedSo.lines) {
-      await reserveStock(tx, line.product_id, line.ordered_qty);
+      await reserveStock(tx, line.product_id, line.ordered_qty, 'SALES_ORDER', id, `Reserved for SO ${id}`);
     }
 
     return updatedSo;
@@ -96,7 +96,9 @@ async function deliverSalesOrder(id) {
         where: { id: line.id },
         data: { delivered_qty: line.ordered_qty },
       });
-      await deductStockOnDelivery(tx, line.product_id, line.ordered_qty);
+
+      // Deduct stock (on_hand AND reserved)
+      await deductStockOnDelivery(tx, line.product_id, line.ordered_qty, 'SALES_ORDER', id, `Delivered for SO ${id}`);
     }
 
     return updatedSo;
@@ -122,7 +124,7 @@ async function cancelSalesOrder(id) {
     });
     if (so.status === 'confirmed') {
       for (const line of so.lines) {
-        await releaseReservation(tx, line.product_id, line.ordered_qty);
+        await releaseReservation(tx, line.product_id, line.ordered_qty, 'SALES_ORDER', id, `Released due to SO cancel`);
       }
     }
 

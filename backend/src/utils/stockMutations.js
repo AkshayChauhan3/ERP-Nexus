@@ -8,25 +8,44 @@ class BusinessLogicError extends Error {
 }
 
 async function checkReorderLevel(tx, productId) {
-  const product = await tx.product.findUnique({ where: { id: productId } });
-  if (product && parseFloat(product.on_hand_qty) < parseFloat(product.reorder_level)) {
+  const product = await tx.product.findUnique({ 
+    where: { id: productId },
+    include: { inventory: true }
+  });
+  
+  if (product && product.inventory && parseFloat(product.inventory.on_hand_qty) < parseFloat(product.inventory.reorder_level)) {
     const existing = await tx.procurementSuggestion.findFirst({
       where: { product_id: productId, status: 'pending' }
     });
+    
     if (!existing) {
-      const needed = parseFloat(product.reorder_level) - parseFloat(product.on_hand_qty);
+      const needed = parseFloat(product.inventory.reorder_level) - parseFloat(product.inventory.on_hand_qty);
+      const suggestedQty = needed > 0 ? needed : 1;
+      
       await tx.procurementSuggestion.create({
         data: {
           product_id: productId,
-          suggested_qty: needed > 0 ? needed : 1,
-          reason: `Stock level (${product.on_hand_qty}) fell below reorder level (${product.reorder_level})`,
-          status: 'pending'
+          current_stock: product.inventory.on_hand_qty,
+          shortage_qty: suggestedQty,
+          procurement_source: product.procurement_type === 'MTO' ? 'MANUFACTURING' : 'PURCHASE',
+          status: 'pending',
+          reason: `Stock level (${parseFloat(product.inventory.on_hand_qty).toFixed(3)}) fell below reorder level (${parseFloat(product.inventory.reorder_level).toFixed(3)})`
         }
       });
     }
   }
 }
 
+// ─── Invariant Validator ──────────────────────────────────────────────────────
+/**
+ * Validates stock levels BEFORE any mutation is saved.
+ * Call this after computing new qty values, before calling prisma.inventory.update().
+ *
+ * @param {object} product - Product object
+ * @param {Decimal|number} newOnHand - The proposed new on_hand_qty
+ * @param {Decimal|number} newReserved - The proposed new reserved_qty
+ * @throws {BusinessLogicError} if any invariant would be violated
+ */
 function validateStockLevels(product, newOnHand, newReserved) {
   const onHand = parseFloat(newOnHand);
   const reserved = parseFloat(newReserved);
@@ -34,8 +53,7 @@ function validateStockLevels(product, newOnHand, newReserved) {
   if (onHand < 0) {
     throw new BusinessLogicError(
       `Stock violation for "${product.name}": ` +
-      `on_hand_qty would become ${onHand.toFixed(3)}, which is below zero. ` +
-      `Current stock: ${parseFloat(product.on_hand_qty).toFixed(3)}`
+      `on_hand_qty would become ${onHand.toFixed(3)}, which is below zero.`
     );
   }
 
@@ -54,100 +72,373 @@ function validateStockLevels(product, newOnHand, newReserved) {
   }
 }
 
+// ─── Computed Property ────────────────────────────────────────────────────────
+/**
+ * Computes free_qty (not stored in DB — always calculated).
+ * free_qty = on_hand_qty - reserved_qty
+ *
+ * @param {object} product - Product with inventory relation
+ * @returns {number} Available free quantity
+ */
 function getFreeQty(product) {
-  return parseFloat(product.on_hand_qty) - parseFloat(product.reserved_qty);
+  const inv = product.inventory || product;
+  return parseFloat(inv.on_hand_qty) - parseFloat(inv.reserved_qty);
 }
 
-async function reserveStock(prisma, productId, qty) {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+// ─── Stock Mutation Functions ─────────────────
 
-  const newReserved = parseFloat(product.reserved_qty) + parseFloat(qty);
-  validateStockLevels(product, product.on_hand_qty, newReserved);
-
-  return await prisma.product.update({
+/**
+ * Reserves stock for a confirmed sales order line or manufacturing order.
+ */
+async function reserveStock(prisma, productId, qty, sourceType = 'MANUFACTURING_ORDER', sourceId = null, remarks = null) {
+  const product = await prisma.product.findUnique({ 
     where: { id: productId },
-    data: { reserved_qty: newReserved }
+    include: { inventory: true }
   });
-}
-
-async function releaseReservation(prisma, productId, qty) {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
 
-  const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
-  validateStockLevels(product, product.on_hand_qty, newReserved);
+  // Ensure inventory record exists
+  let inventory = product.inventory;
+  if (!inventory) {
+    inventory = await prisma.inventory.create({
+      data: { product_id: productId, on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 }
+    });
+  }
 
-  return await prisma.product.update({
+  const currentOnHand = parseFloat(inventory.on_hand_qty);
+  const currentReserved = parseFloat(inventory.reserved_qty);
+  const newReserved = currentReserved + parseFloat(qty);
+
+  validateStockLevels(product, currentOnHand, newReserved);
+
+  // 1. Update Inventory
+  const updatedInv = await prisma.inventory.update({
+    where: { product_id: productId },
+    data: { 
+      reserved_qty: newReserved,
+      last_movement_at: new Date()
+    }
+  });
+
+  // 2. Create Stock Reservation
+  await prisma.stockReservation.create({
+    data: {
+      product_id: productId,
+      source_type: sourceType,
+      source_id: sourceId || productId,
+      reserved_qty: qty,
+      status: 'ACTIVE'
+    }
+  });
+
+  // 3. Create Stock Ledger
+  await prisma.stockLedger.create({
+    data: {
+      product_id: productId,
+      movement_type: sourceType === 'SALES_ORDER' ? 'SALES_RESERVE' : 'MANUFACTURING_RESERVE',
+      direction: 'RESERVE',
+      reference_type: sourceType,
+      reference_id: sourceId,
+      quantity: qty,
+      stock_before: currentOnHand,
+      stock_after: currentOnHand,
+      remarks: remarks || `Reserved ${qty} units for ${sourceType}`
+    }
+  });
+
+  return updatedInv;
+}
+
+/**
+ * Releases reserved stock when an order is cancelled.
+ */
+async function releaseReservation(prisma, productId, qty, sourceType = 'MANUFACTURING_ORDER', sourceId = null, remarks = null) {
+  const product = await prisma.product.findUnique({ 
     where: { id: productId },
-    data: { reserved_qty: newReserved }
+    include: { inventory: true }
   });
-}
-
-async function deductStockOnDelivery(prisma, productId, qty) {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
 
-  const newOnHand = parseFloat(product.on_hand_qty) - parseFloat(qty);
-  const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
+  let inventory = product.inventory;
+  if (!inventory) {
+    inventory = await prisma.inventory.create({
+      data: { product_id: productId, on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 }
+    });
+  }
+
+  const currentOnHand = parseFloat(inventory.on_hand_qty);
+  const currentReserved = parseFloat(inventory.reserved_qty);
+  const newReserved = currentReserved - parseFloat(qty);
+
+  validateStockLevels(product, currentOnHand, newReserved);
+
+  // 1. Update Inventory
+  const updatedInv = await prisma.inventory.update({
+    where: { product_id: productId },
+    data: { 
+      reserved_qty: newReserved,
+      last_movement_at: new Date()
+    }
+  });
+
+  // 2. Update Stock Reservation status to RELEASED
+  if (sourceId) {
+    await prisma.stockReservation.updateMany({
+      where: {
+        product_id: productId,
+        source_id: sourceId,
+        status: 'ACTIVE'
+      },
+      data: { status: 'RELEASED' }
+    });
+  }
+
+  // 3. Create Stock Ledger
+  await prisma.stockLedger.create({
+    data: {
+      product_id: productId,
+      movement_type: sourceType === 'SALES_ORDER' ? 'SALES_RELEASE' : 'MANUFACTURING_RELEASE',
+      direction: 'RELEASE',
+      reference_type: sourceType,
+      reference_id: sourceId,
+      quantity: qty,
+      stock_before: currentOnHand,
+      stock_after: currentOnHand,
+      remarks: remarks || `Released reservation of ${qty} units`
+    }
+  });
+
+  return updatedInv;
+}
+
+/**
+ * Deducts stock when a sales order is delivered.
+ */
+async function deductStockOnDelivery(prisma, productId, qty, sourceType = 'SALES_ORDER', sourceId = null, remarks = null) {
+  const product = await prisma.product.findUnique({ 
+    where: { id: productId },
+    include: { inventory: true }
+  });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  let inventory = product.inventory;
+  if (!inventory) {
+    inventory = await prisma.inventory.create({
+      data: { product_id: productId, on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 }
+    });
+  }
+
+  const currentOnHand = parseFloat(inventory.on_hand_qty);
+  const currentReserved = parseFloat(inventory.reserved_qty);
+  const newOnHand = currentOnHand - parseFloat(qty);
+  const newReserved = currentReserved - parseFloat(qty);
+
   validateStockLevels(product, newOnHand, newReserved);
 
-  const updated = await prisma.product.update({
-    where: { id: productId },
-    data: {
+  // 1. Update Inventory
+  const updatedInv = await prisma.inventory.update({
+    where: { product_id: productId },
+    data: { 
       on_hand_qty: newOnHand,
-      reserved_qty: newReserved
+      reserved_qty: newReserved,
+      last_movement_at: new Date()
+    }
+  });
+
+  // 2. Update Stock Reservation status to CONSUMED
+  if (sourceId) {
+    await prisma.stockReservation.updateMany({
+      where: {
+        product_id: productId,
+        source_id: sourceId,
+        status: 'ACTIVE'
+      },
+      data: { status: 'CONSUMED' }
+    });
+  }
+
+  // 3. Create Stock Ledger
+  await prisma.stockLedger.create({
+    data: {
+      product_id: productId,
+      movement_type: 'SALES_DELIVERY',
+      direction: 'OUT',
+      reference_type: sourceType,
+      reference_id: sourceId,
+      quantity: qty,
+      stock_before: currentOnHand,
+      stock_after: newOnHand,
+      remarks: remarks || `Delivered ${qty} units`
     }
   });
 
   await checkReorderLevel(prisma, productId);
-  return updated;
+  return updatedInv;
 }
 
-async function addStockOnReceipt(prisma, productId, qty) {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
-
-  const newOnHand = parseFloat(product.on_hand_qty) + parseFloat(qty);
-  validateStockLevels(product, newOnHand, product.reserved_qty);
-
-  return await prisma.product.update({
+/**
+ * Adds stock when a purchase order is received.
+ */
+async function addStockOnReceipt(prisma, productId, qty, sourceType = 'GOODS_RECEIPT', sourceId = null, remarks = null) {
+  const product = await prisma.product.findUnique({ 
     where: { id: productId },
-    data: { on_hand_qty: newOnHand }
+    include: { inventory: true }
   });
-}
-
-async function consumeComponentStock(prisma, productId, qty) {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
 
-  const newOnHand = parseFloat(product.on_hand_qty) - parseFloat(qty);
-  const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
+  let inventory = product.inventory;
+  if (!inventory) {
+    inventory = await prisma.inventory.create({
+      data: { product_id: productId, on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 }
+    });
+  }
+
+  const currentOnHand = parseFloat(inventory.on_hand_qty);
+  const currentReserved = parseFloat(inventory.reserved_qty);
+  const newOnHand = currentOnHand + parseFloat(qty);
+
+  validateStockLevels(product, newOnHand, currentReserved);
+
+  // 1. Update Inventory
+  const updatedInv = await prisma.inventory.update({
+    where: { product_id: productId },
+    data: { 
+      on_hand_qty: newOnHand,
+      last_movement_at: new Date()
+    }
+  });
+
+  // 2. Create Stock Ledger
+  await prisma.stockLedger.create({
+    data: {
+      product_id: productId,
+      movement_type: 'PURCHASE_RECEIPT',
+      direction: 'IN',
+      reference_type: sourceType,
+      reference_id: sourceId,
+      quantity: qty,
+      stock_before: currentOnHand,
+      stock_after: newOnHand,
+      remarks: remarks || `Received ${qty} units`
+    }
+  });
+
+  return updatedInv;
+}
+
+/**
+ * Consumes component stock when a manufacturing order is completed.
+ */
+async function consumeComponentStock(prisma, productId, qty, sourceType = 'MANUFACTURING_ORDER', sourceId = null, remarks = null) {
+  const product = await prisma.product.findUnique({ 
+    where: { id: productId },
+    include: { inventory: true }
+  });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  let inventory = product.inventory;
+  if (!inventory) {
+    inventory = await prisma.inventory.create({
+      data: { product_id: productId, on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 }
+    });
+  }
+
+  const currentOnHand = parseFloat(inventory.on_hand_qty);
+  const currentReserved = parseFloat(inventory.reserved_qty);
+  const newOnHand = currentOnHand - parseFloat(qty);
+  const newReserved = currentReserved - parseFloat(qty);
+
   validateStockLevels(product, newOnHand, newReserved);
 
-  const updated = await prisma.product.update({
-    where: { id: productId },
-    data: {
+  // 1. Update Inventory
+  const updatedInv = await prisma.inventory.update({
+    where: { product_id: productId },
+    data: { 
       on_hand_qty: newOnHand,
-      reserved_qty: newReserved
+      reserved_qty: newReserved,
+      last_movement_at: new Date()
+    }
+  });
+
+  // 2. Update Stock Reservation to CONSUMED
+  if (sourceId) {
+    await prisma.stockReservation.updateMany({
+      where: {
+        product_id: productId,
+        source_id: sourceId,
+        status: 'ACTIVE'
+      },
+      data: { status: 'CONSUMED' }
+    });
+  }
+
+  // 3. Create Stock Ledger
+  await prisma.stockLedger.create({
+    data: {
+      product_id: productId,
+      movement_type: 'MANUFACTURING_CONSUMPTION',
+      direction: 'OUT',
+      reference_type: sourceType,
+      reference_id: sourceId,
+      quantity: qty,
+      stock_before: currentOnHand,
+      stock_after: newOnHand,
+      remarks: remarks || `Consumed ${qty} units for manufacturing`
     }
   });
 
   await checkReorderLevel(prisma, productId);
-  return updated;
+  return updatedInv;
 }
 
-async function produceFinishedGoods(prisma, productId, qty) {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
+/**
+ * Produces finished goods stock when a manufacturing order is completed.
+ */
+async function produceFinishedGoods(prisma, productId, qty, sourceType = 'MANUFACTURING_ORDER', sourceId = null, remarks = null) {
+  const product = await prisma.product.findUnique({ 
+    where: { id: productId },
+    include: { inventory: true }
+  });
   if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
 
-  const newOnHand = parseFloat(product.on_hand_qty) + parseFloat(qty);
-  validateStockLevels(product, newOnHand, product.reserved_qty);
+  let inventory = product.inventory;
+  if (!inventory) {
+    inventory = await prisma.inventory.create({
+      data: { product_id: productId, on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 }
+    });
+  }
 
-  return await prisma.product.update({
-    where: { id: productId },
-    data: { on_hand_qty: newOnHand }
+  const currentOnHand = parseFloat(inventory.on_hand_qty);
+  const currentReserved = parseFloat(inventory.reserved_qty);
+  const newOnHand = currentOnHand + parseFloat(qty);
+
+  validateStockLevels(product, newOnHand, currentReserved);
+
+  // 1. Update Inventory
+  const updatedInv = await prisma.inventory.update({
+    where: { product_id: productId },
+    data: { 
+      on_hand_qty: newOnHand,
+      last_movement_at: new Date()
+    }
   });
+
+  // 2. Create Stock Ledger
+  await prisma.stockLedger.create({
+    data: {
+      product_id: productId,
+      movement_type: 'MANUFACTURING_PRODUCTION',
+      direction: 'IN',
+      reference_type: sourceType,
+      reference_id: sourceId,
+      quantity: qty,
+      stock_before: currentOnHand,
+      stock_after: newOnHand,
+      remarks: remarks || `Produced ${qty} units`
+    }
+  });
+
+  return updatedInv;
 }
 
 module.exports = {

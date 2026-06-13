@@ -1,4 +1,4 @@
-const prisma = require('../../config/db');
+const prisma = require('../config/db');
 
 function authorize(...requiredModules) {
   return async (req, res, next) => {

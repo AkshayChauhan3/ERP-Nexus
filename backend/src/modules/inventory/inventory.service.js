@@ -10,18 +10,18 @@ async function getStockLedger(filters) {
     where.movement_type = filters.movement_type;
   }
   if (filters.start_date || filters.end_date) {
-    where.timestamp = {};
+    where.created_at = {};
     if (filters.start_date) {
-      where.timestamp.gte = new Date(filters.start_date);
+      where.created_at.gte = new Date(filters.start_date);
     }
     if (filters.end_date) {
-      where.timestamp.lte = new Date(filters.end_date);
+      where.created_at.lte = new Date(filters.end_date);
     }
   }
 
   return await prisma.stockLedger.findMany({
     where,
-    orderBy: { timestamp: 'desc' },
+    orderBy: { created_at: 'desc' },
     include: {
       product: { select: { id: true, name: true } },
       user: { select: { id: true, login_id: true } },
@@ -29,14 +29,21 @@ async function getStockLedger(filters) {
   });
 }
 
+/**
+ * Helper to record a stock movement.
+ */
 async function recordMovement(tx, data) {
   return await tx.stockLedger.create({
     data: {
       product_id: data.product_id,
       movement_type: data.movement_type,
-      qty_change: data.qty_change,
-      reference_model: data.reference_model,
+      direction: data.direction,
+      reference_type: data.reference_type,
       reference_id: data.reference_id,
+      quantity: data.quantity,
+      stock_before: data.stock_before,
+      stock_after: data.stock_after,
+      remarks: data.remarks,
       created_by: data.created_by,
     }
   });
