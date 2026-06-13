@@ -48,7 +48,10 @@ async function registerUser(data) {
 }
 
 async function login(login_id, password) {
-  const user = await prisma.user.findUnique({ where: { login_id } });
+  const user = await prisma.user.findUnique({ 
+    where: { login_id },
+    include: { profile: true }
+  });
   
   if (!user) {
     const error = new Error('Invalid login_id or password');
@@ -71,7 +74,12 @@ async function login(login_id, password) {
     error.status = 403;
     throw error;
   }
-  const payload = { id: user.id, login_id: user.login_id, is_admin: user.is_admin };
+  
+  let mappedRole = 'user';
+  if (user.login_id === 'owner') mappedRole = 'owner';
+  else if (user.is_admin) mappedRole = 'admin';
+
+  const payload = { id: user.id, login_id: user.login_id, role: mappedRole };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
   const tokenHash = hashRefreshToken(refreshToken);
@@ -89,12 +97,16 @@ async function login(login_id, password) {
       }
     })
   ]);
-  const { password: _, ...userWithoutPassword } = user;
+  const { password: _, profile, ...userWithoutPassword } = user;
   
   return {
     accessToken,
     refreshToken,
-    user: userWithoutPassword,
+    user: {
+      ...userWithoutPassword,
+      name: profile?.full_name || user.login_id,
+      role: mappedRole
+    },
   };
 }
 
