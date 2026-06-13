@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, ShieldAlert, Key, Edit, Power, CheckCircle, X, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, UserPlus, ShieldAlert, Key, Edit, Power, CheckCircle, X, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import AppShell from '../components/layout/AppShell';
 import { api } from '../utils/api';
 import '../styles/AdminPages.css';
@@ -14,12 +15,14 @@ const ROLE_LABELS = {
 };
 
 export default function UserManagement() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeModal, setActiveModal] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: '' });
   const [pwForm, setPwForm] = useState({ password: '', confirmPassword: '' });
 
@@ -31,7 +34,7 @@ export default function UserManagement() {
     setLoading(true);
     try {
       const data = await api.get('/users');
-      setUsers(data.data || []);
+      setUsers(data.users || []);
     } catch (err) {
       setError(err.message || 'Failed to load users.');
     } finally {
@@ -81,14 +84,14 @@ export default function UserManagement() {
       showNotification(`User "${form.name}" created successfully.`);
       loadUsers();
     } catch (err) {
-      setError(err.message || 'Failed to create user.');
+      showNotification(err.message || 'Failed to create user.', 'error');
     }
   };
 
   const handleEditUser = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.role) {
-      setError('Please fill in all fields.');
+      showNotification('Please fill in all fields.', 'error');
       return;
     }
     try {
@@ -97,7 +100,7 @@ export default function UserManagement() {
       showNotification(`User "${form.name}" updated successfully.`);
       loadUsers();
     } catch (err) {
-      setError(err.message || 'Failed to update user.');
+      showNotification(err.message || 'Failed to update user.', 'error');
     }
   };
 
@@ -118,11 +121,11 @@ export default function UserManagement() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (pwForm.password !== pwForm.confirmPassword) {
-      setError('Passwords do not match.');
+      showNotification('Passwords do not match.', 'error');
       return;
     }
     if (pwForm.password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      showNotification('Password must be at least 6 characters.', 'error');
       return;
     }
     try {
@@ -130,7 +133,7 @@ export default function UserManagement() {
       setActiveModal(null);
       showNotification(`Password for "${selectedUser.name}" reset successfully.`);
     } catch (err) {
-      setError(err.message || 'Failed to reset password.');
+      showNotification(err.message || 'Failed to reset password.', 'error');
     }
   };
 
@@ -273,14 +276,35 @@ export default function UserManagement() {
                 </div>
                 <div className="register-field">
                   <label className="register-label">Temporary Password</label>
-                  <input 
-                    type="password" 
-                    className="register-input" 
-                    placeholder="welcome123"
-                    value={form.password}
-                    onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                    required
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type={showPassword ? 'text' : 'password'}
+                      className="register-input" 
+                      placeholder="welcome123"
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      required
+                      style={{ paddingRight: '40px' }}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-secondary)',
+                        cursor: 'pointer',
+                        padding: '4px'
+                      }}
+                      tabIndex="-1"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="register-field">
                   <label className="register-label">Access Role</label>
