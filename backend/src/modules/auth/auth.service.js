@@ -130,7 +130,11 @@ async function refreshAccessToken(token) {
     throw error;
   }
   
-  const payload = { id: user.id, login_id: user.login_id, is_admin: user.is_admin };
+  let mappedRole = 'user';
+  if (user.login_id === 'owner') mappedRole = 'owner';
+  else if (user.is_admin) mappedRole = 'admin';
+  
+  const payload = { id: user.id, login_id: user.login_id, role: mappedRole };
   const accessToken = signAccessToken(payload);
   
   return { accessToken };

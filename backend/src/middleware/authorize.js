@@ -9,7 +9,7 @@ function authorize(...requiredModules) {
           error: 'Authentication required before authorization check',
         });
       }
-      if (req.user.is_admin) {
+      if (req.user.role === 'admin' || req.user.role === 'owner') {
         return next();
       }
       if (requiredModules.length === 0) {
