@@ -1,0 +1,131 @@
+/* ==============================
+   NEXUS ERP — Global Styles
+   ============================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md-size);
+  line-height: var(--text-body-md-height);
+  font-weight: var(--text-body-md-weight);
+  background-color: var(--color-canvas-muted);
+  color: var(--color-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Typography Utilities ── */
+.font-serif { font-family: var(--font-serif); }
+.font-sans  { font-family: var(--font-sans); }
+
+.text-display-lg {
+  font-family: var(--font-serif);
+  font-size: var(--text-display-lg-size);
+  line-height: var(--text-display-lg-height);
+  letter-spacing: var(--text-display-lg-spacing);
+  font-weight: var(--text-display-lg-weight);
+}
+.text-headline-lg {
+  font-family: var(--font-serif);
+  font-size: var(--text-headline-lg-size);
+  line-height: var(--text-headline-lg-height);
+  font-weight: var(--text-headline-lg-weight);
+}
+.text-headline-md {
+  font-family: var(--font-serif);
+  font-size: var(--text-headline-md-size);
+  line-height: var(--text-headline-md-height);
+  font-weight: var(--text-headline-md-weight);
+}
+.text-body-lg {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-height);
+  font-weight: var(--text-body-lg-weight);
+}
+.text-body-md {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md-size);
+  line-height: var(--text-body-md-height);
+}
+.text-label-md {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-md-size);
+  line-height: var(--text-label-md-height);
+  letter-spacing: var(--text-label-md-spacing);
+  font-weight: var(--text-label-md-weight);
+  text-transform: uppercase;
+}
+.text-label-sm {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-sm-size);
+  line-height: var(--text-label-sm-height);
+  font-weight: var(--text-label-sm-weight);
+}
+.text-numbers-lg {
+  font-family: var(--font-serif);
+  font-size: var(--text-numbers-lg-size);
+  line-height: var(--text-numbers-lg-height);
+  letter-spacing: var(--text-numbers-lg-spacing);
+  font-weight: 500;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-high); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-secondary); }
+
+/* ── Focus Visible ── */
+:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+/* ── Interactive base ── */
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+input, select, textarea {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md-size);
+  color: var(--color-primary);
+}
+
+/* ── Layout Shell ── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding-top: var(--topbar-height);
+  min-height: 100vh;
+  background-color: var(--color-canvas-muted);
+}
+
+.page-content {
+  padding: var(--space-8) var(--space-12);
+  max-width: 1400px;
+}
+
+/* Utility classes */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
