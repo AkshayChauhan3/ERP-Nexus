@@ -1,0 +1,20 @@
+ERP-Nexus Database Configuration Files
+
+The initial database script has been expanded, structured, and implemented in the following files:
+
+1. Setup Guide:
+   [README_DB.md](file:///home/akshaychauhan/Playground/ERP-Nexus/README_DB.md)
+
+2. Core Tables Schema:
+   [sql/001_schema.sql](file:///home/akshaychauhan/Playground/ERP-Nexus/sql/001_schema.sql)
+
+3. Database Triggers & Policies:
+   [sql/002_triggers.sql](file:///home/akshaychauhan/Playground/ERP-Nexus/sql/002_triggers.sql)
+
+4. Database Indexes:
+   [sql/003_indexes.sql](file:///home/akshaychauhan/Playground/ERP-Nexus/sql/003_indexes.sql)
+
+5. Seed Data (Modules & Admin):
+   [sql/004_seed.sql](file:///home/akshaychauhan/Playground/ERP-Nexus/sql/004_seed.sql)
+
+Please refer to these files for database setup and integration instructions.
