@@ -135,7 +135,7 @@ export default function UserManagement() {
   };
 
   return (
-    <AppShell>
+    <AppShell hideSidebar={activeModal === 'create'}>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {}
       {success && (

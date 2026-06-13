@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -59,19 +59,60 @@ import SalesHistory from './pages/sales/SalesHistory';
 import SalesReports from './pages/sales/SalesReports';
 import SalesAnalytics from './pages/sales/SalesAnalytics';
 
+// Owner Module Pages
+import OwnerDashboard from './pages/owner/OwnerDashboard';
+import OwnerOverview from './pages/owner/OwnerOverview';
+import OwnerApprovals from './pages/owner/OwnerApprovals';
+import OwnerFinancials from './pages/owner/OwnerFinancials';
+import OwnerUsers from './pages/owner/OwnerUsers';
+import OwnerEmployees from './pages/owner/OwnerEmployees';
+import OwnerInventory from './pages/owner/OwnerInventory';
+import OwnerSales from './pages/owner/OwnerSales';
+import OwnerPurchase from './pages/owner/OwnerPurchase';
+import OwnerManufacturing from './pages/owner/OwnerManufacturing';
+import OwnerNotifications from './pages/owner/OwnerNotifications';
+import OwnerReports from './pages/owner/OwnerReports';
+import OwnerAuditLogs from './pages/owner/OwnerAuditLogs';
+import OwnerSettings from './pages/owner/OwnerSettings';
+
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/animations.css';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+  const location = useLocation();
+
   if (!authData?.accessToken) {
     return <Navigate to="/login" replace />;
   }
   const role = authData.user?.role || '';
-  if (role === 'admin' || role === 'owner') {
+
+  // Owner role must only have access to /owner/*
+  if (role === 'owner') {
+    if (location.pathname.startsWith('/owner')) {
+      return children;
+    } else {
+      return <Navigate to="/owner/dashboard" replace />;
+    }
+  }
+
+  // Prevent non-owner roles from accessing /owner/*
+  if (location.pathname.startsWith('/owner')) {
+    if (role === 'admin') {
+      return children;
+    }
+    if (role === 'sales') return <Navigate to="/sales/dashboard" replace />;
+    if (role === 'inventory') return <Navigate to="/inventory/dashboard" replace />;
+    if (role === 'purchase') return <Navigate to="/purchase/dashboard" replace />;
+    if (role === 'manufacturing') return <Navigate to="/manufacturing/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (role === 'admin') {
     return children;
   }
+
   if (allowedRoles && !allowedRoles.includes(role)) {
     if (role === 'sales') {
       return <Navigate to="/sales/dashboard" replace />;
@@ -165,6 +206,22 @@ function App() {
         <Route path="/sales/reports"            element={<ProtectedRoute allowedRoles={['sales']}><SalesReports /></ProtectedRoute>} />
         <Route path="/sales/analytics"          element={<ProtectedRoute allowedRoles={['sales']}><SalesAnalytics /></ProtectedRoute>} />
 
+        {/* Owner Module */}
+        <Route path="/owner/dashboard"          element={<ProtectedRoute allowedRoles={['owner']}><OwnerDashboard /></ProtectedRoute>} />
+        <Route path="/owner/overview"           element={<ProtectedRoute allowedRoles={['owner']}><OwnerOverview /></ProtectedRoute>} />
+        <Route path="/owner/approvals"          element={<ProtectedRoute allowedRoles={['owner']}><OwnerApprovals /></ProtectedRoute>} />
+        <Route path="/owner/financials"         element={<ProtectedRoute allowedRoles={['owner']}><OwnerFinancials /></ProtectedRoute>} />
+        <Route path="/owner/users"              element={<ProtectedRoute allowedRoles={['owner']}><OwnerUsers /></ProtectedRoute>} />
+        <Route path="/owner/employees"          element={<ProtectedRoute allowedRoles={['owner']}><OwnerEmployees /></ProtectedRoute>} />
+        <Route path="/owner/inventory"          element={<ProtectedRoute allowedRoles={['owner']}><OwnerInventory /></ProtectedRoute>} />
+        <Route path="/owner/sales"              element={<ProtectedRoute allowedRoles={['owner']}><OwnerSales /></ProtectedRoute>} />
+        <Route path="/owner/purchase"           element={<ProtectedRoute allowedRoles={['owner']}><OwnerPurchase /></ProtectedRoute>} />
+        <Route path="/owner/manufacturing"      element={<ProtectedRoute allowedRoles={['owner']}><OwnerManufacturing /></ProtectedRoute>} />
+        <Route path="/owner/notifications"      element={<ProtectedRoute allowedRoles={['owner']}><OwnerNotifications /></ProtectedRoute>} />
+        <Route path="/owner/reports"            element={<ProtectedRoute allowedRoles={['owner']}><OwnerReports /></ProtectedRoute>} />
+        <Route path="/owner/audit-logs"         element={<ProtectedRoute allowedRoles={['owner']}><OwnerAuditLogs /></ProtectedRoute>} />
+        <Route path="/owner/settings"           element={<ProtectedRoute allowedRoles={['owner']}><OwnerSettings /></ProtectedRoute>} />
+
         <Route path="*"                element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
@@ -172,3 +229,4 @@ function App() {
 }
 
 export default App;
+

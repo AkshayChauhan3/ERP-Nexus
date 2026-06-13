@@ -5,7 +5,7 @@ import {
   Truck, Settings, Zap, ChevronRight, Factory,
   ClipboardList, Users, ShieldAlert, BarChart2, ShoppingBag,
   FileText, Wrench, Cpu, Activity, History, Layers, ArrowRightLeft,
-  CheckCircle, AlertTriangle
+  CheckCircle, AlertTriangle, DollarSign, Bell
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -20,13 +20,29 @@ export default function Sidebar() {
     }
   }, []);
 
-  const isAdminOrOwner    = user.role === 'admin' || user.role === 'owner';
+  const isOwner           = user.role === 'owner';
+  const isAdmin           = user.role === 'admin';
   const isManufacturing   = user.role === 'manufacturing';
   const isInventory       = user.role === 'inventory';
   const isPurchase        = user.role === 'purchase';
   const isSales           = user.role === 'sales';
 
-  const navItems = isAdminOrOwner ? [
+  const navItems = isOwner ? [
+    { path: '/owner/dashboard',     label: 'Dashboard',               icon: LayoutDashboard },
+    { path: '/owner/overview',      label: 'Business Overview',       icon: Activity },
+    { path: '/owner/approvals',     label: 'Approvals Center',        icon: CheckCircle },
+    { path: '/owner/financials',    label: 'Financial Summary',       icon: DollarSign },
+    { path: '/owner/users',         label: 'User Management',         icon: Users },
+    { path: '/owner/employees',     label: 'Employee Activity',       icon: Activity },
+    { path: '/owner/inventory',     label: 'Inventory Monitoring',    icon: Warehouse },
+    { path: '/owner/sales',         label: 'Sales Monitoring',        icon: ShoppingCart },
+    { path: '/owner/purchase',      label: 'Purchase Monitoring',     icon: ShoppingBag },
+    { path: '/owner/manufacturing', label: 'Mfg Monitoring',          icon: Factory },
+    { path: '/owner/notifications', label: 'Notifications',           icon: Bell },
+    { path: '/owner/reports',       label: 'Reports',                 icon: BarChart2 },
+    { path: '/owner/audit-logs',    label: 'Audit Logs',              icon: ShieldAlert },
+    { path: '/owner/settings',      label: 'Settings',                icon: Settings },
+  ] : isAdmin ? [
     { path: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
     { path: '/products',      label: 'Products',      icon: Package },
     { path: '/sales',         label: 'Sales',         icon: ShoppingCart },
@@ -108,7 +124,7 @@ export default function Sidebar() {
 
       {/* Section Label */}
       <span className="sidebar-section-label">
-        {isAdminOrOwner ? 'Admin Panel' : isManufacturing ? 'Manufacturing' : isPurchase ? 'Procurement' : isInventory ? 'Inventory Control' : isSales ? 'Sales Panel' : 'Navigation'}
+        {isOwner ? 'Owner Cockpit' : isAdmin ? 'Admin Panel' : isManufacturing ? 'Manufacturing' : isPurchase ? 'Procurement' : isInventory ? 'Inventory Control' : isSales ? 'Sales Panel' : 'Navigation'}
       </span>
 
       {}

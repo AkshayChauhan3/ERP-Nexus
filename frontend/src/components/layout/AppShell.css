@@ -16,3 +16,11 @@
 .page-content {
   padding: var(--space-8) var(--space-12);
 }
+
+.app-shell.sidebar-hidden .app-main {
+  margin-left: 0;
+}
+
+.app-shell.sidebar-hidden .topbar {
+  left: 0;
+}
