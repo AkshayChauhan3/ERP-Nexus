@@ -1,0 +1,200 @@
+/* ── ERP-Nexus Inventory Module Stylesheet ── */
+
+.inventory-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.inventory-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.inventory-sub {
+  font-size: 13px;
+  color: var(--color-secondary);
+  margin: 4px 0 0 32px;
+}
+
+/* Panels */
+.inventory-panel {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: all 0.2s ease;
+}
+
+.inventory-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.inventory-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-outline-variant);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.inventory-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Charts & Visual Components */
+.inventory-chart-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 180px;
+  padding: 10px 0;
+}
+
+.inventory-chart-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.inventory-chart-bar {
+  width: 24px;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: height 0.6s var(--ease-out);
+  position: relative;
+}
+
+.inventory-chart-bar:hover::after {
+  content: attr(data-value);
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+/* Stock status indicators */
+.status-pill {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-pill--green {
+  background: var(--color-success);
+}
+
+.status-pill--orange {
+  background: var(--color-amber);
+}
+
+.status-pill--red {
+  background: var(--color-error);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Capacity gauge */
+.capacity-gauge-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.capacity-gauge-text {
+  position: absolute;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.capacity-gauge-sub {
+  font-size: 10px;
+  color: var(--color-secondary);
+  display: block;
+}
+
+/* Responsive Table */
+.inventory-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.inventory-table th {
+  background: var(--surface-low);
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--color-secondary);
+  border-bottom: 1px solid var(--color-outline-variant);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.inventory-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  color: var(--color-primary);
+}
+
+.inventory-table tr:hover td {
+  background: var(--surface-low);
+}
+
+.inventory-table tr:last-child td {
+  border-bottom: none;
+}

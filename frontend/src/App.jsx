@@ -22,13 +22,70 @@ import MfgConsumption  from './pages/manufacturing/MfgConsumption';
 import MfgHistory      from './pages/manufacturing/MfgHistory';
 import MfgReports      from './pages/manufacturing/MfgReports';
 
+// Purchase Module Pages
+import PurchaseDashboard from './pages/purchase/PurchaseDashboard';
+import PurchaseVendors from './pages/purchase/PurchaseVendors';
+import PurchaseMaterials from './pages/purchase/PurchaseMaterials';
+import PurchaseOrders from './pages/purchase/PurchaseOrders';
+import PurchaseGoodsReceipts from './pages/purchase/PurchaseGoodsReceipts';
+import PurchaseVendorBills from './pages/purchase/PurchaseVendorBills';
+import PurchaseInventory from './pages/purchase/PurchaseInventory';
+import PurchaseProcurement from './pages/purchase/PurchaseProcurement';
+import PurchaseHistory from './pages/purchase/PurchaseHistory';
+import PurchaseReports from './pages/purchase/PurchaseReports';
+
+// Inventory Module Pages
+import InvDashboard from './pages/inventory/InvDashboard';
+import InvOverview from './pages/inventory/InvOverview';
+import InvProductDetails from './pages/inventory/InvProductDetails';
+import InvWarehouses from './pages/inventory/InvWarehouses';
+import InvStockLedger from './pages/inventory/InvStockLedger';
+import InvStockTransfers from './pages/inventory/InvStockTransfers';
+import InvStockAdjustments from './pages/inventory/InvStockAdjustments';
+import InvReservedStock from './pages/inventory/InvReservedStock';
+import InvLowStockAlerts from './pages/inventory/InvLowStockAlerts';
+import InvHistory from './pages/inventory/InvHistory';
+import InvReports from './pages/inventory/InvReports';
+
+// Sales Module Pages
+import SalesDashboard from './pages/sales/SalesDashboard';
+import SalesCustomers from './pages/sales/SalesCustomers';
+import SalesQuotations from './pages/sales/SalesQuotations';
+import SalesOrders from './pages/sales/SalesOrders';
+import SalesDeliveries from './pages/sales/SalesDeliveries';
+import SalesCatalog from './pages/sales/SalesCatalog';
+import SalesReservedStock from './pages/sales/SalesReservedStock';
+import SalesHistory from './pages/sales/SalesHistory';
+import SalesReports from './pages/sales/SalesReports';
+import SalesAnalytics from './pages/sales/SalesAnalytics';
+
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/animations.css';
-function ProtectedRoute({ children }) {
+
+function ProtectedRoute({ children, allowedRoles }) {
   const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
   if (!authData?.accessToken) {
     return <Navigate to="/login" replace />;
+  }
+  const role = authData.user?.role || '';
+  if (role === 'admin' || role === 'owner') {
+    return children;
+  }
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    if (role === 'sales') {
+      return <Navigate to="/sales/dashboard" replace />;
+    }
+    if (role === 'inventory') {
+      return <Navigate to="/inventory/dashboard" replace />;
+    }
+    if (role === 'purchase') {
+      return <Navigate to="/purchase/dashboard" replace />;
+    }
+    if (role === 'manufacturing') {
+      return <Navigate to="/manufacturing/dashboard" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -41,36 +98,73 @@ function App() {
         <Route path="/login"           element={<Login />} />
         <Route path="/register"        element={<Register />} />
         
-        {}
-        <Route path="/dashboard"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/products"        element={<ProtectedRoute><Products /></ProtectedRoute>} />
-        <Route path="/orders"          element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/new-sales-order" element={<ProtectedRoute><NewSalesOrder /></ProtectedRoute>} />
-        <Route path="/warehouse"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/logistics"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/settings"        element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        {/* Main Dashboard & Basic Screens (Forbidden for inventory/purchase/manufacturing/sales roles, they get auto-redirected) */}
+        <Route path="/dashboard"       element={<ProtectedRoute allowedRoles={[]}><Dashboard /></ProtectedRoute>} />
+        <Route path="/products"        element={<ProtectedRoute allowedRoles={[]}><Products /></ProtectedRoute>} />
+        <Route path="/orders"          element={<ProtectedRoute allowedRoles={[]}><Dashboard /></ProtectedRoute>} />
+        <Route path="/new-sales-order" element={<ProtectedRoute allowedRoles={[]}><NewSalesOrder /></ProtectedRoute>} />
+        <Route path="/warehouse"       element={<ProtectedRoute allowedRoles={[]}><Dashboard /></ProtectedRoute>} />
+        <Route path="/logistics"       element={<ProtectedRoute allowedRoles={[]}><Dashboard /></ProtectedRoute>} />
+        <Route path="/settings"        element={<ProtectedRoute allowedRoles={[]}><Dashboard /></ProtectedRoute>} />
 
-        {}
-        <Route path="/inventory"       element={<ProtectedRoute><InventoryMonitor /></ProtectedRoute>} />
-        <Route path="/sales"           element={<ProtectedRoute><SalesMonitor /></ProtectedRoute>} />
-        <Route path="/purchase"        element={<ProtectedRoute><PurchaseMonitor /></ProtectedRoute>} />
-        <Route path="/manufacturing"   element={<ProtectedRoute><ManufacturingMonitor /></ProtectedRoute>} />
-        <Route path="/procurement"     element={<ProtectedRoute><ProcurementMonitor /></ProtectedRoute>} />
-        <Route path="/users"           element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-        <Route path="/audit-logs"      element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
-        <Route path="/reports"         element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+        {/* Admin Panels */}
+        <Route path="/inventory"       element={<ProtectedRoute allowedRoles={[]}><InventoryMonitor /></ProtectedRoute>} />
+        <Route path="/sales"           element={<ProtectedRoute allowedRoles={[]}><SalesMonitor /></ProtectedRoute>} />
+        <Route path="/purchase"        element={<ProtectedRoute allowedRoles={[]}><PurchaseMonitor /></ProtectedRoute>} />
+        <Route path="/manufacturing"   element={<ProtectedRoute allowedRoles={[]}><ManufacturingMonitor /></ProtectedRoute>} />
+        <Route path="/procurement"     element={<ProtectedRoute allowedRoles={[]}><ProcurementMonitor /></ProtectedRoute>} />
+        <Route path="/users"           element={<ProtectedRoute allowedRoles={[]}><UserManagement /></ProtectedRoute>} />
+        <Route path="/audit-logs"      element={<ProtectedRoute allowedRoles={[]}><AuditLogs /></ProtectedRoute>} />
+        <Route path="/reports"         element={<ProtectedRoute allowedRoles={[]}><Reports /></ProtectedRoute>} />
 
-        {}
-        <Route path="/manufacturing"              element={<ProtectedRoute><MfgDashboard /></ProtectedRoute>} />
-        <Route path="/manufacturing/bom"           element={<ProtectedRoute><MfgBOM /></ProtectedRoute>} />
-        <Route path="/manufacturing/orders"        element={<ProtectedRoute><MfgOrders /></ProtectedRoute>} />
-        <Route path="/manufacturing/work-orders"   element={<ProtectedRoute><MfgWorkOrders /></ProtectedRoute>} />
-        <Route path="/manufacturing/work-centers"  element={<ProtectedRoute><MfgWorkCenters /></ProtectedRoute>} />
-        <Route path="/manufacturing/tracking"      element={<ProtectedRoute><MfgTracking /></ProtectedRoute>} />
-        <Route path="/manufacturing/consumption"   element={<ProtectedRoute><MfgConsumption /></ProtectedRoute>} />
-        <Route path="/manufacturing/history"       element={<ProtectedRoute><MfgHistory /></ProtectedRoute>} />
-        <Route path="/manufacturing/reports"       element={<ProtectedRoute><MfgReports /></ProtectedRoute>} />
+        {/* Manufacturing Module */}
+        <Route path="/manufacturing/dashboard"     element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgDashboard /></ProtectedRoute>} />
+        <Route path="/manufacturing/bom"           element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgBOM /></ProtectedRoute>} />
+        <Route path="/manufacturing/orders"        element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgOrders /></ProtectedRoute>} />
+        <Route path="/manufacturing/work-orders"   element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgWorkOrders /></ProtectedRoute>} />
+        <Route path="/manufacturing/work-centers"  element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgWorkCenters /></ProtectedRoute>} />
+        <Route path="/manufacturing/tracking"      element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgTracking /></ProtectedRoute>} />
+        <Route path="/manufacturing/consumption"   element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgConsumption /></ProtectedRoute>} />
+        <Route path="/manufacturing/history"       element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgHistory /></ProtectedRoute>} />
+        <Route path="/manufacturing/reports"       element={<ProtectedRoute allowedRoles={['manufacturing']}><MfgReports /></ProtectedRoute>} />
         
+        {/* Purchase & Procurement Module */}
+        <Route path="/purchase/dashboard"       element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseDashboard /></ProtectedRoute>} />
+        <Route path="/purchase/vendors"         element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseVendors /></ProtectedRoute>} />
+        <Route path="/purchase/materials"       element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseMaterials /></ProtectedRoute>} />
+        <Route path="/purchase/orders"          element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseOrders /></ProtectedRoute>} />
+        <Route path="/purchase/goods-receipts"  element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseGoodsReceipts /></ProtectedRoute>} />
+        <Route path="/purchase/vendor-bills"    element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseVendorBills /></ProtectedRoute>} />
+        <Route path="/purchase/inventory"       element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseInventory /></ProtectedRoute>} />
+        <Route path="/purchase/procurement"     element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseProcurement /></ProtectedRoute>} />
+        <Route path="/purchase/history"         element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseHistory /></ProtectedRoute>} />
+        <Route path="/purchase/reports"         element={<ProtectedRoute allowedRoles={['purchase']}><PurchaseReports /></ProtectedRoute>} />
+
+        {/* Inventory Module */}
+        <Route path="/inventory/dashboard"      element={<ProtectedRoute allowedRoles={['inventory']}><InvDashboard /></ProtectedRoute>} />
+        <Route path="/inventory/overview"       element={<ProtectedRoute allowedRoles={['inventory']}><InvOverview /></ProtectedRoute>} />
+        <Route path="/inventory/products"       element={<ProtectedRoute allowedRoles={['inventory']}><InvProductDetails /></ProtectedRoute>} />
+        <Route path="/inventory/warehouses"     element={<ProtectedRoute allowedRoles={['inventory']}><InvWarehouses /></ProtectedRoute>} />
+        <Route path="/inventory/ledger"         element={<ProtectedRoute allowedRoles={['inventory']}><InvStockLedger /></ProtectedRoute>} />
+        <Route path="/inventory/transfers"      element={<ProtectedRoute allowedRoles={['inventory']}><InvStockTransfers /></ProtectedRoute>} />
+        <Route path="/inventory/adjustments"    element={<ProtectedRoute allowedRoles={['inventory']}><InvStockAdjustments /></ProtectedRoute>} />
+        <Route path="/inventory/reserved"       element={<ProtectedRoute allowedRoles={['inventory']}><InvReservedStock /></ProtectedRoute>} />
+        <Route path="/inventory/alerts"         element={<ProtectedRoute allowedRoles={['inventory']}><InvLowStockAlerts /></ProtectedRoute>} />
+        <Route path="/inventory/history"        element={<ProtectedRoute allowedRoles={['inventory']}><InvHistory /></ProtectedRoute>} />
+        <Route path="/inventory/reports"        element={<ProtectedRoute allowedRoles={['inventory']}><InvReports /></ProtectedRoute>} />
+
+        {/* Sales Module */}
+        <Route path="/sales/dashboard"          element={<ProtectedRoute allowedRoles={['sales']}><SalesDashboard /></ProtectedRoute>} />
+        <Route path="/sales/customers"          element={<ProtectedRoute allowedRoles={['sales']}><SalesCustomers /></ProtectedRoute>} />
+        <Route path="/sales/quotations"         element={<ProtectedRoute allowedRoles={['sales']}><SalesQuotations /></ProtectedRoute>} />
+        <Route path="/sales/orders"             element={<ProtectedRoute allowedRoles={['sales']}><SalesOrders /></ProtectedRoute>} />
+        <Route path="/sales/deliveries"         element={<ProtectedRoute allowedRoles={['sales']}><SalesDeliveries /></ProtectedRoute>} />
+        <Route path="/sales/catalog"            element={<ProtectedRoute allowedRoles={['sales']}><SalesCatalog /></ProtectedRoute>} />
+        <Route path="/sales/reserved"           element={<ProtectedRoute allowedRoles={['sales']}><SalesReservedStock /></ProtectedRoute>} />
+        <Route path="/sales/history"            element={<ProtectedRoute allowedRoles={['sales']}><SalesHistory /></ProtectedRoute>} />
+        <Route path="/sales/reports"            element={<ProtectedRoute allowedRoles={['sales']}><SalesReports /></ProtectedRoute>} />
+        <Route path="/sales/analytics"          element={<ProtectedRoute allowedRoles={['sales']}><SalesAnalytics /></ProtectedRoute>} />
+
         <Route path="*"                element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
@@ -78,4 +172,3 @@ function App() {
 }
 
 export default App;
-
