@@ -34,6 +34,26 @@ class BusinessLogicError extends Error {
   }
 }
 
+async function checkReorderLevel(tx, productId) {
+  const product = await tx.product.findUnique({ where: { id: productId } });
+  if (product && parseFloat(product.on_hand_qty) < parseFloat(product.reorder_level)) {
+    const existing = await tx.procurementSuggestion.findFirst({
+      where: { product_id: productId, status: 'pending' }
+    });
+    if (!existing) {
+      const needed = parseFloat(product.reorder_level) - parseFloat(product.on_hand_qty);
+      await tx.procurementSuggestion.create({
+        data: {
+          product_id: productId,
+          suggested_qty: needed > 0 ? needed : 1,
+          reason: `Stock level (${product.on_hand_qty}) fell below reorder level (${product.reorder_level})`,
+          status: 'pending'
+        }
+      });
+    }
+  }
+}
+
 // ─── Invariant Validator ──────────────────────────────────────────────────────
 /**
  * Validates stock levels BEFORE any mutation is saved.
@@ -150,13 +170,16 @@ async function deductStockOnDelivery(prisma, productId, qty) {
   const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
   validateStockLevels(product, newOnHand, newReserved);
 
-  return await prisma.product.update({
+  const updated = await prisma.product.update({
     where: { id: productId },
     data: {
       on_hand_qty: newOnHand,
       reserved_qty: newReserved
     }
   });
+
+  await checkReorderLevel(prisma, productId);
+  return updated;
 }
 
 /**
@@ -201,13 +224,16 @@ async function consumeComponentStock(prisma, productId, qty) {
   const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
   validateStockLevels(product, newOnHand, newReserved);
 
-  return await prisma.product.update({
+  const updated = await prisma.product.update({
     where: { id: productId },
     data: {
       on_hand_qty: newOnHand,
       reserved_qty: newReserved
     }
   });
+
+  await checkReorderLevel(prisma, productId);
+  return updated;
 }
 
 /**
