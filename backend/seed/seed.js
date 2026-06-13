@@ -33,7 +33,6 @@ async function main() {
     where: { login_id: 'admin' },
     update: {
       password: adminPasswordHash,
-      role: 'admin',
       is_admin: true,
       status: 'APPROVED',
     },
@@ -41,7 +40,6 @@ async function main() {
       login_id: 'admin',
       email: 'admin@erp-nexus.local',
       password: adminPasswordHash,
-      role: 'admin',
       is_admin: true,
       status: 'APPROVED',
       profile: {
@@ -58,7 +56,6 @@ async function main() {
     where: { login_id: 'owner' },
     update: {
       password: ownerPasswordHash,
-      role: 'owner',
       is_admin: true,
       status: 'APPROVED',
     },
@@ -66,7 +63,6 @@ async function main() {
       login_id: 'owner',
       email: 'owner@erp-nexus.local',
       password: ownerPasswordHash,
-      role: 'owner',
       is_admin: true,
       status: 'APPROVED',
       profile: {

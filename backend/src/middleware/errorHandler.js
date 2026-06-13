@@ -5,7 +5,8 @@ const { ZodError } = require('zod');
 function errorHandler(err, req, res, next) {
   if (process.env.NODE_ENV !== 'test') {
     console.error(`\n[ERROR] ${req.method} ${req.originalUrl}`);
-    console.error(err);
+    console.error(err && err.message ? err.message : err);
+    if (err && err.stack) console.error(err.stack);
   }
   if (err instanceof ZodError) {
     return res.status(400).json({

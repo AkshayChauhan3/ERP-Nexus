@@ -37,7 +37,7 @@ export default function Login() {
     
     try {
       const result = await api.post('/auth/login', {
-        email: form.login_id,
+        login_id: form.login_id,
         password: form.password,
       });
       localStorage.setItem('auth_data', JSON.stringify({
