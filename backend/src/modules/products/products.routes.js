@@ -70,7 +70,7 @@ router.post('/', authorize('admin', 'inventory', 'owner'), productController.cre
  *       404:
  *         description: Product not found
  */
-router.get('/:id', authorize('admin', 'inventory'), productController.getById);
+router.get('/:id', authorize('admin', 'inventory', 'owner'), productController.getById);
 
 /**
  * @swagger
@@ -98,7 +98,7 @@ router.get('/:id', authorize('admin', 'inventory'), productController.getById);
  *       200:
  *         description: Product updated
  */
-router.patch('/:id', authorize('admin', 'inventory'), productController.update);
+router.patch('/:id', authorize('admin', 'inventory', 'owner'), productController.update);
 
 /**
  * @swagger
@@ -116,6 +116,41 @@ router.patch('/:id', authorize('admin', 'inventory'), productController.update);
  *       200:
  *         description: Product deleted
  */
-router.delete('/:id', authorize('admin', 'inventory'), productController.remove);
+router.delete('/:id', authorize('admin', 'inventory', 'owner'), productController.remove);
+
+const fs = require('fs');
+const path = require('path');
+
+router.post('/upload-image', authorize('admin', 'inventory', 'owner'), async (req, res) => {
+  const { image } = req.body;
+  if (!image) {
+    return res.status(400).json({ success: false, error: 'No image data provided' });
+  }
+
+  try {
+    const uploadsDir = path.join(__dirname, '../../../public/uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const matches = image.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ success: false, error: 'Invalid image format' });
+    }
+
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const dataBuffer = Buffer.from(matches[2], 'base64');
+    const filename = `product-${Date.now()}.${ext}`;
+    const filepath = path.join(uploadsDir, filename);
+
+    fs.writeFileSync(filepath, dataBuffer);
+
+    const imageUrl = `http://localhost:3000/uploads/${filename}`;
+    res.json({ success: true, imageUrl });
+  } catch (error) {
+    console.error('Image Upload Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to upload image' });
+  }
+});
 
 module.exports = router;

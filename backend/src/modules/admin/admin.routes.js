@@ -24,7 +24,8 @@ router.use(authorize('admin'));
  *       200:
  *         description: List of pending registrations
  */
-router.get('/registrations', adminController.getPendingRegistrations);
+router.get('/pending', adminController.getPendingRegistrations);
+router.get('/', adminController.getAllUsers);
 
 /**
  * @swagger

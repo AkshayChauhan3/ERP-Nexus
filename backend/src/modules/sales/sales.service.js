@@ -10,7 +10,7 @@ async function getAllSalesOrders() {
     orderBy: { created_at: 'desc' },
     include: {
       customer: { select: { id: true, name: true } },
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, login_id: true } },
     },
   });
 }
@@ -20,7 +20,7 @@ async function getSalesOrderById(id) {
     where: { id },
     include: {
       customer: true,
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, login_id: true } },
       lines: {
         include: { product: { select: { id: true, name: true, inventory: { select: { on_hand_qty: true, reserved_qty: true } } } } },
       },

@@ -3,7 +3,6 @@ const prisma = require('../../config/db');
 async function getPendingRegistrations() {
   return await prisma.user.findMany({
     where: { status: 'PENDING' },
-    include: { profile: true },
     select: {
       id: true,
       login_id: true,
@@ -67,8 +66,25 @@ async function rejectRegistration(userId, adminId, reason) {
   });
 }
 
+async function getAllUsers() {
+  return await prisma.user.findMany({
+    select: {
+      id: true,
+      login_id: true,
+      email: true,
+      status: true,
+      is_admin: true,
+      requested_modules: true,
+      created_at: true,
+      last_login_at: true,
+      profile: true,
+    }
+  });
+}
+
 module.exports = {
   getPendingRegistrations,
+  getAllUsers,
   approveRegistration,
   rejectRegistration,
 };

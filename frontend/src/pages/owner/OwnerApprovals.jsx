@@ -58,7 +58,7 @@ export default function OwnerApprovals() {
         </div>
 
         {/* Filters */}
-        <div className="purchase-panel" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="purchase-panel" style={{ display: 'flex', flexDirection: 'row', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-secondary)' }}>Status:</span>
           {['All', 'Pending', 'Approved', 'Rejected'].map(status => (
             <button

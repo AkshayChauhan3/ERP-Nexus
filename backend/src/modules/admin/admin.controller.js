@@ -26,8 +26,14 @@ async function reject(req, res) {
   res.json({ success: true, message: 'User registration rejected', data: user });
 }
 
+async function getAllUsers(req, res) {
+  const users = await adminService.getAllUsers();
+  res.json({ success: true, data: users });
+}
+
 module.exports = {
   getPendingRegistrations,
+  getAllUsers,
   approve,
   reject,
 };

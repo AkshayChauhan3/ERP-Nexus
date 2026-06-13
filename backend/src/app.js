@@ -23,8 +23,11 @@ const moRoutes           = require('./modules/manufacturing/mo.routes');
 const inventoryRoutes    = require('./modules/inventory/inventory.routes');
 const auditRoutes        = require('./modules/audit/audit.routes');
 
+const path = require('path');
+
 const app = express();
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
@@ -64,7 +67,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 }));
 
 app.use('/api/auth',                 authRoutes);
-app.use('/api/admin',                adminRoutes);
+app.use('/api/users',                adminRoutes);
 app.use('/api/products',             productRoutes);
 app.use('/api/vendors',              vendorRoutes);
 app.use('/api/customers',            customerRoutes);
