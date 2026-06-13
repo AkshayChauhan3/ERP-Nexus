@@ -97,7 +97,7 @@ const ADMIN_KPI_CARDS = [
   {
     id: 'inventory-value',
     label: 'Total Inventory Value',
-    value: '$452,800',
+    value: '₹4,52,800',
     icon: Warehouse,
     color: 'primary',
     badge: 'Audited',
