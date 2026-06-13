@@ -54,7 +54,7 @@ export default function Sidebar() {
     { path: '/audit-logs',    label: 'Audit Logs',    icon: ShieldAlert },
     { path: '/reports',       label: 'Reports',       icon: BarChart2 },
   ] : isManufacturing ? [
-    { path: '/manufacturing',          label: 'Dashboard',            icon: LayoutDashboard },
+    { path: '/manufacturing/dashboard', label: 'Dashboard',            icon: LayoutDashboard },
     { path: '/manufacturing/bom',      label: 'Bills of Materials',   icon: FileText },
     { path: '/manufacturing/orders',   label: 'Manufacturing Orders', icon: Factory },
     { path: '/manufacturing/work-orders', label: 'Work Orders',       icon: Wrench },

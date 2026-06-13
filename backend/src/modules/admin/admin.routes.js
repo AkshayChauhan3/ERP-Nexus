@@ -27,49 +27,16 @@ router.use(authorize('admin'));
 router.get('/pending', adminController.getPendingRegistrations);
 router.get('/', adminController.getAllUsers);
 
-/**
- * @swagger
- * /admin/approve/{userId}:
- *   post:
- *     summary: Approve a pending user registration
- *     tags: [Admin]
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: User approved successfully
- */
-router.post('/approve/:userId', adminController.approve);
+router.post('/', adminController.create);
+router.put('/:userId', adminController.update);
+router.post('/:userId/toggle', adminController.toggle);
+router.post('/:userId/reset-password', adminController.resetPassword);
 
-/**
- * @swagger
- * /admin/reject/{userId}:
- *   post:
- *     summary: Reject a pending user registration
- *     tags: [Admin]
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [reason]
- *             properties:
- *               reason: { type: 'string' }
- *     responses:
- *       200:
- *         description: User rejected successfully
- */
+// Support both path structures for approvals
+router.post('/approve/:userId', adminController.approve);
+router.post('/:userId/approve', adminController.approve);
+
 router.post('/reject/:userId', adminController.reject);
+router.post('/:userId/reject', adminController.reject);
 
 module.exports = router;

@@ -64,6 +64,7 @@ async function login(login_id, password) {
     error.status = 401;
     throw error;
   }
+  
   if (user.status === 'PENDING') {
     const error = new Error('Registration is awaiting admin approval');
     error.status = 403;
@@ -78,6 +79,15 @@ async function login(login_id, password) {
   let mappedRole = 'user';
   if (user.login_id === 'owner') mappedRole = 'owner';
   else if (user.is_admin) mappedRole = 'admin';
+  else {
+    const access = await prisma.userModuleAccess.findFirst({
+      where: { user_id: user.id },
+      include: { module: true }
+    });
+    if (access && access.module) {
+      mappedRole = access.module.module_name;
+    }
+  }
 
   const payload = { id: user.id, login_id: user.login_id, role: mappedRole };
   const accessToken = signAccessToken(payload);
@@ -133,6 +143,15 @@ async function refreshAccessToken(token) {
   let mappedRole = 'user';
   if (user.login_id === 'owner') mappedRole = 'owner';
   else if (user.is_admin) mappedRole = 'admin';
+  else {
+    const access = await prisma.userModuleAccess.findFirst({
+      where: { user_id: user.id },
+      include: { module: true }
+    });
+    if (access && access.module) {
+      mappedRole = access.module.module_name;
+    }
+  }
   
   const payload = { id: user.id, login_id: user.login_id, role: mappedRole };
   const accessToken = signAccessToken(payload);

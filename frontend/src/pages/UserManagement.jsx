@@ -31,7 +31,7 @@ export default function UserManagement() {
     setLoading(true);
     try {
       const data = await api.get('/users');
-      setUsers(data.users || []);
+      setUsers(data.data || []);
     } catch (err) {
       setError(err.message || 'Failed to load users.');
     } finally {

@@ -1,5 +1,8 @@
 # ERP-Nexus — Backend Architecture Guide
 
+> [!TIP]
+> To get the project set up and running locally, please refer to the **[Quick Start & Startup Guide](file:///home/akshaychauhan/Playground/ERP-Nexus/STARTUP.md)** first.
+
 > **Project**: Shiv Furniture Works — Autonomous Factory ERP  
 > **Stack**: Node.js + Express · Prisma ORM · PostgreSQL  
 > **Purpose**: This document explains, step by step, how the entire backend is structured — from the database layer to the API routes — including the Purchase and Manufacturing modules.
