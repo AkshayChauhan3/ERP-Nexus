@@ -51,7 +51,7 @@ export default function MfgHistory() {
           </div>
         </div>
 
-        {/* Filters */}
+        {}
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '12px', padding: '14px 18px', flexWrap: 'wrap' }}>
           <input id="history-search" className="mfg-search-input" style={{ maxWidth: '220px', flex: 1 }}
             placeholder="Search product or MO ID…" value={search} onChange={e => setSearch(e.target.value)} />
@@ -68,7 +68,7 @@ export default function MfgHistory() {
           <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--color-secondary)' }}>{filtered.length} records</span>
         </div>
 
-        {/* Summary KPIs */}
+        {}
         <div className="admin-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
           {[
             { label: 'Completed MOs',   val: filtered.length },
@@ -83,7 +83,7 @@ export default function MfgHistory() {
           ))}
         </div>
 
-        {/* History Table */}
+        {}
         <div className="admin-panel" style={{ padding: 0 }}>
           <div className="admin-table-wrapper" style={{ border: 'none' }}>
             <table className="admin-table">

@@ -65,7 +65,7 @@ export default function MfgDashboard() {
           </div>
         </div>
 
-        {/* KPI Grid */}
+        {}
         <div className="admin-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
           {kpis.map((kpi, i) => (
             <div key={i} className="admin-panel" style={{ padding: '16px', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
@@ -79,9 +79,9 @@ export default function MfgDashboard() {
           ))}
         </div>
 
-        {/* Charts Row */}
+        {}
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 'var(--space-6)' }}>
-          {/* Weekly Production Trend */}
+          {}
           <div className="admin-panel">
             <div className="admin-panel-header">
               <h3 className="admin-panel-title">Weekly Production Trend</h3>
@@ -98,7 +98,7 @@ export default function MfgDashboard() {
             </div>
           </div>
 
-          {/* Work Center Utilization */}
+          {}
           <div className="admin-panel">
             <h3 className="admin-panel-title">Work Center Utilization</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>
@@ -114,7 +114,7 @@ export default function MfgDashboard() {
             </div>
           </div>
 
-          {/* Top Products */}
+          {}
           <div className="admin-panel">
             <h3 className="admin-panel-title">Top Products</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>

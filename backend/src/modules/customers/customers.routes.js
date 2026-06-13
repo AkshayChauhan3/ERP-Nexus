@@ -11,8 +11,6 @@ const router = express.Router();
  *   name: Customers
  *   description: Customer management
  */
-
-// All customer routes require authentication
 router.use(authenticate);
 
 /**
@@ -25,7 +23,6 @@ router.use(authenticate);
  *       200:
  *         description: List of customers
  */
-// Admin, sales, owner can list customers
 router.get('/', authorize('admin', 'sales', 'owner'), customerController.getAll);
 
 /**
@@ -50,7 +47,6 @@ router.get('/', authorize('admin', 'sales', 'owner'), customerController.getAll)
  *       201:
  *         description: Customer created
  */
-// Only admin, sales, owner can create customers
 router.post('/', authorize('admin', 'sales', 'owner'), customerController.create);
 
 /**

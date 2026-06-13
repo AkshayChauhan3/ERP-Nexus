@@ -10,11 +10,10 @@ export default function Login() {
 
   const [form, setForm] = useState({ login_id: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [submitState, setSubmitState] = useState('idle'); // idle | validating | granted | error
+  const [submitState, setSubmitState] = useState('idle');
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [errorMsg, setErrorMsg] = useState('');
 
-  /* ── Parallax tilt ── */
   const handleMouseMove = (e) => {
     const rect = cardRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -27,7 +26,6 @@ export default function Login() {
 
   const handleMouseLeave = () => setTilt({ x: 0, y: 0 });
 
-  /* ── Submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.login_id || !form.password) {
@@ -38,13 +36,10 @@ export default function Login() {
     setSubmitState('validating');
     
     try {
-      // Send login_id as 'email' since the backend matches by email
       const result = await api.post('/auth/login', {
         email: form.login_id,
         password: form.password,
       });
-
-      // Save auth response in localStorage
       localStorage.setItem('auth_data', JSON.stringify({
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
@@ -57,7 +52,6 @@ export default function Login() {
     } catch (err) {
       setSubmitState('error');
       setErrorMsg(err.message || 'Invalid Login ID or password.');
-      // Re-enable submit after 2 seconds
       setTimeout(() => setSubmitState('idle'), 2000);
     }
   };
@@ -69,14 +63,14 @@ export default function Login() {
 
   return (
     <div className="login-page" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-      {/* Ambient blobs */}
+      {}
       <div className="login-blob login-blob--tl" />
       <div className="login-blob login-blob--br" />
       <div className="login-blob login-blob--tr" />
 
-      {/* Card */}
+      {}
       <div className="login-card" ref={cardRef} style={cardStyle}>
-        {/* Header */}
+        {}
         <div className="login-card-header">
           <div className="login-logo-mark">
             <Zap size={20} strokeWidth={2.5} />
@@ -87,12 +81,12 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Divider */}
+        {}
         <div className="login-divider" />
 
-        {/* Form */}
+        {}
         <form className="login-form" onSubmit={handleSubmit} noValidate>
-          {/* Login ID */}
+          {}
           <div className="login-field">
             <label className="login-label" htmlFor="login-id">Login ID (Email)</label>
             <div className="login-input-wrapper">
@@ -109,7 +103,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Password */}
+          {}
           <div className="login-field">
             <label className="login-label" htmlFor="login-password">Password</label>
             <div className="login-input-wrapper">
@@ -136,12 +130,12 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Error */}
+          {}
           {errorMsg && (
             <p className="login-error">{errorMsg}</p>
           )}
 
-          {/* Submit */}
+          {}
           <button
             type="submit"
             id="login-submit-btn"
@@ -169,7 +163,7 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Footer */}
+        {}
         <p className="login-footer-text">
           Need access?{' '}
           <span 

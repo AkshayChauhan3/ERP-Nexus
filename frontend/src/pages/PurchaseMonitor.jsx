@@ -20,7 +20,7 @@ export default function PurchaseMonitor() {
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* ── Section 1: Summary Cards ── */}
+      {}
       <div className="admin-grid">
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
           <div className="kpi-icon kpi-icon--blue" style={{ width: '48px', height: '48px' }}><Clock size={22} /></div>
@@ -52,9 +52,9 @@ export default function PurchaseMonitor() {
         </div>
       </div>
 
-      {/* ── Section 2: Dual Grid ── */}
+      {}
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 'var(--space-6)' }}>
-        {/* Open POs Table */}
+        {}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <h3 className="admin-panel-title">Open Purchase Orders</h3>
@@ -93,7 +93,7 @@ export default function PurchaseMonitor() {
           </div>
         </div>
 
-        {/* Vendor Performance */}
+        {}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <h3 className="admin-panel-title">Vendor Performance Scorecard</h3>

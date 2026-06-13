@@ -11,8 +11,6 @@ const router = express.Router();
  *   name: Products
  *   description: Product and inventory management
  */
-
-// All product routes require authentication
 router.use(authenticate);
 
 /**
@@ -26,7 +24,6 @@ router.use(authenticate);
  *       200:
  *         description: List of products
  */
-// Read access for admin, inventory, owner
 router.get('/', authorize('admin', 'inventory', 'owner'), productController.getAll);
 
 /**
@@ -53,7 +50,6 @@ router.get('/', authorize('admin', 'inventory', 'owner'), productController.getA
  *       201:
  *         description: Product created
  */
-// Write access for admin, inventory, owner
 router.post('/', authorize('admin', 'inventory', 'owner'), productController.create);
 
 /**

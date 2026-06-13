@@ -1,19 +1,6 @@
 const { z } = require('zod');
 const authService = require('./auth.service');
 
-/**
- * auth.controller.js — Auth HTTP Layer
- *
- * What this file does:
- *   - Defines Zod schemas to validate incoming request bodies (req.body)
- *   - Calls the appropriate authService function
- *   - Formats the HTTP response (res.json)
- *   - Any thrown errors (like validation or invalid credentials) are
- *     caught by express-async-errors and routed to errorHandler.js
- */
-
-// ─── Zod Schemas ─────────────────────────────────────────────────────────────
-
 const loginSchema = z.object({
   login_id: z.string().min(3, 'login_id is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -36,20 +23,13 @@ const registerSchema = z.object({
   requested_modules: z.array(z.number()).min(1, 'At least one module must be requested'),
 });
 
-// ─── Controllers ─────────────────────────────────────────────────────────────
-
 async function login(req, res) {
-  // Validate req.body. Throws ZodError on failure -> returns HTTP 400 automatically
   const data = loginSchema.parse(req.body);
-  
-  // Call service
   const result = await authService.login(data.login_id, data.password);
-  
-  // Respond
   res.json({
     success: true,
     message: 'Login successful',
-    ...result, // spreads accessToken, refreshToken, user
+    ...result,
   });
 }
 
@@ -85,8 +65,6 @@ async function logout(req, res) {
     message: 'Logged out successfully'
   });
 }
-
-// STUBS for Forgot Password (Step 15)
 async function forgotPassword(req, res) {
   res.json({ success: true, message: 'Forgot password stub' });
 }

@@ -29,10 +29,6 @@ async function getStockLedger(filters) {
   });
 }
 
-/**
- * Helper to record a stock movement.
- * Can be integrated into stockMutations.js later.
- */
 async function recordMovement(tx, data) {
   return await tx.stockLedger.create({
     data: {

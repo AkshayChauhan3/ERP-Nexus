@@ -9,8 +9,6 @@ import AppShell from '../components/layout/AppShell';
 import '../styles/AdminPages.css';
 import '../styles/Manufacturing.css';
 
-/* ── Mock Data ── */
-
 const SMART_ALERTS = [
   { id: 1, type: 'error',   icon: '🔴', label: 'Delayed Manufacturing Order',   desc: 'MO-3996 (Office Swivel Chair x15) is 2 days behind schedule.', time: '5 min ago' },
   { id: 2, type: 'error',   icon: '🔴', label: 'Critical Stock Shortage',        desc: 'Raw material "Foam Padding" below reorder level (5 units left).', time: '18 min ago' },
@@ -65,7 +63,6 @@ const ROLE_VIEWS = ['Owner / Admin', 'Floor Supervisor', 'Inventory Manager'];
 
 const maxProduced = Math.max(...PRODUCTION_TREND.map(d => d.planned));
 
-/* ── Component ── */
 export default function ManufacturingMonitor() {
   const [activeAlerts, setActiveAlerts] = useState(SMART_ALERTS);
   const [searchQuery, setSearchQuery]   = useState('');
@@ -88,9 +85,7 @@ export default function ManufacturingMonitor() {
     <AppShell>
       <div className="animate-page mfg-root">
 
-        {/* ══════════════════════════════════════════
-            HEADER BAR — Global Search + Role Switcher
-        ══════════════════════════════════════════ */}
+        {}
         <div className="mfg-topbar">
           <div>
             <h2 className="mfg-page-title">
@@ -100,7 +95,7 @@ export default function ManufacturingMonitor() {
             <p className="mfg-page-sub">Real-time production insights for decision-makers</p>
           </div>
 
-          {/* Global Search */}
+          {}
           <div className="mfg-search-wrap">
             <Search size={15} className="mfg-search-icon" />
             <input
@@ -128,7 +123,7 @@ export default function ManufacturingMonitor() {
             )}
           </div>
 
-          {/* Role-Based View Switcher */}
+          {}
           <div className="mfg-role-switcher">
             <Users size={13} style={{ color: 'var(--color-secondary)' }} />
             {ROLE_VIEWS.map(role => (
@@ -144,9 +139,7 @@ export default function ManufacturingMonitor() {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════
-            SMART ALERTS BANNER
-        ══════════════════════════════════════════ */}
+        {}
         {activeAlerts.length > 0 && (
           <div className="mfg-alerts-bar">
             <div className="mfg-alerts-title">
@@ -174,9 +167,7 @@ export default function ManufacturingMonitor() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════
-            TAB NAV
-        ══════════════════════════════════════════ */}
+        {}
         <div className="mfg-tabs">
           {[
             { key: 'dashboard', icon: <Activity size={14}/>, label: 'Executive Dashboard' },
@@ -196,12 +187,10 @@ export default function ManufacturingMonitor() {
           ))}
         </div>
 
-        {/* ══════════════════════════════════════════
-            TAB: EXECUTIVE DASHBOARD
-        ══════════════════════════════════════════ */}
+        {}
         {activeTab === 'dashboard' && (
           <div className="mfg-section">
-            {/* KPI Cards */}
+            {}
             <div className="admin-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: 0 }}>
               {[
                 { icon: <Factory size={16}/>,      cls: 'kpi-icon--primary', val: '3',    label: 'Active MOs',      sub: 'Manufacturing Orders' },
@@ -221,7 +210,7 @@ export default function ManufacturingMonitor() {
               ))}
             </div>
 
-            {/* Role-Specific Info Box */}
+            {}
             <div className="mfg-role-info">
               <User size={15} />
               <strong>Viewing as:</strong> {activeRole}
@@ -234,7 +223,7 @@ export default function ManufacturingMonitor() {
               </span>
             </div>
 
-            {/* Efficiency + Utilization grid */}
+            {}
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
               <div className="admin-panel">
                 <h3 className="admin-panel-title">Manufacturing Efficiency</h3>
@@ -280,9 +269,7 @@ export default function ManufacturingMonitor() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════
-            TAB: PRODUCTION PIPELINE (KANBAN)
-        ══════════════════════════════════════════ */}
+        {}
         {activeTab === 'pipeline' && (
           <div className="mfg-section">
             <div className="admin-panel">
@@ -293,7 +280,7 @@ export default function ManufacturingMonitor() {
                 </span>
               </div>
               <div className="kanban-board">
-                {/* Draft */}
+                {}
                 <div className="kanban-column">
                   <div className="kanban-column-header">
                     <span className="kanban-column-title">Draft</span>
@@ -310,7 +297,7 @@ export default function ManufacturingMonitor() {
                     </div>
                   ))}
                 </div>
-                {/* Ready */}
+                {}
                 <div className="kanban-column">
                   <div className="kanban-column-header">
                     <span className="kanban-column-title">Ready</span>
@@ -327,7 +314,7 @@ export default function ManufacturingMonitor() {
                     </div>
                   ))}
                 </div>
-                {/* In Progress */}
+                {}
                 <div className="kanban-column">
                   <div className="kanban-column-header">
                     <span className="kanban-column-title">In Progress</span>
@@ -343,7 +330,7 @@ export default function ManufacturingMonitor() {
                         }
                       </div>
                       <div style={{ fontSize: '13px', fontWeight: 600 }}>{card.item}</div>
-                      {/* Progress bar */}
+                      {}
                       <div className="mfg-progress-track">
                         <div className="mfg-progress-fill" style={{ width: `${card.progress}%`, background: card.delayed ? 'var(--color-error)' : 'var(--color-primary)' }} />
                       </div>
@@ -353,7 +340,7 @@ export default function ManufacturingMonitor() {
                     </div>
                   ))}
                 </div>
-                {/* Completed */}
+                {}
                 <div className="kanban-column">
                   <div className="kanban-column-header">
                     <span className="kanban-column-title">Completed</span>
@@ -375,13 +362,11 @@ export default function ManufacturingMonitor() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════
-            TAB: VISUAL ANALYTICS
-        ══════════════════════════════════════════ */}
+        {}
         {activeTab === 'analytics' && (
           <div className="mfg-section">
             <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 'var(--space-6)' }}>
-              {/* Grouped Bar Chart — Production Trend */}
+              {}
               <div className="admin-panel">
                 <div className="admin-panel-header">
                   <h3 className="admin-panel-title">Monthly Production Trend</h3>
@@ -416,11 +401,11 @@ export default function ManufacturingMonitor() {
                 </div>
               </div>
 
-              {/* Donut — Production Status */}
+              {}
               <div className="admin-panel">
                 <h3 className="admin-panel-title">Production Status Split</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '20px' }}>
-                  {/* SVG Donut */}
+                  {}
                   <div style={{ position: 'relative', width: '140px', height: '140px' }}>
                     <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform: 'rotate(-90deg)' }}>
                       {(() => {
@@ -447,7 +432,7 @@ export default function ManufacturingMonitor() {
                       <div style={{ fontSize: '10px', color: 'var(--color-secondary)' }}>Total MOs</div>
                     </div>
                   </div>
-                  {/* Legend */}
+                  {}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%' }}>
                     {[
                       { label: 'Completed',   val: '48', color: 'var(--color-success)' },
@@ -466,7 +451,7 @@ export default function ManufacturingMonitor() {
               </div>
             </div>
 
-            {/* Work Center Bar Chart */}
+            {}
             <div className="admin-panel">
               <h3 className="admin-panel-title">Work Center Utilization — Bar View</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
@@ -486,9 +471,7 @@ export default function ManufacturingMonitor() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════
-            TAB: AUDIT TIMELINE
-        ══════════════════════════════════════════ */}
+        {}
         {activeTab === 'audit' && (
           <div className="mfg-section">
             <div className="admin-panel">

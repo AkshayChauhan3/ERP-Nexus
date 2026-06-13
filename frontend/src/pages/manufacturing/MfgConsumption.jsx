@@ -35,7 +35,7 @@ export default function MfgConsumption() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
-          {/* Consumed Materials */}
+          {}
           <div className="admin-panel" style={{ padding: 0 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-outline-variant)' }}>
               <h3 className="admin-panel-title">Consumed Materials</h3>
@@ -64,7 +64,7 @@ export default function MfgConsumption() {
             </div>
           </div>
 
-          {/* Produced Goods */}
+          {}
           <div className="admin-panel" style={{ padding: 0 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-outline-variant)' }}>
               <h3 className="admin-panel-title">Produced Goods</h3>
@@ -93,7 +93,7 @@ export default function MfgConsumption() {
               })}
             </div>
 
-            {/* Summary */}
+            {}
             <div style={{ padding: '0 var(--space-5) var(--space-5)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ padding: '12px', background: 'var(--color-success-container)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
                 <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-success)' }}>{PRODUCED.reduce((s, p) => s + p.produced, 0)}</div>

@@ -35,14 +35,12 @@ const MOCK_MOVEMENT = {
 export default function InventoryMonitor() {
   const [filter, setFilter] = useState('weekly');
   const movementData = MOCK_MOVEMENT[filter];
-
-  // Compute maximum value in chart for percentage scaling
   const maxValue = Math.max(...movementData.map(d => d.value)) || 100;
 
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* ── Section 1: Summary Cards ── */}
+      {}
       <div className="admin-grid">
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
           <div className="kpi-icon kpi-icon--primary" style={{ width: '48px', height: '48px' }}><Package size={22} /></div>
@@ -74,9 +72,9 @@ export default function InventoryMonitor() {
         </div>
       </div>
 
-      {/* ── Section 2: Dual Grid (Movement & Table) ── */}
+      {}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
-        {/* Low Stock Table */}
+        {}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <h3 className="admin-panel-title">Low Stock Alert Center</h3>
@@ -121,7 +119,7 @@ export default function InventoryMonitor() {
           </div>
         </div>
 
-        {/* Stock Movement Dashboard Chart */}
+        {}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <h3 className="admin-panel-title">Stock Movement Dashboard</h3>
@@ -148,7 +146,7 @@ export default function InventoryMonitor() {
             </div>
           </div>
 
-          {/* SVG/HTML Custom Bar Chart */}
+          {}
           <div className="chart-container" style={{ minHeight: '220px' }}>
             {movementData.map((d, i) => {
               const pct = (d.value / maxValue) * 100;

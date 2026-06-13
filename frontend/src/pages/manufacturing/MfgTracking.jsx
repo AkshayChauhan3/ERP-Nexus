@@ -60,13 +60,13 @@ export default function MfgTracking() {
           </div>
         </div>
 
-        {/* Live MO Cards */}
+        {}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           {LIVE_MOS.map(mo => {
             const ind = INDICATOR[mo.indicator];
             return (
               <div key={mo.id} className="admin-panel" style={{ gap: 'var(--space-4)', borderLeft: `4px solid ${ind.dot}` }}>
-                {/* MO Header */}
+                {}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -85,7 +85,7 @@ export default function MfgTracking() {
                   </div>
                 </div>
 
-                {/* Main Progress Bar */}
+                {}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                     <span style={{ color: 'var(--color-secondary)' }}>Overall Completion</span>
@@ -99,7 +99,7 @@ export default function MfgTracking() {
                   </div>
                 </div>
 
-                {/* Work Orders Breakdown */}
+                {}
                 <div>
                   <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Work Orders</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

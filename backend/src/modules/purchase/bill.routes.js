@@ -97,6 +97,6 @@ router.post('/', authorize('purchase', 'admin', 'owner'), billController.create)
  *       200:
  *         description: Bill marked as paid
  */
-router.post('/:id/pay', authorize('admin', 'owner'), billController.pay); // restricted to admin/owner for payment processing
+router.post('/:id/pay', authorize('admin', 'owner'), billController.pay);
 
 module.exports = router;

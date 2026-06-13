@@ -54,7 +54,7 @@ export default function MfgReports() {
           </div>
         </div>
 
-        {/* Report Category Cards */}
+        {}
         <div className="admin-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
           {REPORTS.map((r, i) => (
             <div key={i} className="admin-panel" style={{ padding: '18px', cursor: 'pointer', gap: 'var(--space-3)',
@@ -73,7 +73,7 @@ export default function MfgReports() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 'var(--space-6)' }}>
-          {/* Production Report Chart */}
+          {}
           <div className="admin-panel">
             <h3 className="admin-panel-title">Production Report — Monthly</h3>
             <div className="chart-container" style={{ height: '200px', gap: '6px' }}>
@@ -99,7 +99,7 @@ export default function MfgReports() {
             </div>
           </div>
 
-          {/* Work Center Performance */}
+          {}
           <div className="admin-panel">
             <h3 className="admin-panel-title">Work Center Performance</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1, justifyContent: 'center' }}>
@@ -120,7 +120,7 @@ export default function MfgReports() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 'var(--space-6)' }}>
-          {/* Component Consumption */}
+          {}
           <div className="admin-panel">
             <h3 className="admin-panel-title">Component Consumption</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>
@@ -136,7 +136,7 @@ export default function MfgReports() {
             </div>
           </div>
 
-          {/* Manufacturing Efficiency */}
+          {}
           <div className="admin-panel" style={{ padding: 0 }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-outline-variant)' }}>
               <h3 className="admin-panel-title">Manufacturing Efficiency — Planned vs Actual</h3>

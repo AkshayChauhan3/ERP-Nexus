@@ -1,9 +1,6 @@
 const prisma = require('../../config/db');
 const { getFreeQty } = require('../../utils/stockMutations');
 
-/**
- * Helper to attach free_qty to a product record
- */
 function attachFreeQty(product) {
   if (!product) return product;
   return {

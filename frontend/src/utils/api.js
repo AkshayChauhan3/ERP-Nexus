@@ -1,6 +1,4 @@
 const BASE_URL = 'http://localhost:3000/api';
-
-// Helper to get local mock databases
 const getPendingUsers = () => JSON.parse(localStorage.getItem('pending_users') || '[]');
 const savePendingUsers = (users) => localStorage.setItem('pending_users', JSON.stringify(users));
 
@@ -50,18 +48,12 @@ const addAuditLog = (user, module, action, old_value, new_value) => {
 };
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-// Main fetch wrapper
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
-  
-  // Set default headers
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
-
-  // Inject token if available
   const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
   const loggedInEmail = authData?.user?.email || 'admin@erp-nexus.local';
   if (authData?.accessToken) {
@@ -72,19 +64,12 @@ async function request(endpoint, options = {}) {
     ...options,
     headers,
   };
-
-  // Convert body to JSON string if it is an object
   if (config.body && typeof config.body === 'object') {
     config.body = JSON.stringify(config.body);
   }
-
-  // Handle MOCKS for register/approvals/user management/audit logs
-  // 1. Public registration mock
   if (endpoint === '/auth/register-public' && config.method === 'POST') {
     const data = JSON.parse(config.body);
     const pending = getPendingUsers();
-    
-    // Check if user already exists
     if (pending.some(u => u.email === data.email) || getApprovedUsers().some(u => u.email === data.email)) {
       throw new Error('User with this email already exists.');
     }
@@ -93,7 +78,7 @@ async function request(endpoint, options = {}) {
       id: generateId(),
       name: data.name,
       email: data.email,
-      password: data.password, // Stored for mock login validation
+      password: data.password,
       role: data.role,
       is_active: false,
       created_at: new Date().toISOString(),
@@ -101,8 +86,6 @@ async function request(endpoint, options = {}) {
 
     pending.push(newUser);
     savePendingUsers(pending);
-    
-    // Log registration request
     addAuditLog(data.email, 'Administration', 'User Registration Request', '-', `New registration request for "${data.name}" (Role: ${data.role}).`);
 
     return {
@@ -111,13 +94,9 @@ async function request(endpoint, options = {}) {
       user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role }
     };
   }
-
-  // 2. Mock login for approved users
   if (endpoint === '/auth/login' && config.method === 'POST') {
     const data = JSON.parse(config.body);
     const approved = getApprovedUsers();
-    
-    // Support database updates on login
     const userIndex = approved.findIndex(u => u.email === data.email && u.password === data.password);
 
     if (userIndex !== -1) {
@@ -148,8 +127,6 @@ async function request(endpoint, options = {}) {
       return mockResult;
     }
   }
-
-  // 3. Pending users list mock
   if (endpoint === '/users/pending' && config.method === 'GET') {
     return {
       success: true,
@@ -162,8 +139,6 @@ async function request(endpoint, options = {}) {
       }))
     };
   }
-
-  // 4. Approve user mock
   if (endpoint.startsWith('/users/') && endpoint.endsWith('/approve') && config.method === 'POST') {
     const id = endpoint.split('/')[2];
     const pending = getPendingUsers();
@@ -180,8 +155,6 @@ async function request(endpoint, options = {}) {
 
     savePendingUsers(pending);
     saveApprovedUsers(approved);
-    
-    // Log approval
     addAuditLog(loggedInEmail, 'Administration', 'Role Modification', 'PENDING', `Registration request approved for "${approvedUser.name}" (Role: ${approvedUser.role}).`);
 
     return {
@@ -190,8 +163,6 @@ async function request(endpoint, options = {}) {
       user: { id: approvedUser.id, name: approvedUser.name, email: approvedUser.email, role: approvedUser.role }
     };
   }
-
-  // 5. Reject user mock
   if (endpoint.startsWith('/users/') && endpoint.endsWith('/reject') && config.method === 'POST') {
     const id = endpoint.split('/')[2];
     const pending = getPendingUsers();
@@ -204,8 +175,6 @@ async function request(endpoint, options = {}) {
     const user = pending[userIndex];
     pending.splice(userIndex, 1);
     savePendingUsers(pending);
-    
-    // Log rejection
     addAuditLog(loggedInEmail, 'Administration', 'Role Modification', 'PENDING', `Registration request rejected for "${user.name}".`);
 
     return {
@@ -213,8 +182,6 @@ async function request(endpoint, options = {}) {
       message: 'User registration request rejected.'
     };
   }
-
-  // 6. Get All Users (approved + pending)
   if (endpoint === '/users' && config.method === 'GET') {
     const approved = getApprovedUsers();
     const pending = getPendingUsers();
@@ -226,8 +193,6 @@ async function request(endpoint, options = {}) {
       ]
     };
   }
-
-  // 7. Create User (Admin Action)
   if (endpoint === '/users' && config.method === 'POST') {
     const data = JSON.parse(config.body);
     const approved = getApprovedUsers();
@@ -254,8 +219,6 @@ async function request(endpoint, options = {}) {
 
     return { success: true, user: newUser };
   }
-
-  // 8. Edit User (Admin Action)
   if (endpoint.startsWith('/users/') && config.method === 'PUT') {
     const id = endpoint.split('/')[2];
     const data = JSON.parse(config.body);
@@ -286,8 +249,6 @@ async function request(endpoint, options = {}) {
 
     throw new Error('User not found.');
   }
-
-  // 9. Toggle User Active Status (Admin Action)
   if (endpoint.startsWith('/users/') && endpoint.endsWith('/toggle') && config.method === 'POST') {
     const id = endpoint.split('/')[2];
     const approved = getApprovedUsers();
@@ -306,8 +267,6 @@ async function request(endpoint, options = {}) {
 
     return { success: true, user };
   }
-
-  // 10. Reset Password (Admin Action)
   if (endpoint.startsWith('/users/') && endpoint.endsWith('/reset-password') && config.method === 'POST') {
     const id = endpoint.split('/')[2];
     const data = JSON.parse(config.body);
@@ -327,16 +286,12 @@ async function request(endpoint, options = {}) {
 
     return { success: true, message: 'Password reset successful.' };
   }
-
-  // 11. Get Audit Logs
   if (endpoint === '/audit-logs' && config.method === 'GET') {
     return {
       success: true,
       logs: getAuditLogs()
     };
   }
-
-  // ─── Real Backend Network Call ───
   try {
     const response = await fetch(url, config);
     const result = await response.json();

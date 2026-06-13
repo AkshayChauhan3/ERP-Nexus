@@ -20,7 +20,7 @@ export default function ProcurementMonitor() {
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* ── Section 1: Alerts Panel ── */}
+      {}
       <div className="admin-panel" style={{ borderLeft: '4px solid var(--color-error)' }}>
         <div className="admin-panel-header">
           <h3 className="admin-panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -51,7 +51,7 @@ export default function ProcurementMonitor() {
         </div>
       </div>
 
-      {/* ── Section 2: Procurement Table ── */}
+      {}
       <div className="admin-panel">
         <div className="admin-panel-header">
           <h3 className="admin-panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

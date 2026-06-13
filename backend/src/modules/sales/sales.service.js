@@ -29,7 +29,6 @@ async function getSalesOrderById(id) {
 }
 
 async function createSalesOrder(data, userId) {
-  // data.lines should be [{ product_id, ordered_qty, unit_price }]
   return await prisma.$transaction(async (tx) => {
     const so = await tx.salesOrder.create({
       data: {
@@ -62,15 +61,11 @@ async function confirmSalesOrder(id) {
       error.name = 'BusinessLogicError';
       throw error;
     }
-
-    // Update status
     const updatedSo = await tx.salesOrder.update({
       where: { id },
       data: { status: 'confirmed' },
       include: { lines: true },
     });
-
-    // Reserve stock for all lines
     for (const line of updatedSo.lines) {
       await reserveStock(tx, line.product_id, line.ordered_qty);
     }
@@ -91,21 +86,16 @@ async function deliverSalesOrder(id) {
       error.name = 'BusinessLogicError';
       throw error;
     }
-
-    // Update status and set delivered_qty
     const updatedSo = await tx.salesOrder.update({
       where: { id },
       data: { status: 'delivered' },
     });
 
     for (const line of so.lines) {
-      // Mark line as fully delivered
       await tx.salesOrderLine.update({
         where: { id: line.id },
         data: { delivered_qty: line.ordered_qty },
       });
-
-      // Deduct stock (on_hand AND reserved)
       await deductStockOnDelivery(tx, line.product_id, line.ordered_qty);
     }
 
@@ -130,8 +120,6 @@ async function cancelSalesOrder(id) {
       where: { id },
       data: { status: 'cancelled' },
     });
-
-    // If it was confirmed, we need to release the reservations
     if (so.status === 'confirmed') {
       for (const line of so.lines) {
         await releaseReservation(tx, line.product_id, line.ordered_qty);

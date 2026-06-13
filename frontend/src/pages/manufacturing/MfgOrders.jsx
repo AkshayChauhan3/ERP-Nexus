@@ -64,7 +64,7 @@ export default function MfgOrders() {
           </button>
         </div>
 
-        {/* Filters */}
+        {}
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', padding: '14px 18px', flexWrap: 'wrap' }}>
           <input id="mo-search" className="mfg-search-input" style={{ maxWidth: '260px', flex: 1 }}
             placeholder="Search by product or MO number…" value={search} onChange={e => setSearch(e.target.value)} />
@@ -79,7 +79,7 @@ export default function MfgOrders() {
           </div>
         </div>
 
-        {/* Table */}
+        {}
         <div className="admin-panel" style={{ padding: 0 }}>
           <div className="admin-table-wrapper" style={{ border: 'none' }}>
             <table className="admin-table">
@@ -112,7 +112,7 @@ export default function MfgOrders() {
         </div>
       </div>
 
-      {/* Create MO Modal */}
+      {}
       {showModal && (
         <div className="admin-modal-overlay" onClick={() => setShowModal(false)}>
           <div className="admin-modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
@@ -163,7 +163,7 @@ export default function MfgOrders() {
                   </div>
                 </div>
 
-                {/* Component Preview */}
+                {}
                 {form.product && (
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Component Requirements (Auto-fetched)</p>
@@ -196,7 +196,7 @@ export default function MfgOrders() {
         </div>
       )}
 
-      {/* View MO Detail Modal */}
+      {}
       {viewOrder && (
         <div className="admin-modal-overlay" onClick={() => setViewOrder(null)}>
           <div className="admin-modal" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>

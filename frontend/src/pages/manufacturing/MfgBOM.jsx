@@ -64,7 +64,7 @@ export default function MfgBOM() {
           </button>
         </div>
 
-        {/* Filters */}
+        {}
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '12px', padding: '14px 18px', flexWrap: 'wrap' }}>
           <input id="bom-search" className="mfg-search-input" style={{ maxWidth: '280px', flex: 1 }}
             placeholder="Search by product or BoM ID…" value={search} onChange={e => setSearch(e.target.value)} />
@@ -76,7 +76,7 @@ export default function MfgBOM() {
           <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--color-secondary)' }}>{filtered.length} records</span>
         </div>
 
-        {/* Table */}
+        {}
         <div className="admin-panel" style={{ padding: 0 }}>
           <div className="admin-table-wrapper" style={{ border: 'none' }}>
             <table className="admin-table">
@@ -118,7 +118,7 @@ export default function MfgBOM() {
         </div>
       </div>
 
-      {/* Create BoM Modal */}
+      {}
       {showModal && (
         <div className="admin-modal-overlay" onClick={() => setShowModal(false)}>
           <div className="admin-modal" style={{ maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -128,7 +128,7 @@ export default function MfgBOM() {
             </div>
             <div className="admin-modal-body">
               <div className="admin-modal-form">
-                {/* Basic Info */}
+                {}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   <div>
                     <label className="mfg-form-label">Product *</label>
@@ -152,7 +152,7 @@ export default function MfgBOM() {
                   </div>
                 </div>
 
-                {/* Components */}
+                {}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 600, fontSize: '14px' }}>Components</span>
@@ -179,7 +179,7 @@ export default function MfgBOM() {
                   </div>
                 </div>
 
-                {/* Operations */}
+                {}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 600, fontSize: '14px' }}>Operations</span>

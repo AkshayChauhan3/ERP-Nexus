@@ -19,8 +19,6 @@ const ROLE_LABELS = {
   owner: 'Business Owner',
 };
 
-
-/* ── KPI Data ── */
 const KPI_CARDS = [
   {
     id: 'total-sales',
@@ -164,7 +162,6 @@ const ADMIN_KPI_CARDS = [
   },
 ];
 
-/* ── Risk Monitor ── */
 const RISK_ITEMS = [
   { id: 'wooden-table', label: 'Wooden Table', material: 'Oak Material', level: 'High Risk', levelColor: 'error', icon: '🪵', stock: 12 },
   { id: 'office-chair', label: 'Office Chair', material: 'Foam & Steel', level: 'Low Risk', levelColor: 'success', icon: '🪑', stock: 48 },
@@ -172,7 +169,6 @@ const RISK_ITEMS = [
   { id: 'dining-set', label: 'Dining Set', material: 'Teak Wood', level: 'High Risk', levelColor: 'error', icon: '🍽️', stock: 7 },
 ];
 
-/* ── Production Floor ── */
 const PRODUCTION_CENTERS = [
   { id: 'assembly', name: 'Assembly', status: 'Running', statusColor: 'success', progress: 72, units: '24 units/hr' },
   { id: 'painting', name: 'Painting', status: 'Delayed', statusColor: 'warning', progress: 45, units: '12 units/hr' },
@@ -180,7 +176,6 @@ const PRODUCTION_CENTERS = [
   { id: 'finishing', name: 'Finishing', status: 'Running', statusColor: 'success', progress: 88, units: '18 units/hr' },
 ];
 
-/* ── AI Advisor ── */
 const ADVISOR_CARDS = [
   {
     id: 'adv-1',
@@ -208,7 +203,6 @@ const ADVISOR_CARDS = [
   },
 ];
 
-/* ── Gauge Component ── */
 function BusinessGauge({ value = 87 }) {
   const radius = 80;
   const stroke = 10;
@@ -218,14 +212,14 @@ function BusinessGauge({ value = 87 }) {
   return (
     <div className="gauge-wrapper">
       <svg className="gauge-svg" viewBox="0 0 200 200" width="200" height="200">
-        {/* Track */}
+        {}
         <circle
           cx="100" cy="100" r={radius}
           fill="none"
           stroke="var(--surface-high)"
           strokeWidth={stroke}
         />
-        {/* Fill */}
+        {}
         <circle
           cx="100" cy="100" r={radius}
           fill="none"
@@ -237,7 +231,7 @@ function BusinessGauge({ value = 87 }) {
           transform="rotate(-90 100 100)"
           style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.25,0.46,0.45,0.94)' }}
         />
-        {/* Decorative ticks */}
+        {}
         {Array.from({ length: 32 }).map((_, i) => {
           const angle = (i / 32) * 360 - 90;
           const rad = (angle * Math.PI) / 180;
@@ -255,7 +249,7 @@ function BusinessGauge({ value = 87 }) {
             />
           );
         })}
-        {/* Center text */}
+        {}
         <text x="100" y="95" textAnchor="middle" className="gauge-value-text">
           {value}
         </text>
@@ -302,7 +296,6 @@ export default function Dashboard() {
     }
   }, [user.role]);
 
-
   const loadPendingUsers = async () => {
     setLoadingPending(true);
     try {
@@ -336,7 +329,7 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="dashboard animate-page">
-        {/* ── Section: Overview ── */}
+        {}
         <div className="dashboard-header">
           <div>
             <h2 className="dashboard-greeting">Good morning, {user.name.trim().split(/\s+/)[0]} 👋</h2>
@@ -351,7 +344,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* ── Admin Section: Pending Approvals ── */}
+        {}
         {user.role === 'admin' && (
           <div className="panel animate-page stagger-1" style={{ marginBottom: 'var(--space-6)', backdropFilter: 'blur(20px)' }}>
             <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -446,8 +439,7 @@ export default function Dashboard() {
           </div>
         )}
 
-
-        {/* ── Admin Section: Alerts Panel ── */}
+        {}
         {(user.role === 'admin' || user.role === 'owner') && alerts.length > 0 && (
           <div className="panel animate-page stagger-1" style={{ marginBottom: 'var(--space-6)', backdropFilter: 'blur(20px)' }}>
             <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -526,8 +518,7 @@ export default function Dashboard() {
           </div>
         )}
 
-
-        {/* ── Row 1: KPI Cards ── */}
+        {}
         <div className="kpi-grid">
           {(user.role === 'admin' || user.role === 'owner' ? ADMIN_KPI_CARDS : KPI_CARDS).map((card, i) => {
             const Icon = card.icon;
@@ -556,9 +547,9 @@ export default function Dashboard() {
           })}
         </div>
 
-        {/* ── Row 2: Dual panels ── */}
+        {}
         <div className="dual-grid">
-          {/* Risk Monitor */}
+          {}
           <div className="panel animate-page stagger-2">
             <div className="panel-header">
               <h3 className="panel-title">Stock Risk Monitor</h3>
@@ -583,7 +574,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Production Floor */}
+          {}
           <div className="panel animate-page stagger-3">
             <div className="panel-header">
               <h3 className="panel-title">Production Floor</h3>
@@ -625,7 +616,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Row 3: Business Health ── */}
+        {}
         <div className="health-panel animate-page stagger-4">
           <div className="panel-header">
             <div>
@@ -659,7 +650,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Row 4: AI Advisor ── */}
+        {}
         <div className="advisor-section animate-page stagger-5">
           <div className="advisor-section-header">
             <div className="advisor-title-group">

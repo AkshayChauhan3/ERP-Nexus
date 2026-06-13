@@ -54,7 +54,7 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      {/* Logo */}
+      {}
       <div className="sidebar-logo">
         <div className="sidebar-logo-mark">
           <Zap size={18} strokeWidth={2.5} />
@@ -65,15 +65,15 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Divider */}
+      {}
       <div className="sidebar-divider" />
 
-      {/* Nav section label */}
+      {}
       <span className="sidebar-section-label">
         {isAdminOrOwner ? 'Admin Panel' : isManufacturing ? 'Manufacturing' : 'Navigation'}
       </span>
 
-      {/* Nav Links */}
+      {}
       <nav className="sidebar-nav" style={{ overflowY: 'auto', flex: 1 }}>
         {navItems.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path ||
@@ -96,7 +96,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
+      {}
       <div className="sidebar-footer">
         <div className="sidebar-footer-card">
           <div className="sidebar-footer-icon">

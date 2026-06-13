@@ -31,7 +31,7 @@ async function getAuditLogs(filters) {
     include: {
       user: { select: { id: true, login_id: true } },
     },
-    take: 100, // Limit to recent 100 logs to prevent massive payloads
+    take: 100,
   });
 }
 

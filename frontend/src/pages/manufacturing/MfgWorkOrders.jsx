@@ -61,7 +61,7 @@ export default function MfgWorkOrders() {
           </div>
         </div>
 
-        {/* Filters */}
+        {}
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '12px', padding: '14px 18px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-secondary)' }}>Status:</span>
           {['all', ...WO_STATUSES].map(s => (
@@ -75,7 +75,7 @@ export default function MfgWorkOrders() {
           ))}
         </div>
 
-        {/* Table */}
+        {}
         <div className="admin-panel" style={{ padding: 0 }}>
           <div className="admin-table-wrapper" style={{ border: 'none' }}>
             <table className="admin-table">
@@ -117,7 +117,7 @@ export default function MfgWorkOrders() {
         </div>
       </div>
 
-      {/* WO Detail Side Panel */}
+      {}
       {detail && (
         <div className="admin-modal-overlay" onClick={() => setDetail(null)}>
           <div className="admin-modal" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>

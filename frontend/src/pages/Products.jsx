@@ -108,7 +108,7 @@ export default function Products() {
   return (
     <AppShell>
       <div className="products-page animate-page">
-        {/* ── Header ── */}
+        {}
         <div className="products-header">
           <div>
             <h2 className="text-display-lg products-title">Products</h2>
@@ -120,9 +120,9 @@ export default function Products() {
           </button>
         </div>
 
-        {/* ── Controls ── */}
+        {}
         <div className="products-controls">
-          {/* Filter pills */}
+          {}
           <div className="filter-pills">
             {FILTERS.map(f => (
               <button
@@ -136,7 +136,7 @@ export default function Products() {
             ))}
           </div>
 
-          {/* Search */}
+          {}
           <div className={`products-search ${searchExpanded ? 'products-search--expanded' : ''}`}>
             <Search size={16} strokeWidth={1.75} className="products-search-icon" />
             <input
@@ -152,7 +152,7 @@ export default function Products() {
           </div>
         </div>
 
-        {/* ── Table ── */}
+        {}
         <div className="products-table-wrapper animate-page stagger-2">
           <table className="products-table">
             <thead>
@@ -176,7 +176,7 @@ export default function Products() {
                   id={`product-row-${product.id.toLowerCase()}`}
                   className={`products-tr hover-row animate-page stagger-${Math.min(i + 1, 6)}`}
                 >
-                  {/* Product */}
+                  {}
                   <td className="products-td">
                     <div className="product-cell">
                       <div className="product-thumbnail">
@@ -189,17 +189,17 @@ export default function Products() {
                     </div>
                   </td>
 
-                  {/* SKU */}
+                  {}
                   <td className="products-td">
                     <span className="product-sku">{product.id}</span>
                   </td>
 
-                  {/* Price */}
+                  {}
                   <td className="products-td">
                     <span className="product-price">{product.price}</span>
                   </td>
 
-                  {/* Inventory */}
+                  {}
                   <td className="products-td">
                     <div className="inventory-badges">
                       <span className="inv-item">
@@ -223,12 +223,12 @@ export default function Products() {
                     </div>
                   </td>
 
-                  {/* Type */}
+                  {}
                   <td className="products-td">
                     <span className={`badge badge--${product.typeColor}`}>{product.type}</span>
                   </td>
 
-                  {/* Actions */}
+                  {}
                   <td className="products-td">
                     <div className="product-actions">
                       <button className="product-action-btn" id={`edit-${product.id.toLowerCase()}`}>Edit</button>
@@ -248,7 +248,7 @@ export default function Products() {
           )}
         </div>
 
-        {/* ── Pagination ── */}
+        {}
         <div className="pagination animate-page stagger-3">
           <p className="pagination-info">
             Showing <strong>1 to {filtered.length}</strong> of <strong>42</strong> products

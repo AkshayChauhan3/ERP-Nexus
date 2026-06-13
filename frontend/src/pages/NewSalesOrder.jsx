@@ -42,7 +42,7 @@ const STOCK_CHECKS = [
 
 export default function NewSalesOrder() {
   const navigate = useNavigate();
-  const [orderStatus, setOrderStatus] = useState('draft'); // draft | confirmed
+  const [orderStatus, setOrderStatus] = useState('draft');
   const [shipAddress, setShipAddress] = useState('14-B, Nehru Industrial Estate, Mumbai - 400020');
   const [showAIPanel, setShowAIPanel] = useState(true);
 
@@ -53,13 +53,13 @@ export default function NewSalesOrder() {
   return (
     <AppShell>
       <div className="nso-page animate-page">
-        {/* ── Back nav ── */}
+        {}
         <button className="nso-back-btn btn-interactive" onClick={() => navigate(-1)}>
           <ArrowLeft size={16} strokeWidth={1.75} />
           Back to Orders
         </button>
 
-        {/* ── Page Title ── */}
+        {}
         <div className="nso-header">
           <div>
             <div className="nso-order-meta">
@@ -72,11 +72,11 @@ export default function NewSalesOrder() {
           </div>
         </div>
 
-        {/* ── Main Grid ── */}
+        {}
         <div className="nso-grid">
-          {/* ── Left: Order Details ── */}
+          {}
           <div className="nso-main animate-page stagger-1">
-            {/* Order Info */}
+            {}
             <div className="nso-card">
               <h3 className="nso-card-title">Order Information</h3>
               <div className="nso-info-grid">
@@ -99,7 +99,7 @@ export default function NewSalesOrder() {
               </div>
             </div>
 
-            {/* Line Items Table */}
+            {}
             <div className="nso-card nso-items-card">
               <h3 className="nso-card-title">Order Line Items</h3>
               <table className="nso-table">
@@ -134,7 +134,7 @@ export default function NewSalesOrder() {
                 </tbody>
               </table>
 
-              {/* Total */}
+              {}
               <div className="nso-total-row">
                 <div className="nso-total-spacer" />
                 <div className="nso-total-block">
@@ -155,7 +155,7 @@ export default function NewSalesOrder() {
               </div>
             </div>
 
-            {/* Ship To */}
+            {}
             <div className="nso-card nso-ship-card">
               <div className="nso-ship-header">
                 <div className="nso-ship-icon"><Truck size={16} strokeWidth={1.75} /></div>
@@ -172,7 +172,7 @@ export default function NewSalesOrder() {
                 />
               </div>
 
-              {/* Action buttons */}
+              {}
               <div className="nso-actions">
                 <button
                   id="btn-save-draft"
@@ -196,9 +196,9 @@ export default function NewSalesOrder() {
             </div>
           </div>
 
-          {/* ── Right: Side Panels ── */}
+          {}
           <div className="nso-sidebar">
-            {/* Stock Check */}
+            {}
             <div className="nso-card animate-page stagger-2">
               <h3 className="nso-card-title">Stock Availability Check</h3>
               <div className="stock-check-list">
@@ -234,7 +234,7 @@ export default function NewSalesOrder() {
               </div>
             </div>
 
-            {/* AI Advisor */}
+            {}
             {showAIPanel && (
               <div className="nso-card nso-ai-card animate-page stagger-3">
                 <div className="nso-ai-header">
@@ -269,7 +269,7 @@ export default function NewSalesOrder() {
               </div>
             )}
 
-            {/* Summary card */}
+            {}
             <div className="nso-card nso-summary-card animate-page stagger-4">
               <h3 className="nso-card-title">Order Summary</h3>
               <div className="nso-summary-list">

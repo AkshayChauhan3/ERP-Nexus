@@ -18,12 +18,8 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // Modals state
-  const [activeModal, setActiveModal] = useState(null); // 'create' | 'edit' | 'password' | null
+  const [activeModal, setActiveModal] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
-
-  // Form states
   const [form, setForm] = useState({ name: '', email: '', password: '', role: '' });
   const [pwForm, setPwForm] = useState({ password: '', confirmPassword: '' });
 
@@ -141,7 +137,7 @@ export default function UserManagement() {
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* Notifications */}
+      {}
       {success && (
         <div className="profile-drawer-success-msg" style={{ margin: 0 }}>{success}</div>
       )}
@@ -149,7 +145,7 @@ export default function UserManagement() {
         <div className="register-error" style={{ margin: 0 }}>{error}</div>
       )}
 
-      {/* Header Panel */}
+      {}
       <div className="admin-panel" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="kpi-icon kpi-icon--primary" style={{ width: '40px', height: '40px' }}><Users size={18} /></div>
@@ -163,7 +159,7 @@ export default function UserManagement() {
         </button>
       </div>
 
-      {/* Users List Table */}
+      {}
       <div className="admin-panel">
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-secondary)' }}>
@@ -241,9 +237,9 @@ export default function UserManagement() {
         )}
       </div>
 
-      {/* ── Modal dialog container overlays ── */}
+      {}
 
-      {/* CREATE MODAL */}
+      {}
       {activeModal === 'create' && (
         <div className="admin-modal-overlay">
           <div className="admin-modal">
@@ -309,7 +305,7 @@ export default function UserManagement() {
         </div>
       )}
 
-      {/* EDIT MODAL */}
+      {}
       {activeModal === 'edit' && (
         <div className="admin-modal-overlay">
           <div className="admin-modal">
@@ -362,7 +358,7 @@ export default function UserManagement() {
         </div>
       )}
 
-      {/* PASSWORD RESET MODAL */}
+      {}
       {activeModal === 'password' && (
         <div className="admin-modal-overlay">
           <div className="admin-modal">

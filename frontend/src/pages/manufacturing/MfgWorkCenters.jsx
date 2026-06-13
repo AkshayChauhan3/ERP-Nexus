@@ -12,7 +12,7 @@ const MOCK_WCS = [
   { id: 'WC-05', name: 'CNC Center',       capacity: 40,  activeOrders: 0, utilization: 0,  status: 'inactive', operators: [] },
 ];
 
-const UTIL_TREND = [62, 70, 55, 80, 85, 75, 88]; // last 7 days
+const UTIL_TREND = [62, 70, 55, 80, 85, 75, 88];
 const maxTrend = Math.max(...UTIL_TREND);
 
 export default function MfgWorkCenters() {
@@ -41,7 +41,7 @@ export default function MfgWorkCenters() {
           </div>
         </div>
 
-        {/* Cards Grid */}
+        {}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-5)' }}>
           {filtered.map(wc => (
             <div key={wc.id} className="admin-panel" style={{ cursor: 'pointer', transition: 'transform 0.2s ease', gap: 'var(--space-3)' }}
@@ -56,7 +56,7 @@ export default function MfgWorkCenters() {
                 <span className={`admin-badge admin-badge--${wc.status === 'active' ? 'success' : 'error'}`}>{wc.status}</span>
               </div>
 
-              {/* Utilization Ring */}
+              {}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
                   {(() => {
@@ -96,7 +96,7 @@ export default function MfgWorkCenters() {
           ))}
         </div>
 
-        {/* Summary Table */}
+        {}
         <div className="admin-panel" style={{ padding: 0 }}>
           <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <BarChart2 size={16} style={{ color: 'var(--color-secondary)' }} />
@@ -131,7 +131,7 @@ export default function MfgWorkCenters() {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {}
       {detail && (
         <div className="admin-modal-overlay" onClick={() => setDetail(null)}>
           <div className="admin-modal" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
