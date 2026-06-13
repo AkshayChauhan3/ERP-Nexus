@@ -15,6 +15,17 @@ import UserManagement from './pages/UserManagement';
 import AuditLogs from './pages/AuditLogs';
 import Reports from './pages/Reports';
 
+// Manufacturing Module Pages
+import MfgDashboard    from './pages/manufacturing/MfgDashboard';
+import MfgBOM          from './pages/manufacturing/MfgBOM';
+import MfgOrders       from './pages/manufacturing/MfgOrders';
+import MfgWorkOrders   from './pages/manufacturing/MfgWorkOrders';
+import MfgWorkCenters  from './pages/manufacturing/MfgWorkCenters';
+import MfgTracking     from './pages/manufacturing/MfgTracking';
+import MfgConsumption  from './pages/manufacturing/MfgConsumption';
+import MfgHistory      from './pages/manufacturing/MfgHistory';
+import MfgReports      from './pages/manufacturing/MfgReports';
+
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/animations.css';
@@ -54,6 +65,17 @@ function App() {
         <Route path="/users"           element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
         <Route path="/audit-logs"      element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
         <Route path="/reports"         element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+
+        {/* Manufacturing Role Module Routes */}
+        <Route path="/manufacturing"              element={<ProtectedRoute><MfgDashboard /></ProtectedRoute>} />
+        <Route path="/manufacturing/bom"           element={<ProtectedRoute><MfgBOM /></ProtectedRoute>} />
+        <Route path="/manufacturing/orders"        element={<ProtectedRoute><MfgOrders /></ProtectedRoute>} />
+        <Route path="/manufacturing/work-orders"   element={<ProtectedRoute><MfgWorkOrders /></ProtectedRoute>} />
+        <Route path="/manufacturing/work-centers"  element={<ProtectedRoute><MfgWorkCenters /></ProtectedRoute>} />
+        <Route path="/manufacturing/tracking"      element={<ProtectedRoute><MfgTracking /></ProtectedRoute>} />
+        <Route path="/manufacturing/consumption"   element={<ProtectedRoute><MfgConsumption /></ProtectedRoute>} />
+        <Route path="/manufacturing/history"       element={<ProtectedRoute><MfgHistory /></ProtectedRoute>} />
+        <Route path="/manufacturing/reports"       element={<ProtectedRoute><MfgReports /></ProtectedRoute>} />
         
         <Route path="*"                element={<Navigate to="/login" replace />} />
       </Routes>

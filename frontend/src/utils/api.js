@@ -11,6 +11,7 @@ const getApprovedUsers = () => {
       { id: 'mock-admin-id', name: 'Alexander Sterling', email: 'admin@erp-nexus.local', password: 'admin123', role: 'admin', is_active: true, created_at: new Date().toISOString(), last_login: new Date().toISOString() },
       { id: 'mock-owner-id', name: 'John Owner', email: 'owner@erp-nexus.local', password: 'owner123', role: 'owner', is_active: true, created_at: new Date().toISOString(), last_login: new Date(Date.now() - 3600000).toISOString() },
       { id: 'mock-sales-id', name: 'Sarah Executive', email: 'sales@erp-nexus.local', password: 'sales123', role: 'sales', is_active: true, created_at: new Date().toISOString(), last_login: new Date(Date.now() - 3600000 * 2).toISOString() },
+      { id: 'mock-mfg-id', name: 'Rahul Kumar', email: 'mfg@erp-nexus.local', password: 'mfg123', role: 'manufacturing', is_active: true, created_at: new Date().toISOString(), last_login: new Date(Date.now() - 3600000 * 3).toISOString() },
     ];
     localStorage.setItem('approved_users', JSON.stringify(defaultUsers));
     return defaultUsers;

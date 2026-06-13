@@ -3,7 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, Warehouse,
   Truck, Settings, Zap, ChevronRight, Factory,
-  ClipboardList, Users, ShieldAlert, BarChart2, ShoppingBag
+  ClipboardList, Users, ShieldAlert, BarChart2, ShoppingBag,
+  FileText, Wrench, Cpu, Activity, History
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -18,7 +19,8 @@ export default function Sidebar() {
     }
   }, []);
 
-  const isAdminOrOwner = user.role === 'admin' || user.role === 'owner';
+  const isAdminOrOwner    = user.role === 'admin' || user.role === 'owner';
+  const isManufacturing   = user.role === 'manufacturing';
 
   const navItems = isAdminOrOwner ? [
     { path: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
@@ -31,6 +33,16 @@ export default function Sidebar() {
     { path: '/users',         label: 'Users',         icon: Users },
     { path: '/audit-logs',    label: 'Audit Logs',    icon: ShieldAlert },
     { path: '/reports',       label: 'Reports',       icon: BarChart2 },
+  ] : isManufacturing ? [
+    { path: '/manufacturing',          label: 'Dashboard',            icon: LayoutDashboard },
+    { path: '/manufacturing/bom',      label: 'Bills of Materials',   icon: FileText },
+    { path: '/manufacturing/orders',   label: 'Manufacturing Orders', icon: Factory },
+    { path: '/manufacturing/work-orders', label: 'Work Orders',       icon: Wrench },
+    { path: '/manufacturing/work-centers', label: 'Work Centers',     icon: Cpu },
+    { path: '/manufacturing/tracking', label: 'Production Tracking',  icon: Activity },
+    { path: '/manufacturing/consumption', label: 'Inv. Consumption',  icon: Package },
+    { path: '/manufacturing/history',  label: 'Production History',   icon: History },
+    { path: '/manufacturing/reports',  label: 'Reports',              icon: BarChart2 },
   ] : [
     { path: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
     { path: '/products',   label: 'Products',   icon: Package },
@@ -58,7 +70,7 @@ export default function Sidebar() {
 
       {/* Nav section label */}
       <span className="sidebar-section-label">
-        {isAdminOrOwner ? 'Admin Panel' : 'Navigation'}
+        {isAdminOrOwner ? 'Admin Panel' : isManufacturing ? 'Manufacturing' : 'Navigation'}
       </span>
 
       {/* Nav Links */}
