@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
@@ -11,7 +12,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"                index element={<Navigate to="/login" replace />} />
+        <Route path="/"                element={<Landing />} />
         <Route path="/login"           element={<Login />} />
         <Route path="/dashboard"       element={<Dashboard />} />
         <Route path="/products"        element={<Products />} />
@@ -20,7 +21,7 @@ function App() {
         <Route path="/warehouse"       element={<Dashboard />} />
         <Route path="/logistics"       element={<Dashboard />} />
         <Route path="/settings"        element={<Dashboard />} />
-        <Route path="*"                element={<Navigate to="/login" replace />} />
+        <Route path="*"                element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
