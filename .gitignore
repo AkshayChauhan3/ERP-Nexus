@@ -24,5 +24,12 @@ build/
 coverage/
 
 # ─── Logs ─────────────────────────────────────────────────
+ERP-Nexus_Purchase_Module_Implementation_Plan.docx
+database.txt
+database_schema.md
+implementation_plan.md
+implementation_plan_purchase.md
+purchase_plan_text.txt
+
 logs/
 *.log

@@ -175,7 +175,11 @@ export default function TopBar() {
                   type="file" 
                   ref={fileInputRef} 
                   style={{ display: 'none' }} 
-                  accept="image}
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+              </div>
+
               <form className="profile-drawer-form" onSubmit={handleSaveProfile}>
                 {}
                 <div className="profile-drawer-field">
