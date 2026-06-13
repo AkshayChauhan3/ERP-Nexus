@@ -46,12 +46,7 @@ const MODULES = [
   { icon: Truck,        label: 'Logistics & Delivery',color: '#E0F2F1', text: '#00695C', desc: 'Delivery scheduling, shipment tracking, and carrier integration under one roof.' },
 ];
 
-const STATS = [
-  { value: 500,  suffix: '+', label: 'Businesses Trust Us' },
-  { value: 98,   suffix: '%', label: 'Uptime Guaranteed' },
-  { value: 3,    suffix: 'x', label: 'Faster Operations' },
-  { value: 60,   suffix: '%', label: 'Cost Reduction' },
-];
+
 
 const WHY_ITEMS = [
   { icon: Globe,        title: 'Unified Ecosystem',    desc: 'Every department connected — sales, manufacturing, inventory and logistics in one platform.' },
@@ -93,26 +88,7 @@ function RevealSection({ children, className = '', delay = 0 }) {
   );
 }
 
-/* ── Stat counter card ── */
-function StatCard({ value, suffix, label, index }) {
-  const [count, ref] = useCounter(value, 1.8);
-  return (
-    <motion.div
-      ref={ref}
-      className="lp-stat-card"
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: index * 0.12 }}
-      whileHover={{ y: -6, transition: { duration: 0.2 } }}
-    >
-      <span className="lp-stat-value">
-        {count}{suffix}
-      </span>
-      <span className="lp-stat-label">{label}</span>
-    </motion.div>
-  );
-}
+
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -303,33 +279,10 @@ export default function Landing() {
           </motion.div>
         </motion.div>
 
-        {/* Scroll indicator */}
-        <motion.div
-          className="lp-scroll-indicator"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2.2 }}
-        >
-          <motion.div
-            className="lp-scroll-dot"
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <span>Scroll to explore</span>
-          <ChevronDown size={14} />
-        </motion.div>
+
       </section>
 
-      {/* ════════════════════════════════════════
-          STATS STRIP
-      ════════════════════════════════════════ */}
-      <section className="lp-stats-strip">
-        <div className="lp-stats-inner">
-          {STATS.map((s, i) => (
-            <StatCard key={i} index={i} {...s} />
-          ))}
-        </div>
-      </section>
+
 
       {/* ════════════════════════════════════════
           ABOUT / WHAT WE PROVIDE

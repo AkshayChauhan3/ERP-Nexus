@@ -14,7 +14,7 @@ const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
 
 const registerSchema = z.object({
   login_id: z.string().min(3, 'login_id is required').max(50),
-  email: z.string().email('Invalid email format'),
+  email: z.string().email('Invalid email format').endsWith('.com', 'Email address must end with .com'),
   password: z.string().regex(passwordRegex, 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.'),
   full_name: z.string().min(2, 'Full name is required'),
   position: z.string().min(2, 'Position is required'),

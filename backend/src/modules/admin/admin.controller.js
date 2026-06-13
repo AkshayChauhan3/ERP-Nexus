@@ -7,14 +7,14 @@ const rejectSchema = z.object({
 
 const createSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').endsWith('.com', 'Email address must end with .com'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.string().min(2, 'Role is required'),
 });
 
 const updateSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').endsWith('.com', 'Email address must end with .com'),
   role: z.string().min(2, 'Role is required'),
 });
 

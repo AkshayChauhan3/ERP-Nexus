@@ -28,7 +28,12 @@ async function request(endpoint, options = {}) {
     const result = await response.json();
     
     if (!response.ok) {
-      throw new Error(result.error || result.message || `API error (${response.status})`);
+      let errorMessage = result.error || result.message || `API error (${response.status})`;
+      if (result.details && Array.isArray(result.details)) {
+        const detailMessages = result.details.map(d => d.message).join(', ');
+        errorMessage += `: ${detailMessages}`;
+      }
+      throw new Error(errorMessage);
     }
     
     return result;

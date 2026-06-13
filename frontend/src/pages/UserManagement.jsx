@@ -141,7 +141,7 @@ export default function UserManagement() {
       {success && (
         <div className="profile-drawer-success-msg" style={{ margin: 0 }}>{success}</div>
       )}
-      {error && (
+      {error && !activeModal && (
         <div className="register-error" style={{ margin: 0 }}>{error}</div>
       )}
 
@@ -248,6 +248,7 @@ export default function UserManagement() {
               <button className="admin-modal-close" onClick={() => setActiveModal(null)}><X size={16} /></button>
             </div>
             <div className="admin-modal-body">
+              {error && <div className="register-error" style={{ marginBottom: '16px' }}>{error}</div>}
               <form className="admin-modal-form" onSubmit={handleCreateUser}>
                 <div className="register-field">
                   <label className="register-label">Full Name</label>
@@ -314,6 +315,7 @@ export default function UserManagement() {
               <button className="admin-modal-close" onClick={() => setActiveModal(null)}><X size={16} /></button>
             </div>
             <div className="admin-modal-body">
+              {error && <div className="register-error" style={{ marginBottom: '16px' }}>{error}</div>}
               <form className="admin-modal-form" onSubmit={handleEditUser}>
                 <div className="register-field">
                   <label className="register-label">Full Name</label>
@@ -367,6 +369,7 @@ export default function UserManagement() {
               <button className="admin-modal-close" onClick={() => setActiveModal(null)}><X size={16} /></button>
             </div>
             <div className="admin-modal-body">
+              {error && <div className="register-error" style={{ marginBottom: '16px' }}>{error}</div>}
               <form className="admin-modal-form" onSubmit={handleResetPassword}>
                 <p style={{ fontSize: '13px', color: 'var(--color-secondary)' }}>Resetting password for: <strong>{selectedUser?.name} ({selectedUser?.email})</strong></p>
                 <div className="register-field">
