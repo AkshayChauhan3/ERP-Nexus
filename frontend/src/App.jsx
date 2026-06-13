@@ -1,11 +1,32 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import NewSalesOrder from './pages/NewSalesOrder';
+
+// Admin Monitoring Pages
+import InventoryMonitor from './pages/InventoryMonitor';
+import SalesMonitor from './pages/SalesMonitor';
+import PurchaseMonitor from './pages/PurchaseMonitor';
+import ManufacturingMonitor from './pages/ManufacturingMonitor';
+import ProcurementMonitor from './pages/ProcurementMonitor';
+import UserManagement from './pages/UserManagement';
+import AuditLogs from './pages/AuditLogs';
+import Reports from './pages/Reports';
+
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/animations.css';
+
+// Route guard to protect pages that require authentication
+function ProtectedRoute({ children }) {
+  const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+  if (!authData?.accessToken) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
 function App() {
   return (
@@ -13,13 +34,27 @@ function App() {
       <Routes>
         <Route path="/"                index element={<Navigate to="/login" replace />} />
         <Route path="/login"           element={<Login />} />
-        <Route path="/dashboard"       element={<Dashboard />} />
-        <Route path="/products"        element={<Products />} />
-        <Route path="/orders"          element={<Dashboard />} />
-        <Route path="/new-sales-order" element={<NewSalesOrder />} />
-        <Route path="/warehouse"       element={<Dashboard />} />
-        <Route path="/logistics"       element={<Dashboard />} />
-        <Route path="/settings"        element={<Dashboard />} />
+        <Route path="/register"        element={<Register />} />
+        
+        {/* Protected Operational Routes */}
+        <Route path="/dashboard"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/products"        element={<ProtectedRoute><Products /></ProtectedRoute>} />
+        <Route path="/orders"          element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/new-sales-order" element={<ProtectedRoute><NewSalesOrder /></ProtectedRoute>} />
+        <Route path="/warehouse"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/logistics"       element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/settings"        element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+        {/* Protected Admin Routes */}
+        <Route path="/inventory"       element={<ProtectedRoute><InventoryMonitor /></ProtectedRoute>} />
+        <Route path="/sales"           element={<ProtectedRoute><SalesMonitor /></ProtectedRoute>} />
+        <Route path="/purchase"        element={<ProtectedRoute><PurchaseMonitor /></ProtectedRoute>} />
+        <Route path="/manufacturing"   element={<ProtectedRoute><ManufacturingMonitor /></ProtectedRoute>} />
+        <Route path="/procurement"     element={<ProtectedRoute><ProcurementMonitor /></ProtectedRoute>} />
+        <Route path="/users"           element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+        <Route path="/audit-logs"      element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+        <Route path="/reports"         element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+        
         <Route path="*"                element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
@@ -27,3 +62,4 @@ function App() {
 }
 
 export default App;
+

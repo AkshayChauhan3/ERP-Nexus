@@ -1,11 +1,24 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Clock, Factory, AlertTriangle,
   ChevronRight, Package, Armchair, Sofa, Layers,
-  CheckCircle, AlertCircle, Circle, Zap
+  CheckCircle, AlertCircle, Circle, Zap, RefreshCw,
+  ShoppingBag, Warehouse, ClipboardList, Users, Info
 } from 'lucide-react';
 import AppShell from '../components/layout/AppShell';
+import { api } from '../utils/api';
 import './Dashboard.css';
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  sales: 'Sales User',
+  purchase: 'Purchase User',
+  manufacturing: 'Manufacturing User',
+  inventory: 'Inventory Manager',
+  owner: 'Business Owner',
+};
+
 
 /* ── KPI Data ── */
 const KPI_CARDS = [
@@ -43,6 +56,111 @@ const KPI_CARDS = [
     icon: AlertTriangle,
     color: 'error',
     accent: true,
+  },
+];
+
+const ADMIN_KPI_CARDS = [
+  {
+    id: 'total-products',
+    label: 'Total Products',
+    value: '184',
+    icon: Package,
+    color: 'primary',
+    trend: '+8%',
+    trendDir: 'up',
+    badge: 'Active',
+  },
+  {
+    id: 'total-sales',
+    label: 'Total Sales Orders',
+    value: '247',
+    icon: TrendingUp,
+    color: 'primary',
+    trend: '+12%',
+    trendDir: 'up',
+    badge: 'This Month',
+  },
+  {
+    id: 'total-purchases',
+    label: 'Total Purchase Orders',
+    value: '36',
+    icon: ShoppingBag,
+    color: 'blue',
+    badge: 'Open',
+  },
+  {
+    id: 'active-mos',
+    label: 'Active MOs',
+    value: '12',
+    icon: Factory,
+    color: 'green',
+    badge: 'Running',
+  },
+  {
+    id: 'inventory-value',
+    label: 'Total Inventory Value',
+    value: '$452,800',
+    icon: Warehouse,
+    color: 'primary',
+    badge: 'Audited',
+  },
+  {
+    id: 'low-stock',
+    label: 'Low Stock Items',
+    value: '7',
+    icon: AlertTriangle,
+    color: 'error',
+    accent: true,
+    badge: 'Critical',
+  },
+  {
+    id: 'pending-deliveries',
+    label: 'Pending Deliveries',
+    value: '18',
+    icon: Clock,
+    color: 'blue',
+    badge: 'In Progress',
+  },
+  {
+    id: 'delayed-orders',
+    label: 'Delayed Orders',
+    value: '4',
+    icon: AlertCircle,
+    color: 'error',
+    accent: true,
+    badge: 'Overdue',
+  },
+  {
+    id: 'procurement-requests',
+    label: 'Open Procurement Requests',
+    value: '9',
+    icon: ClipboardList,
+    color: 'blue',
+    badge: 'Pending Approval',
+  },
+  {
+    id: 'finished-goods',
+    label: 'Finished Goods Stock',
+    value: '3,420',
+    icon: Sofa,
+    color: 'green',
+    badge: 'Units',
+  },
+  {
+    id: 'raw-materials',
+    label: 'Raw Material Stock',
+    value: '8,950',
+    icon: Layers,
+    color: 'primary',
+    badge: 'Units',
+  },
+  {
+    id: 'active-users',
+    label: 'Active Users',
+    value: '18',
+    icon: Users,
+    color: 'green',
+    badge: 'Online',
   },
 ];
 
@@ -151,6 +269,69 @@ function BusinessGauge({ value = 87 }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+
+  const [user, setUser] = useState({ name: 'Alexander Sterling', role: 'admin' });
+
+  const [alerts, setAlerts] = useState([
+    { id: 1, type: 'error', category: 'Critical', text: 'Low Stock: Oak Wood Sheets falls below safety threshold (12 units remaining).', time: '10 mins ago' },
+    { id: 2, type: 'error', category: 'Critical', text: 'Delayed Delivery: Sales Order #1048 for Sterling Offices is 2 days overdue.', time: '1 hour ago' },
+    { id: 3, type: 'warning', category: 'Warning', text: 'Vendor Delay: PO #3029 for Steel Screws has not been confirmed by vendor.', time: '2 hours ago' },
+    { id: 4, type: 'warning', category: 'Warning', text: 'Delayed MO: Manufacturing Order #2041 is delayed at Painting center.', time: '4 hours ago' },
+    { id: 5, type: 'blue', category: 'Info', text: 'Procurement Pending: 3 raw material demands are pending approval.', time: 'Today' }
+  ]);
+
+  const dismissAlert = (id) => setAlerts(alerts.filter(a => a.id !== id));
+
+  useEffect(() => {
+    const updateUserData = () => {
+      const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+      if (authData?.user) {
+        setUser(authData.user);
+      }
+    };
+    updateUserData();
+    window.addEventListener('storage', updateUserData);
+    return () => window.removeEventListener('storage', updateUserData);
+  }, []);
+
+  useEffect(() => {
+    if (user.role === 'admin') {
+      loadPendingUsers();
+    }
+  }, [user.role]);
+
+
+  const loadPendingUsers = async () => {
+    setLoadingPending(true);
+    try {
+      const data = await api.get('/users/pending');
+      setPendingUsers(data.users || []);
+    } catch (err) {
+      console.error('Failed to load pending users:', err);
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
+  const handleApprove = async (userId) => {
+    try {
+      await api.post(`/users/${userId}/approve`);
+      loadPendingUsers();
+    } catch (err) {
+      alert(err.message || 'Failed to approve user.');
+    }
+  };
+
+  const handleReject = async (userId) => {
+    try {
+      await api.post(`/users/${userId}/reject`);
+      loadPendingUsers();
+    } catch (err) {
+      alert(err.message || 'Failed to reject user.');
+    }
+  };
 
   return (
     <AppShell>
@@ -158,7 +339,7 @@ export default function Dashboard() {
         {/* ── Section: Overview ── */}
         <div className="dashboard-header">
           <div>
-            <h2 className="dashboard-greeting">Good morning, Alexander 👋</h2>
+            <h2 className="dashboard-greeting">Good morning, {user.name.trim().split(/\s+/)[0]} 👋</h2>
             <p className="dashboard-date">Saturday, 13 June 2026 — Operations Overview</p>
           </div>
           <button
@@ -170,9 +351,185 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* ── Admin Section: Pending Approvals ── */}
+        {user.role === 'admin' && (
+          <div className="panel animate-page stagger-1" style={{ marginBottom: 'var(--space-6)', backdropFilter: 'blur(20px)' }}>
+            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="panel-title">Pending Access Approvals</h3>
+                <p className="panel-subtitle" style={{ fontSize: '13px', color: 'var(--color-secondary)', marginTop: '2px' }}>
+                  Review and approve new user signups for ERP Nexus
+                </p>
+              </div>
+              <span className="badge badge--warning" style={{ borderRadius: 'var(--radius-full)', padding: '4px 12px', fontWeight: 600 }}>
+                {pendingUsers.length} Requests
+              </span>
+            </div>
+            
+            <div style={{ height: '1px', background: 'var(--color-outline-variant)', margin: '16px 0' }} />
+            
+            {loadingPending ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <RefreshCw size={24} className="spin" />
+                <span>Loading registration requests…</span>
+              </div>
+            ) : pendingUsers.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={32} style={{ color: 'var(--color-success)' }} />
+                <span style={{ fontWeight: 500 }}>No pending user requests. All caught up!</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {pendingUsers.map(pUser => (
+                  <div 
+                    key={pUser.id} 
+                    className="hover-row" 
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      padding: '16px', 
+                      background: 'var(--surface-low)', 
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--color-outline-variant)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '15px' }}>{pUser.name}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--color-secondary)', marginTop: '2px' }}>
+                        {pUser.email} • Requested: <strong style={{ color: 'var(--color-primary)' }}>{ROLE_LABELS[pUser.role] || pUser.role}</strong>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-secondary)', opacity: 0.6, marginTop: '4px' }}>
+                        Requested on: {new Date(pUser.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button 
+                        onClick={() => handleApprove(pUser.id)}
+                        className="btn-interactive"
+                        style={{ 
+                          background: 'var(--color-success)', 
+                          color: 'var(--color-on-primary)', 
+                          border: 'none', 
+                          borderRadius: 'var(--radius-full)', 
+                          padding: '8px 18px', 
+                          fontSize: '13px', 
+                          fontWeight: 700, 
+                          cursor: 'pointer',
+                          boxShadow: 'var(--shadow-sm)'
+                        }}
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        onClick={() => handleReject(pUser.id)}
+                        className="btn-interactive"
+                        style={{ 
+                          background: 'transparent', 
+                          color: 'var(--color-error)', 
+                          border: '1px solid var(--color-error)', 
+                          borderRadius: 'var(--radius-full)', 
+                          padding: '7px 18px', 
+                          fontSize: '13px', 
+                          fontWeight: 700, 
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* ── Admin Section: Alerts Panel ── */}
+        {(user.role === 'admin' || user.role === 'owner') && alerts.length > 0 && (
+          <div className="panel animate-page stagger-1" style={{ marginBottom: 'var(--space-6)', backdropFilter: 'blur(20px)' }}>
+            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="panel-title">System Alerts</h3>
+                <p className="panel-subtitle" style={{ fontSize: '13px', color: 'var(--color-secondary)', marginTop: '2px' }}>
+                  Critical operational exceptions requiring attention
+                </p>
+              </div>
+              <button 
+                onClick={() => setAlerts([])} 
+                className="panel-link"
+                style={{ fontSize: '12px', fontWeight: 600 }}
+              >
+                Clear All
+              </button>
+            </div>
+            
+            <div style={{ height: '1px', background: 'var(--color-outline-variant)', margin: '16px 0' }} />
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {alerts.map(alert => (
+                <div 
+                  key={alert.id}
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '12px 16px', 
+                    background: alert.type === 'error' ? 'rgba(239, 68, 68, 0.08)' : alert.type === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                    borderRadius: 'var(--radius-md)',
+                    borderLeft: `4px solid ${alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)'}`,
+                    borderTop: '1px solid var(--color-outline-variant)',
+                    borderRight: '1px solid var(--color-outline-variant)',
+                    borderBottom: '1px solid var(--color-outline-variant)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      color: alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      {alert.type === 'error' ? <AlertCircle size={18} /> : alert.type === 'warning' ? <AlertTriangle size={18} /> : <Info size={18} />}
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)', marginRight: '8px' }}>
+                        {alert.category}
+                      </span>
+                      <span style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 500 }}>{alert.text}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--color-secondary)', opacity: 0.6 }}>{alert.time}</span>
+                    <button 
+                      onClick={() => dismissAlert(alert.id)}
+                      className="btn-interactive"
+                      style={{ 
+                        background: 'transparent', 
+                        border: 'none', 
+                        color: 'var(--color-secondary)', 
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '16px',
+                        lineHeight: 1
+                      }}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+
         {/* ── Row 1: KPI Cards ── */}
         <div className="kpi-grid">
-          {KPI_CARDS.map((card, i) => {
+          {(user.role === 'admin' || user.role === 'owner' ? ADMIN_KPI_CARDS : KPI_CARDS).map((card, i) => {
             const Icon = card.icon;
             return (
               <div
