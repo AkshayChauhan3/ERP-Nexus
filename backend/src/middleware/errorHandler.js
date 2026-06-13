@@ -33,10 +33,13 @@ function errorHandler(err, req, res, next) {
           message: `A record with this ${err.meta?.target?.join(', ')} already exists`,
         });
       case 'P2003':
+        const isDelete = req.method === 'DELETE';
         return res.status(400).json({
           success: false,
-          error: 'Invalid reference',
-          message: `Related record not found for field: ${err.meta?.field_name}`,
+          error: isDelete ? 'Dependency restriction' : 'Invalid reference',
+          message: isDelete
+            ? 'Cannot delete this item because it is referenced by other records (e.g., stock ledger, BOM lines, orders).'
+            : `Related record not found for field: ${err.meta?.field_name || 'foreign key'}`,
         });
       case 'P2011':
         return res.status(400).json({
