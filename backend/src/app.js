@@ -36,8 +36,8 @@ const productRoutes      = require('./modules/products/products.routes');
 const vendorRoutes       = require('./modules/vendors/vendors.routes');
 const customerRoutes     = require('./modules/customers/customers.routes');
 const salesRoutes        = require('./modules/sales/sales.routes');
-// const purchaseRoutes     = require('./modules/purchase/purchase.routes');
-// const manufacturingRoutes = require('./modules/manufacturing/manufacturing.routes');
+const purchaseRoutes     = require('./modules/purchase/purchase.routes');
+const manufacturingRoutes = require('./modules/manufacturing/bom.routes');
 // const inventoryRoutes    = require('./modules/inventory/inventory.routes');
 // const auditRoutes        = require('./modules/audit/audit.routes');
 // const intelligenceRoutes = require('./modules/intelligence/intelligence.routes');
@@ -115,8 +115,8 @@ app.use('/api/products',             productRoutes);
 app.use('/api/vendors',              vendorRoutes);
 app.use('/api/customers',            customerRoutes);
 app.use('/api/sales-orders',         salesRoutes);
-// app.use('/api/purchase-orders',      purchaseRoutes);
-// app.use('/api',                      manufacturingRoutes);   // /boms, /bom-lines, /manufacturing-orders, /work-orders
+app.use('/api/purchase-orders',      purchaseRoutes);
+app.use('/api/boms',                 manufacturingRoutes);
 // app.use('/api/stock-ledger',         inventoryRoutes);
 // app.use('/api/audit-logs',           auditRoutes);
 // app.use('/api',                      intelligenceRoutes);    // /risk-alerts, /simulate, /ai-advisor, /digital-twin, /business-health-score, /dashboard

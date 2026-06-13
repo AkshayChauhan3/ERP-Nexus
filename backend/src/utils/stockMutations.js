@@ -170,8 +170,17 @@ async function deductStockOnDelivery(prisma, productId, qty) {
  * @returns {object} Updated product
  */
 async function addStockOnReceipt(prisma, productId, qty) {
-  // TODO: Implemented in Step 07
-  throw new Error('addStockOnReceipt not yet implemented — coming in Step 07');
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  const newOnHand = parseFloat(product.on_hand_qty) + parseFloat(qty);
+  // Reserved qty stays the same when receiving new stock
+  validateStockLevels(product, newOnHand, product.reserved_qty);
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data: { on_hand_qty: newOnHand }
+  });
 }
 
 /**
