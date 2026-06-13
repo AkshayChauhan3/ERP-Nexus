@@ -37,6 +37,9 @@ async function createSalesOrder(data, userId) {
         customer_id: data.customer_id,
         created_by: userId,
         status: 'draft',
+        expected_delivery_date: data.expected_delivery_date ? new Date(data.expected_delivery_date) : null,
+        customer_address: data.customer_address,
+        remarks: data.remarks,
         lines: {
           create: data.lines.map((line) => ({
             product_id: line.product_id,

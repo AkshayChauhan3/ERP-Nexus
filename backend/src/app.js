@@ -22,6 +22,7 @@ const manufacturingRoutes = require('./modules/manufacturing/bom.routes');
 const moRoutes           = require('./modules/manufacturing/mo.routes');
 const inventoryRoutes    = require('./modules/inventory/inventory.routes');
 const auditRoutes        = require('./modules/audit/audit.routes');
+const intelligenceRoutes = require('./modules/intelligence/intelligence.routes');
 
 const path = require('path');
 
@@ -80,6 +81,7 @@ app.use('/api/boms',                 manufacturingRoutes);
 app.use('/api/manufacturing-orders', moRoutes);
 app.use('/api/stock-ledger',         inventoryRoutes);
 app.use('/api/audit-logs',           auditRoutes);
+app.use('/api/intelligence',         intelligenceRoutes);
 app.use((req, res) => {
   res.status(404).json({
     success: false,

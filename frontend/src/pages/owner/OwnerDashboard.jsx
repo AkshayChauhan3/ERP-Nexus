@@ -5,9 +5,7 @@ import {
   TrendingDown, CheckCircle, ArrowRight, Activity, RefreshCw
 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { ownerApi } from '../../utils/ownerApi';
-import { salesApi } from '../../utils/salesApi';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -19,7 +17,7 @@ export default function OwnerDashboard() {
     todayPurchases: 0,
     monthlyPurchases: 0,
     invValue: 0,
-    moInProgress: 3,
+    moInProgress: 0,
     pendingApprovals: 0,
     revenue: 0,
     expenses: 0,
@@ -31,31 +29,18 @@ export default function OwnerDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = () => {
-      setLoading(true);
-      const sales = salesApi.getOrders();
-      const purchases = purchaseApi.getPOs();
-      const approvals = ownerApi.getApprovals();
-      const employees = ownerApi.getEmployees();
-
-      const todaySales = sales.filter(s => s.orderDate === '2026-06-13').reduce((sum, o) => sum + o.amount, 0);
-      const monthlySales = sales.reduce((sum, o) => sum + o.amount, 0);
-      const todayPurchases = purchases.filter(p => p.orderDate === '2026-06-13').reduce((sum, o) => sum + o.totalValue, 0);
-      const monthlyPurchases = purchases.reduce((sum, o) => sum + o.totalValue, 0);
-      
-      const pendingApprovals = approvals.filter(a => a.status === 'Pending').length;
-      const activeUsers = employees.filter(e => e.status === 'Online').length;
-
-      const revenue = monthlySales;
-      const expenses = monthlyPurchases + 25000; // purchases + mock production cost
-      const profit = revenue - expenses;
-
-      setStats({
-        todaySales, monthlySales, todayPurchases, monthlyPurchases,
-        invValue: 842500, moInProgress: 3, pendingApprovals,
-        revenue, expenses, profit, lowStock: 2, activeUsers
-      });
-      setLoading(false);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/intelligence/dashboard-stats');
+        if (res.data) {
+          setStats(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();

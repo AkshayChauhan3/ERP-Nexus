@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, Search, Plus, Edit2, Phone, Mail, MapPin, Award, Trash2 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
 import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseVendors() {
@@ -16,11 +17,16 @@ export default function PurchaseVendors() {
   const [showEdit, setShowEdit] = useState(false);
   const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', address: '' });
 
-  const loadVendors = () => {
-    const list = purchaseApi.getVendors();
-    setVendors(list);
-    if (list.length > 0 && !selectedVend) {
-      handleSelectVendor(list[0]);
+  const loadVendors = async () => {
+    try {
+      const res = await api.get('/vendors');
+      const list = res.data || [];
+      setVendors(list);
+      if (list.length > 0 && !selectedVend) {
+        handleSelectVendor(list[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load vendors', err);
     }
   };
 
@@ -41,12 +47,21 @@ export default function PurchaseVendors() {
     setShowAdd(true);
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!form.name || !form.contact || !form.email) return;
-    purchaseApi.addVendor(form);
-    setShowAdd(false);
-    loadVendors();
+    try {
+      await api.post('/vendors', {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+      });
+      setShowAdd(false);
+      loadVendors();
+    } catch (err) {
+      alert(err.message || 'Failed to add vendor');
+    }
   };
 
   const handleOpenEdit = (v) => {
@@ -54,16 +69,21 @@ export default function PurchaseVendors() {
     setShowEdit(true);
   };
 
-  const handleEdit = (e) => {
+  const handleEdit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.contact || !form.email) return;
-    purchaseApi.updateVendor(selectedVend.id, form);
-    setShowEdit(false);
-    loadVendors();
-    // Refresh selected vendor detail
-    const list = purchaseApi.getVendors();
-    const updated = list.find(v => v.id === selectedVend.id);
-    if (updated) handleSelectVendor(updated);
+    try {
+      await api.put(`/vendors/${selectedVend.id}`, {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+      });
+      setShowEdit(false);
+      loadVendors();
+    } catch (err) {
+      alert(err.message || 'Failed to edit vendor');
+    }
   };
 
   const filtered = vendors.filter(v => 

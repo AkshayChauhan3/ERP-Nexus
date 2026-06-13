@@ -29,3 +29,9 @@ Thumbs.db
 # ─── Logs ─────────────────────────────────────────────────
 logs/
 *.log
+
+# ─── Temp / Local DB ──────────────────────────────────────
+pgsql/
+postgres.zip
+pass.txt
+public/

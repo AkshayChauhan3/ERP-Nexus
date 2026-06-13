@@ -3,6 +3,9 @@ const salesService = require('./sales.service');
 
 const salesOrderSchema = z.object({
   customer_id: z.string().uuid('Invalid customer ID'),
+  expected_delivery_date: z.string().optional().nullable(),
+  customer_address: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable(),
   lines: z.array(
     z.object({
       product_id: z.string().uuid('Invalid product ID'),

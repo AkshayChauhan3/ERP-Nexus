@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingBag, Search, Plus, Printer, Download, Eye, FileText, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseOrders() {
@@ -21,10 +21,19 @@ export default function PurchaseOrders() {
   const [formItems, setFormItems] = useState([{ materialId: '', qty: 1, price: 0 }]);
   const [formDeliveryDate, setFormDeliveryDate] = useState('');
 
-  const loadData = () => {
-    setPOs(purchaseApi.getPOs());
-    setMaterials(purchaseApi.getMaterials());
-    setVendors(purchaseApi.getVendors());
+  const loadData = async () => {
+    try {
+      const [posRes, matRes, venRes] = await Promise.all([
+        api.get('/purchase-orders'),
+        api.get('/products'),
+        api.get('/vendors')
+      ]);
+      setPOs(posRes.data || []);
+      setMaterials((matRes.data || []).filter(p => p.type === 'RAW_MATERIAL'));
+      setVendors(venRes.data || []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -33,7 +42,7 @@ export default function PurchaseOrders() {
 
   const handleOpenCreate = () => {
     setFormVendor(vendors[0]?.id || '');
-    setFormItems([{ materialId: materials[0]?.id || '', qty: 1, price: materials[0]?.price || 0 }]);
+    setFormItems([{ materialId: materials[0]?.id || '', qty: 1, price: materials[0]?.cost_price || 0 }]);
     setFormDeliveryDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]); // 7 days from now
     setShowCreate(true);
   };
@@ -42,7 +51,7 @@ export default function PurchaseOrders() {
     const selectedMat = materials.find(m => m.id === matId);
     const newItems = [...formItems];
     newItems[index].materialId = matId;
-    newItems[index].price = selectedMat ? selectedMat.price : 0;
+    newItems[index].price = selectedMat ? selectedMat.cost_price : 0;
     setFormItems(newItems);
   };
 
@@ -59,7 +68,7 @@ export default function PurchaseOrders() {
   };
 
   const handleAddItemRow = () => {
-    setFormItems([...formItems, { materialId: materials[0]?.id || '', qty: 1, price: materials[0]?.price || 0 }]);
+    setFormItems([...formItems, { materialId: materials[0]?.id || '', qty: 1, price: materials[0]?.cost_price || 0 }]);
   };
 
   const handleRemoveItemRow = (index) => {
@@ -67,34 +76,28 @@ export default function PurchaseOrders() {
     setFormItems(formItems.filter((_, i) => i !== index));
   };
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    const items = formItems.map(item => {
-      const mat = materials.find(m => m.id === item.materialId);
-      return {
-        materialId: item.materialId,
-        name: mat ? mat.name : 'Unknown Material',
-        qty: item.qty,
-        price: item.price
-      };
-    });
+    const lines = formItems.map(item => ({
+      product_id: item.materialId,
+      ordered_qty: Number(item.qty),
+      unit_price: Number(item.price)
+    }));
 
-    const totalValue = items.reduce((sum, item) => sum + (item.qty * item.price), 0);
-
-    purchaseApi.createPO({
-      vendorId: formVendor,
-      deliveryDate: formDeliveryDate,
-      items,
-      totalValue,
-      status: 'Confirmed'
-    });
-
-    setShowCreate(false);
-    loadData();
+    try {
+      await api.post('/purchase-orders', {
+        vendor_id: formVendor,
+        lines
+      });
+      setShowCreate(false);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to create PO');
+    }
   };
 
   const handleExportPDF = (po) => {
-    alert(`Generating PDF download link for Purchase Order: ${po.id}\nExport Successful.`);
+    alert(`Generating PDF download link for Purchase Order: ${po.po_number}\nExport Successful.`);
   };
 
   const handlePrint = (po) => {
@@ -108,8 +111,8 @@ export default function PurchaseOrders() {
   };
 
   const filtered = pos.filter(po => 
-    po.id.toLowerCase().includes(search.toLowerCase()) ||
-    (vendors.find(v => v.id === po.vendorId)?.name || '').toLowerCase().includes(search.toLowerCase())
+    (po.po_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (po.vendor?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -159,28 +162,31 @@ export default function PurchaseOrders() {
               </thead>
               <tbody>
                 {filtered.map(po => {
-                  const vend = vendors.find(v => v.id === po.vendorId);
+                  const vendName = po.vendor?.name || 'Unknown';
+                  const totalValue = po.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0;
+                  const receiptStatus = po.status === 'received' ? 'Fully Received' : 'Pending';
+                  const billStatus = po.status === 'draft' ? 'Draft' : 'Submitted';
                   return (
                     <tr key={po.id}>
-                      <td style={{ fontWeight: 700 }}>{po.id}</td>
-                      <td style={{ fontWeight: 600 }}>{vend ? vend.name : po.vendorId}</td>
-                      <td>{po.orderDate}</td>
-                      <td>{po.deliveryDate}</td>
-                      <td style={{ fontWeight: 700 }}>₹{po.totalValue.toLocaleString()}</td>
+                      <td style={{ fontWeight: 700 }}>{po.po_number}</td>
+                      <td style={{ fontWeight: 600 }}>{vendName}</td>
+                      <td>{new Date(po.created_at).toLocaleDateString()}</td>
+                      <td>-</td>
+                      <td style={{ fontWeight: 700 }}>₹{totalValue.toLocaleString()}</td>
                       <td>
                         <span className={`purchase-badge purchase-badge--${
-                          po.receiptStatus === 'Fully Received' ? 'success' :
-                          po.receiptStatus === 'Partial' ? 'warning' : 'outline'
+                          receiptStatus === 'Fully Received' ? 'success' :
+                          receiptStatus === 'Partial' ? 'warning' : 'outline'
                         }`}>
-                          {po.receiptStatus}
+                          {receiptStatus}
                         </span>
                       </td>
                       <td>
                         <span className={`purchase-badge purchase-badge--${
-                          po.billStatus === 'Paid' ? 'success' :
-                          po.billStatus === 'Submitted' ? 'primary' : 'outline'
+                          billStatus === 'Paid' ? 'success' :
+                          billStatus === 'Submitted' ? 'primary' : 'outline'
                         }`}>
-                          {po.billStatus}
+                          {billStatus}
                         </span>
                       </td>
                       <td>
@@ -279,13 +285,25 @@ export default function PurchaseOrders() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                  <div><strong>PO ID:</strong> {selectedPO.id}</div>
-                  <div><strong>Vendor:</strong> {vendors.find(v => v.id === selectedPO.vendorId)?.name}</div>
-                  <div><strong>Order Date:</strong> {selectedPO.orderDate}</div>
-                  <div><strong>Delivery Date:</strong> {selectedPO.deliveryDate}</div>
-                  <div><strong>Receipt status:</strong> {selectedPO.receiptStatus}</div>
-                  <div><strong>Bill status:</strong> {selectedPO.billStatus}</div>
+                  <div><strong>PO ID:</strong> {selectedPO.po_number}</div>
+                  <div><strong>Vendor:</strong> {selectedPO.vendor?.name}</div>
+                  <div><strong>Order Date:</strong> {new Date(selectedPO.created_at).toLocaleDateString()}</div>
+                  <div><strong>Delivery Date:</strong> -</div>
+                  <div><strong>Receipt status:</strong> {selectedPO.status === 'received' ? 'Fully Received' : 'Pending'}</div>
+                  <div><strong>Bill status:</strong> Pending</div>
                 </div>
+                
+                {selectedPO.status === 'draft' && (
+                  <div>
+                    <button className="btn btn--primary" onClick={async () => {
+                      try {
+                        await api.post(`/purchase-orders/${selectedPO.id}/confirm`);
+                        setShowDetails(false);
+                        loadData();
+                      } catch (e) { alert(e.message); }
+                    }}>Confirm PO</button>
+                  </div>
+                )}
 
                 <div style={{ borderTop: '1px solid var(--color-outline-variant)', paddingTop: '12px' }}>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '13px' }}>Order Items</h4>
@@ -299,18 +317,18 @@ export default function PurchaseOrders() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedPO.items.map((item, i) => (
+                      {selectedPO.lines?.map((item, i) => (
                         <tr key={i}>
-                          <td style={{ fontWeight: 600 }}>{item.name}</td>
-                          <td>{item.qty}</td>
-                          <td>₹{item.price}</td>
-                          <td>₹{(item.qty * item.price).toLocaleString()}</td>
+                          <td style={{ fontWeight: 600 }}>{item.product?.name || 'Unknown'}</td>
+                          <td>{item.ordered_qty}</td>
+                          <td>₹{Number(item.unit_price).toLocaleString()}</td>
+                          <td>₹{(item.ordered_qty * item.unit_price).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', fontWeight: 800, marginTop: '12px', fontSize: '14px' }}>
-                    Total Value: ₹{selectedPO.totalValue.toLocaleString()}
+                    Total Value: ₹{(selectedPO.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -336,7 +354,7 @@ export default function PurchaseOrders() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <h3 style={{ margin: 0 }}>PURCHASE ORDER</h3>
-                    <p style={{ margin: 0 }}><strong>{selectedPO.id}</strong></p>
+                    <p style={{ margin: 0 }}><strong>{selectedPO.po_number}</strong></p>
                   </div>
                 </div>
 
@@ -344,15 +362,15 @@ export default function PurchaseOrders() {
                   <div>
                     <strong>Supplier:</strong>
                     <p style={{ margin: '4px 0 0 0' }}>
-                      {vendors.find(v => v.id === selectedPO.vendorId)?.name}<br />
-                      {vendors.find(v => v.id === selectedPO.vendorId)?.address}
+                      {selectedPO.vendor?.name}<br />
+                      {selectedPO.vendor?.address || ''}
                     </p>
                   </div>
                   <div>
                     <strong>Order Info:</strong>
                     <p style={{ margin: '4px 0 0 0' }}>
-                      Date: {selectedPO.orderDate}<br />
-                      Delivery ETA: {selectedPO.deliveryDate}
+                      Date: {new Date(selectedPO.created_at).toLocaleDateString()}<br />
+                      Delivery ETA: -
                     </p>
                   </div>
                 </div>
@@ -367,19 +385,19 @@ export default function PurchaseOrders() {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedPO.items.map((item, i) => (
+                    {selectedPO.lines?.map((item, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '8px 0' }}>{item.name}</td>
-                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{item.qty}</td>
-                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{item.price}</td>
-                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{(item.qty * item.price).toLocaleString()}</td>
+                        <td style={{ padding: '8px 0' }}>{item.product?.name || 'Unknown'}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{item.ordered_qty}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{Number(item.unit_price)}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{(item.ordered_qty * item.unit_price).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '2px solid #000', paddingTop: '8px', fontSize: '15px', fontWeight: 'bold' }}>
-                  Total Invoice Value: ₹{selectedPO.totalValue.toLocaleString()}
+                  Total Invoice Value: ₹{(selectedPO.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0).toLocaleString()}
                 </div>
               </div>
 

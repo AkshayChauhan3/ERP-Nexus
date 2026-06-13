@@ -1,15 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layers, Package, AlertTriangle, TrendingUp, RefreshCw } from 'lucide-react';
 import AppShell from '../components/layout/AppShell';
+import { api } from '../utils/api';
 import '../styles/AdminPages.css';
-
-const MOCK_LOW_STOCK = [
-  { name: 'Oak Wooden Board', sku: 'RM-OAK-01', onHand: 12, reserved: 8, reorder: 20, status: 'low' },
-  { name: 'Steel Framing Screws', sku: 'RM-STL-44', onHand: 150, reserved: 120, reorder: 400, status: 'low' },
-  { name: 'Foam Padding Sheet', sku: 'RM-FOM-02', onHand: 3, reserved: 3, reorder: 10, status: 'critical' },
-  { name: 'Comfort Cushion Sofa', sku: 'FG-SOF-09', onHand: 1, reserved: 0, reorder: 5, status: 'critical' },
-  { name: 'Executive Swivel Chair', sku: 'FG-CHR-21', onHand: 18, reserved: 10, reorder: 15, status: 'normal' },
-];
 
 const MOCK_MOVEMENT = {
   today: [
@@ -34,8 +27,54 @@ const MOCK_MOVEMENT = {
 
 export default function InventoryMonitor() {
   const [filter, setFilter] = useState('weekly');
+  const [lowStock, setLowStock] = useState([]);
+  const [stats, setStats] = useState({ total: 0, raw: 0, finished: 0, value: 0 });
   const movementData = MOCK_MOVEMENT[filter];
   const maxValue = Math.max(...movementData.map(d => d.value)) || 100;
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const res = await api.get('/products');
+        const products = res.data || [];
+        
+        let total = products.length;
+        let raw = 0;
+        let finished = 0;
+        let value = 0;
+        let alerts = [];
+
+        products.forEach(p => {
+          if (p.type === 'RAW_MATERIAL') raw++;
+          if (p.type === 'FINISHED_GOOD') finished++;
+          
+          const onHand = parseFloat(p.inventory?.on_hand_qty) || 0;
+          const reserved = parseFloat(p.inventory?.reserved_qty) || 0;
+          const reorder = parseFloat(p.inventory?.reorder_level) || 0;
+          const cost = parseFloat(p.cost_price) || 0;
+
+          value += (onHand * cost);
+
+          if (onHand <= reorder) {
+            alerts.push({
+              name: p.name,
+              sku: p.sku || 'N/A',
+              onHand,
+              reserved,
+              reorder,
+              status: onHand === 0 ? 'critical' : 'low'
+            });
+          }
+        });
+
+        setStats({ total, raw, finished, value });
+        setLowStock(alerts);
+      } catch (err) {
+        console.error('Failed to load inventory', err);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   return (
     <AppShell>
@@ -45,28 +84,28 @@ export default function InventoryMonitor() {
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
           <div className="kpi-icon kpi-icon--primary" style={{ width: '48px', height: '48px' }}><Package size={22} /></div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>142</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{stats.total}</div>
             <div style={{ fontSize: '13px', color: 'var(--color-secondary)' }}>Total Products Tracked</div>
           </div>
         </div>
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
           <div className="kpi-icon kpi-icon--blue" style={{ width: '48px', height: '48px' }}><Layers size={22} /></div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>98</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{stats.raw}</div>
             <div style={{ fontSize: '13px', color: 'var(--color-secondary)' }}>Raw Material Items</div>
           </div>
         </div>
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
           <div className="kpi-icon kpi-icon--green" style={{ width: '48px', height: '48px' }}><Package size={22} /></div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>44</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{stats.finished}</div>
             <div style={{ fontSize: '13px', color: 'var(--color-secondary)' }}>Finished Goods Items</div>
           </div>
         </div>
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
           <div className="kpi-icon kpi-icon--primary" style={{ width: '48px', height: '48px' }}><TrendingUp size={22} /></div>
           <div>
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>₹8,42,500</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>₹{stats.value.toLocaleString()}</div>
             <div style={{ fontSize: '13px', color: 'var(--color-secondary)' }}>Total Inventory Value</div>
           </div>
         </div>
@@ -96,7 +135,7 @@ export default function InventoryMonitor() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_LOW_STOCK.map((item, i) => {
+                {lowStock.map((item, i) => {
                   const freeQty = item.onHand - item.reserved;
                   return (
                     <tr key={i}>
@@ -116,6 +155,11 @@ export default function InventoryMonitor() {
                 })}
               </tbody>
             </table>
+            {lowStock.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--color-secondary)' }}>
+                No low stock alerts at this time.
+              </div>
+            )}
           </div>
         </div>
 

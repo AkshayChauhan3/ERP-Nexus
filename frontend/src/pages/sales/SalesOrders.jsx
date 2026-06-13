@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingBag, Search, Plus, Eye, Truck, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 import '../../styles/Sales.css';
 
@@ -22,20 +22,30 @@ export default function SalesOrders() {
   const [formItems, setFormItems] = useState([{ productId: '', qty: 1, discount: 0, tax: 18 }]);
   const [remarks, setRemarks] = useState('');
 
-  const loadData = () => {
-    setOrders(salesApi.getOrders());
-    setCustomers(salesApi.getCustomers());
-    const cat = salesApi.getCatalog();
-    setCatalog(cat);
-    if (cat.length > 0) {
-      setFormItems([{ productId: cat[0].id, qty: 1, discount: 0, tax: 18 }]);
+  const loadData = async () => {
+    try {
+      const [ordRes, custRes, catRes] = await Promise.all([
+        api.get('/sales-orders'),
+        api.get('/customers'),
+        api.get('/products')
+      ]);
+      setOrders(ordRes.data || []);
+      const custs = custRes.data || [];
+      const cat = catRes.data || [];
+      setCustomers(custs);
+      setCatalog(cat);
+
+      if (cat.length > 0) {
+        setFormItems([{ productId: cat[0].id, qty: 1, discount: 0, tax: 18 }]);
+      }
+      if (custs.length > 0) {
+        setFormCust(custs[0].id);
+        setFormAddress(custs[0].address);
+      }
+      setFormDeliveryDate(new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]);
+    } catch (err) {
+      console.error(err);
     }
-    const custs = salesApi.getCustomers();
-    if (custs.length > 0) {
-      setFormCust(custs[0].id);
-      setFormAddress(custs[0].address);
-    }
-    setFormDeliveryDate(new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]); // 5 days delivery ETA
   };
 
   useEffect(() => {
@@ -68,51 +78,49 @@ export default function SalesOrders() {
   const calculateTotal = () => {
     return formItems.reduce((sum, item) => {
       const prod = catalog.find(p => p.id === item.productId);
-      const basePrice = prod ? prod.price : 0;
+      const basePrice = prod ? prod.sales_price : 0;
       const discounted = basePrice * (1 - Number(item.discount) / 100);
       const totalItem = discounted * Number(item.qty) * (1 + Number(item.tax) / 100);
       return sum + totalItem;
     }, 0);
   };
 
-  const handleCreateOrder = (e) => {
+  const handleCreateOrder = async (e) => {
     e.preventDefault();
-    const items = formItems.map(item => {
+    const lines = formItems.map(item => {
       const prod = catalog.find(p => p.id === item.productId);
-      const basePrice = prod ? prod.price : 0;
+      const basePrice = prod ? parseFloat(prod.sales_price) : 0;
       const discounted = basePrice * (1 - Number(item.discount) / 100);
-      const totalItem = Math.round(discounted * Number(item.qty) * (1 + Number(item.tax) / 100));
+      const unitPrice = discounted * (1 + Number(item.tax) / 100);
       return {
-        productId: item.productId,
-        name: prod ? prod.name : 'Unknown Product',
-        qty: Number(item.qty),
-        price: basePrice,
-        discount: Number(item.discount),
-        tax: Number(item.tax),
-        total: totalItem
+        product_id: item.productId,
+        ordered_qty: Number(item.qty),
+        unit_price: unitPrice
       };
     });
 
-    salesApi.createOrder({
-      customerId: formCust,
-      deliveryDate: formDeliveryDate,
-      shippingAddress: formAddress,
-      items,
-      amount: Math.round(calculateTotal()),
-      remarks
-    });
-
-    setShowCreate(false);
-    setRemarks('');
-    loadData();
+    try {
+      await api.post('/sales-orders', {
+        customer_id: formCust,
+        expected_delivery_date: formDeliveryDate,
+        customer_address: formAddress,
+        remarks,
+        lines
+      });
+      setShowCreate(false);
+      setRemarks('');
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to create sales order');
+    }
   };
 
   const filtered = orders.filter(o => 
-    o.id.toLowerCase().includes(search.toLowerCase()) ||
-    (customers.find(c => c.id === o.customerId)?.name || '').toLowerCase().includes(search.toLowerCase())
+    (o.order_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (o.customer?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const steps = ['Created', 'Confirmed', 'Reserved', 'Packed', 'Dispatched', 'Delivered'];
+  const steps = ['draft', 'confirmed', 'processing', 'delivered', 'cancelled'];
 
   return (
     <AppShell>
@@ -160,19 +168,19 @@ export default function SalesOrders() {
               </thead>
               <tbody>
                 {filtered.map(o => {
-                  const cust = customers.find(c => c.id === o.customerId);
+                  const amount = o.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0;
                   return (
                     <tr key={o.id}>
-                      <td style={{ fontWeight: 700 }}>{o.id}</td>
-                      <td style={{ fontWeight: 600 }}>{cust ? cust.name : o.customerId}</td>
-                      <td>{o.orderDate}</td>
-                      <td>{o.deliveryDate}</td>
-                      <td style={{ fontWeight: 700 }}>₹{o.amount.toLocaleString()}</td>
+                      <td style={{ fontWeight: 700 }}>{o.order_number}</td>
+                      <td style={{ fontWeight: 600 }}>{o.customer?.name || 'Unknown'}</td>
+                      <td>{new Date(o.created_at).toLocaleDateString()}</td>
+                      <td>{o.expected_delivery_date ? new Date(o.expected_delivery_date).toLocaleDateString() : '-'}</td>
+                      <td style={{ fontWeight: 700 }}>₹{amount.toLocaleString()}</td>
                       <td>
                         <span className={`purchase-badge purchase-badge--${
-                          o.status === 'Delivered' ? 'success' : 'warning'
+                          o.status === 'delivered' ? 'success' : o.status === 'draft' ? 'warning' : 'primary'
                         }`}>
-                          {o.status}
+                          {o.status.charAt(0).toUpperCase() + o.status.slice(1)}
                         </span>
                       </td>
                       <td>
@@ -226,7 +234,7 @@ export default function SalesOrders() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {formItems.map((item, idx) => {
                       const prod = catalog.find(c => c.id === item.productId);
-                      const avail = prod ? prod.available : 0;
+                      const avail = prod ? (parseFloat(prod.inventory?.on_hand_qty) - parseFloat(prod.inventory?.reserved_qty)) || 0 : 0;
                       return (
                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <div style={{ flex: 2 }}>
@@ -269,15 +277,16 @@ export default function SalesOrders() {
           <div className="purchase-modal-backdrop" onClick={() => setSelectedOrder(null)}>
             <div className="purchase-modal" style={{ maxWidth: '800px' }} onClick={e => e.stopPropagation()}>
               <div className="purchase-modal-header">
-                <h3 className="purchase-modal-title">Sales Order Details — {selectedOrder.id}</h3>
+                <h3 className="purchase-modal-title">Sales Order Details — {selectedOrder.order_number}</h3>
                 <button className="purchase-modal-close" onClick={() => setSelectedOrder(null)}>&times;</button>
               </div>
               
               {/* Timeline Progress */}
               <div className="timeline-track">
                 {steps.map((step, idx) => {
-                  const isCompleted = selectedOrder.timeline.includes(step);
-                  const isActive = selectedOrder.status === step || (selectedOrder.status === 'Processing' && (step === 'Packed' || step === 'Dispatched'));
+                  const currentIdx = steps.indexOf(selectedOrder.status);
+                  const isCompleted = currentIdx > idx;
+                  const isActive = currentIdx === idx;
                   let stepCls = '';
                   if (isCompleted) stepCls = 'timeline-step--completed';
                   if (isActive) stepCls = 'timeline-step--active';
@@ -285,7 +294,7 @@ export default function SalesOrders() {
                   return (
                     <div key={idx} className={`timeline-step ${stepCls}`}>
                       <div className="timeline-dot">{idx + 1}</div>
-                      <span className="timeline-label">{step}</span>
+                      <span className="timeline-label" style={{ textTransform: 'capitalize' }}>{step}</span>
                     </div>
                   );
                 })}
@@ -294,11 +303,23 @@ export default function SalesOrders() {
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '24px', marginTop: '20px' }}>
                 <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <h4 style={{ margin: '0 0 4px 0' }}>Order Profile</h4>
-                  <div>Customer Account: <strong>{customers.find(c => c.id === selectedOrder.customerId)?.name}</strong></div>
-                  <div>Order Date: <strong>{selectedOrder.orderDate}</strong></div>
-                  <div>Delivery Date Commitment: <strong>{selectedOrder.deliveryDate}</strong></div>
-                  <div>Shipping Target: <strong>{selectedOrder.shippingAddress}</strong></div>
+                  <div>Customer Account: <strong>{selectedOrder.customer?.name}</strong></div>
+                  <div>Order Date: <strong>{new Date(selectedOrder.created_at).toLocaleDateString()}</strong></div>
+                  <div>Delivery Date Commitment: <strong>{selectedOrder.expected_delivery_date ? new Date(selectedOrder.expected_delivery_date).toLocaleDateString() : '-'}</strong></div>
+                  <div>Shipping Target: <strong>{selectedOrder.customer_address || '-'}</strong></div>
                   <div>Internal Remarks: <em>{selectedOrder.remarks || 'None'}</em></div>
+                  
+                  {selectedOrder.status === 'draft' && (
+                    <div style={{ marginTop: '16px' }}>
+                      <button className="btn btn--primary" onClick={async () => {
+                        try {
+                          await api.post(`/sales-orders/${selectedOrder.id}/confirm`);
+                          setSelectedOrder(null);
+                          loadData();
+                        } catch (err) { alert(err.message || 'Failed to confirm'); }
+                      }}>Confirm Order</button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '13px' }}>Items Ordered</h4>
@@ -308,24 +329,22 @@ export default function SalesOrders() {
                         <th>Item Description</th>
                         <th>Qty</th>
                         <th>Rate</th>
-                        <th>Discount</th>
                         <th>Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedOrder.items.map((item, idx) => (
+                      {selectedOrder.lines?.map((item, idx) => (
                         <tr key={idx}>
-                          <td style={{ fontWeight: 600 }}>{item.name}</td>
-                          <td>{item.qty}</td>
-                          <td>₹{item.price}</td>
-                          <td>{item.discount}%</td>
-                          <td>₹{item.total.toLocaleString()}</td>
+                          <td style={{ fontWeight: 600 }}>{item.product?.name || 'Unknown'}</td>
+                          <td>{item.ordered_qty}</td>
+                          <td>₹{Number(item.unit_price).toLocaleString()}</td>
+                          <td>₹{(item.ordered_qty * item.unit_price).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', fontWeight: 800, fontSize: '15px', marginTop: '12px' }}>
-                    Total Invoice Amount: ₹{selectedOrder.amount.toLocaleString()}
+                    Total Invoice Amount: ₹{(selectedOrder.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0).toLocaleString()}
                   </div>
                 </div>
               </div>

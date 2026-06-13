@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, Search, Plus, Mail, Phone, MapPin, ClipboardList, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
 import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesCustomers() {
@@ -16,11 +17,16 @@ export default function SalesCustomers() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', mobile: '', email: '', gst: '', address: '', city: '', state: '', country: 'India' });
 
-  const loadCustomers = () => {
-    const list = salesApi.getCustomers();
-    setCustomers(list);
-    if (list.length > 0 && !selectedCust) {
-      handleSelectCustomer(list[0]);
+  const loadCustomers = async () => {
+    try {
+      const res = await api.get('/customers');
+      const list = res.data || [];
+      setCustomers(list);
+      if (list.length > 0 && !selectedCust) {
+        handleSelectCustomer(list[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load customers', err);
     }
   };
 
@@ -38,12 +44,22 @@ export default function SalesCustomers() {
     setDeliveries(dlvs);
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    salesApi.addCustomer(form);
-    setShowAdd(false);
-    setForm({ name: '', mobile: '', email: '', gst: '', address: '', city: '', state: '', country: 'India' });
-    loadCustomers();
+    try {
+      const fullAddress = [form.address, form.city, form.state, form.country].filter(Boolean).join(', ');
+      await api.post('/customers', {
+        name: form.name,
+        email: form.email,
+        phone: form.mobile,
+        address: fullAddress,
+      });
+      setShowAdd(false);
+      setForm({ name: '', mobile: '', email: '', gst: '', address: '', city: '', state: '', country: 'India' });
+      loadCustomers();
+    } catch (err) {
+      alert(err.message || 'Failed to add customer');
+    }
   };
 
   const filtered = customers.filter(c => 
