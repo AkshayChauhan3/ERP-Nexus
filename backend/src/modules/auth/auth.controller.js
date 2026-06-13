@@ -3,7 +3,7 @@ const authService = require('./auth.service');
 
 const loginSchema = z.object({
   login_id: z.string().min(3, 'login_id is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 const refreshSchema = z.object({
