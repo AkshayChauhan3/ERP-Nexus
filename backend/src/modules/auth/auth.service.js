@@ -1,46 +1,70 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../../config/db');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../../config/jwt');
 
 /**
  * auth.service.js — Auth Business Logic
- *
- * What this file does:
- *   Handles all database interactions and token generation logic for authentication.
- *   Controllers call these functions — keeping the HTTP layer separate from DB layer.
  */
 
-/**
- * Registers a new user (usually only admins can call this).
- * Hashes the password with bcryptjs before saving to DB.
- */
-async function registerUser(data) {
-  const hashedPassword = await bcrypt.hash(data.password, 12);
-  
-  const user = await prisma.user.create({
-    data: {
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      password: hashedPassword,
-    },
-    // Don't return the password in the output
-    select: { id: true, name: true, email: true, role: true, is_active: true, created_at: true },
-  });
-  
-  return user;
+function hashRefreshToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 /**
- * Authenticates a user by email and password.
- * Returns both access and refresh tokens.
+ * Public Sign-Up
+ * Creates user in PENDING state. Admin must approve later.
  */
-async function login(email, password) {
-  // Find user by email
-  const user = await prisma.user.findUnique({ where: { email } });
+async function registerUser(data) {
+  // Check existing login_id or email
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [{ login_id: data.login_id }, { email: data.email }],
+    },
+  });
+
+  if (existing) {
+    const error = new Error('login_id or email already taken');
+    error.status = 409;
+    throw error;
+  }
+
+  const hashedPassword = await bcrypt.hash(data.password, 12);
   
-  if (!user || !user.is_active) {
-    const error = new Error('Invalid email or password');
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        login_id: data.login_id,
+        email: data.email,
+        password: hashedPassword,
+        status: 'PENDING',
+        requested_modules: data.requested_modules,
+        profile: {
+          create: {
+            full_name: data.full_name,
+            position: data.position,
+            email_display: data.email,
+            address: data.address,
+            mobile_no: data.mobile_no,
+          }
+        }
+      },
+      select: { id: true, login_id: true, email: true, status: true, created_at: true },
+    });
+    
+    return user;
+  });
+}
+
+/**
+ * Authenticates a user by login_id and password.
+ */
+async function login(login_id, password) {
+  // Find user by login_id
+  const user = await prisma.user.findUnique({ where: { login_id } });
+  
+  if (!user) {
+    const error = new Error('Invalid login_id or password');
     error.status = 401;
     throw error;
   }
@@ -48,17 +72,48 @@ async function login(email, password) {
   // Verify password
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
-    const error = new Error('Invalid email or password');
+    const error = new Error('Invalid login_id or password');
     error.status = 401;
     throw error;
   }
+
+  // Check Approval Status
+  if (user.status === 'PENDING') {
+    const error = new Error('Registration is awaiting admin approval');
+    error.status = 403;
+    throw error;
+  }
+  if (user.status === 'REJECTED') {
+    const error = new Error(`Your registration was rejected: ${user.rejected_reason || 'No reason provided'}`);
+    error.status = 403;
+    throw error;
+  }
   
-  // Create token payload (keep it small)
-  const payload = { id: user.id, email: user.email, role: user.role };
+  // Create token payload
+  const payload = { id: user.id, login_id: user.login_id, is_admin: user.is_admin };
   
   // Generate tokens
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
+  
+  // Hash refresh token and store in DB
+  const tokenHash = hashRefreshToken(refreshToken);
+  
+  await prisma.$transaction([
+    // Update last login
+    prisma.user.update({
+      where: { id: user.id },
+      data: { last_login_at: new Date() }
+    }),
+    // Store refresh token
+    prisma.refreshToken.create({
+      data: {
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      }
+    })
+  ]);
   
   // Remove password before returning
   const { password: _, ...userWithoutPassword } = user;
@@ -77,39 +132,52 @@ async function refreshAccessToken(token) {
   // Throws if invalid or expired
   const decoded = verifyRefreshToken(token);
   
-  // Verify user still exists and is active
-  const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+  const tokenHash = hashRefreshToken(token);
   
-  if (!user || !user.is_active) {
-    const error = new Error('User inactive or deleted');
+  // Verify token exists in DB and is not revoked
+  const dbToken = await prisma.refreshToken.findFirst({
+    where: { token_hash: tokenHash, is_revoked: false }
+  });
+
+  if (!dbToken || dbToken.expires_at < new Date()) {
+    const error = new Error('Invalid or expired refresh token');
+    error.status = 403;
+    throw error;
+  }
+
+  // Verify user still exists and is approved
+  const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+  if (!user || user.status !== 'APPROVED') {
+    const error = new Error('User inactive or not approved');
     error.status = 401;
     throw error;
   }
   
-  // Generate new short-lived access token
-  const payload = { id: user.id, email: user.email, role: user.role };
+  const payload = { id: user.id, login_id: user.login_id, is_admin: user.is_admin };
   const accessToken = signAccessToken(payload);
   
   return { accessToken };
 }
 
-/**
- * STUB: We will implement full forgot-password logic in Step 15.
- */
+async function logout(userId, refreshToken) {
+  if (refreshToken) {
+    const tokenHash = hashRefreshToken(refreshToken);
+    await prisma.refreshToken.updateMany({
+      where: { token_hash: tokenHash, user_id: userId },
+      data: { is_revoked: true }
+    });
+  }
+}
+
+// STUBS for Forgot Password (Step 15)
 async function forgotPassword(email) {
   return null;
 }
 
-/**
- * STUB: We will implement full password-reset logic in Step 15.
- */
 async function resetPassword(token, newPassword) {
   return null;
 }
 
-/**
- * STUB: We will implement full verify-token logic in Step 15.
- */
 async function verifyResetToken(token) {
   return null;
 }
@@ -118,6 +186,7 @@ module.exports = {
   registerUser,
   login,
   refreshAccessToken,
+  logout,
   forgotPassword,
   resetPassword,
   verifyResetToken
