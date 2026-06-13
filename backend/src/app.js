@@ -25,11 +25,13 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 const errorHandler = require('./middleware/errorHandler');
 
 // ─── Future module imports (added step by step) ───────────
-// const authRoutes         = require('./modules/auth/auth.routes');
+const authRoutes         = require('./modules/auth/auth.routes');
 // const productRoutes      = require('./modules/products/products.routes');
 // const vendorRoutes       = require('./modules/vendors/vendors.routes');
 // const customerRoutes     = require('./modules/customers/customers.routes');
@@ -99,10 +101,16 @@ app.get('/', (req, res) => {
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
+// Swagger Documentation Route (available in all environments)
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'ERP Nexus API Docs',
+  explorer: true,
+}));
+
 // Routes are mounted here as each module is built (Steps 03–13).
 // Currently only the health check is active.
 
-// app.use('/api/auth',                 authRoutes);
+app.use('/api/auth',                 authRoutes);
 // app.use('/api/products',             productRoutes);
 // app.use('/api/vendors',              vendorRoutes);
 // app.use('/api/customers',            customerRoutes);

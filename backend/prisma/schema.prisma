@@ -1,0 +1,385 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  sales
+  purchase
+  manufacturing
+  inventory
+  owner
+}
+
+enum ProcureType {
+  MTS // Make To Stock (buy from vendor)
+  MTO // Make To Order (manufacture internally)
+}
+
+enum SOStatus {
+  draft
+  confirmed
+  delivered
+  cancelled
+}
+
+enum POStatus {
+  draft
+  confirmed
+  received
+}
+
+enum MOStatus {
+  draft
+  confirmed
+  in_progress
+  completed
+  cancelled
+}
+
+enum WOStatus {
+  pending
+  in_progress
+  completed
+  waiting
+}
+
+enum Operation {
+  assembly
+  painting
+  packing
+}
+
+enum MoveType {
+  sale_out
+  purchase_in
+  mfg_consume
+  mfg_produce
+  adjustment
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+  status_change
+}
+
+enum Severity {
+  high
+  medium
+  low
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(150)
+  email      String   @unique @db.VarChar(254)
+  password   String   @db.VarChar(128)
+  role       Role
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  sales_orders    SalesOrder[]
+  purchase_orders PurchaseOrder[]
+  mfg_orders      ManufacturingOrder[]
+  stock_ledger    StockLedger[]
+  audit_logs      AuditLog[]
+  password_tokens PasswordResetToken[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Vendor {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(200)
+  email      String?  @unique @db.VarChar(254)
+  phone      String?  @db.VarChar(20)
+  address    String?  @db.Text
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  products        Product[]
+  purchase_orders PurchaseOrder[]
+
+  @@map("vendors")
+}
+
+model Customer {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(200)
+  email      String?  @unique @db.VarChar(254)
+  phone      String?  @db.VarChar(20)
+  address    String?  @db.Text
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  sales_orders SalesOrder[]
+
+  @@map("customers")
+}
+
+model Product {
+  id                String      @id @default(uuid()) @db.Uuid
+  name              String      @db.VarChar(200)
+  sales_price       Decimal     @db.Decimal(12, 2)
+  cost_price        Decimal     @db.Decimal(12, 2)
+  on_hand_qty       Decimal     @default(0) @db.Decimal(12, 3)
+  reserved_qty      Decimal     @default(0) @db.Decimal(12, 3)
+  procurement_type  ProcureType @default(MTS)
+  procure_on_demand Boolean     @default(false)
+  vendor_id         String?     @db.Uuid
+  bom_id            String?     @db.Uuid
+  created_at        DateTime    @default(now()) @db.Timestamptz()
+  updated_at        DateTime    @updatedAt @db.Timestamptz()
+
+  // Note: free_qty is computed in the application layer (on_hand_qty - reserved_qty)
+
+  // Relations
+  vendor        Vendor?          @relation(fields: [vendor_id], references: [id], onDelete: SetNull)
+  bom_reference BillOfMaterials? @relation("ProductBom", fields: [bom_id], references: [id], onDelete: SetNull)
+
+  // Reverse relations
+  bom          BillOfMaterials?     @relation("BomProduct")
+  bom_lines    BOMLine[]
+  so_lines     SalesOrderLine[]
+  po_lines     PurchaseOrderLine[]
+  mfg_orders   ManufacturingOrder[]
+  stock_ledger StockLedger[]
+  risk_alert   RiskAlert?
+
+  @@index([name])
+  @@index([vendor_id])
+  @@index([procurement_type])
+  @@map("products")
+}
+
+model BillOfMaterials {
+  id         String @id @default(uuid()) @db.Uuid
+  product_id String @unique @db.Uuid
+
+  // Relations
+  product    Product              @relation("BomProduct", fields: [product_id], references: [id], onDelete: Cascade)
+  products   Product[]            @relation("ProductBom") // Products that use this BOM
+  lines      BOMLine[]
+  mfg_orders ManufacturingOrder[]
+
+  @@map("boms")
+}
+
+model BOMLine {
+  id                   String    @id @default(uuid()) @db.Uuid
+  bom_id               String    @db.Uuid
+  component_product_id String    @db.Uuid
+  qty_per_unit         Decimal   @db.Decimal(12, 3)
+  operation            Operation
+
+  // Relations
+  bom       BillOfMaterials @relation(fields: [bom_id], references: [id], onDelete: Cascade)
+  component Product         @relation(fields: [component_product_id], references: [id], onDelete: Restrict)
+
+  @@index([bom_id])
+  @@index([component_product_id])
+  @@map("bom_lines")
+}
+
+model SalesOrder {
+  id          String   @id @default(uuid()) @db.Uuid
+  customer_id String   @db.Uuid
+  status      SOStatus @default(draft)
+  created_by  String?  @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz()
+  updated_at  DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  customer Customer         @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  user     User?            @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  lines    SalesOrderLine[]
+
+  @@index([customer_id])
+  @@index([status])
+  @@index([created_by])
+  @@map("sales_orders")
+}
+
+model SalesOrderLine {
+  id            String  @id @default(uuid()) @db.Uuid
+  so_id         String  @db.Uuid
+  product_id    String  @db.Uuid
+  ordered_qty   Decimal @db.Decimal(12, 3)
+  delivered_qty Decimal @default(0) @db.Decimal(12, 3)
+  unit_price    Decimal @db.Decimal(12, 2)
+  shortage_qty  Decimal @default(0) @db.Decimal(12, 3) // Flagged during SO confirm
+
+  // Relations
+  order   SalesOrder @relation(fields: [so_id], references: [id], onDelete: Cascade)
+  product Product    @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@index([so_id])
+  @@index([product_id])
+  @@map("sales_order_lines")
+}
+
+model PurchaseOrder {
+  id         String   @id @default(uuid()) @db.Uuid
+  vendor_id  String   @db.Uuid
+  status     POStatus @default(draft)
+  created_by String?  @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  vendor Vendor              @relation(fields: [vendor_id], references: [id], onDelete: Restrict)
+  user   User?               @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  lines  PurchaseOrderLine[]
+
+  @@index([vendor_id])
+  @@index([status])
+  @@index([created_by])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id           String  @id @default(uuid()) @db.Uuid
+  po_id        String  @db.Uuid
+  product_id   String  @db.Uuid
+  ordered_qty  Decimal @db.Decimal(12, 3)
+  received_qty Decimal @default(0) @db.Decimal(12, 3)
+  unit_price   Decimal @db.Decimal(12, 2)
+
+  // Relations
+  order   PurchaseOrder @relation(fields: [po_id], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [product_id], references: [id], onDelete: Restrict)
+
+  @@index([po_id])
+  @@index([product_id])
+  @@map("purchase_order_lines")
+}
+
+model ManufacturingOrder {
+  id         String   @id @default(uuid()) @db.Uuid
+  product_id String   @db.Uuid
+  bom_id     String   @db.Uuid
+  quantity   Decimal  @db.Decimal(12, 3)
+  status     MOStatus @default(draft)
+  created_by String?  @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  product     Product         @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  bom         BillOfMaterials @relation(fields: [bom_id], references: [id], onDelete: Restrict)
+  user        User?           @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  work_orders WorkOrder[]
+
+  @@index([product_id])
+  @@index([status])
+  @@map("manufacturing_orders")
+}
+
+model WorkOrder {
+  id            String    @id @default(uuid()) @db.Uuid
+  mo_id         String    @db.Uuid
+  operation     Operation
+  work_center   String    @db.VarChar(100)
+  duration_mins Int       @default(0)
+  status        WOStatus  @default(pending)
+  started_at    DateTime? @db.Timestamptz()
+  completed_at  DateTime? @db.Timestamptz()
+
+  // Relations
+  mfg_order ManufacturingOrder @relation(fields: [mo_id], references: [id], onDelete: Cascade)
+
+  @@index([mo_id])
+  @@index([work_center])
+  @@index([status])
+  @@map("work_orders")
+}
+
+model StockLedger {
+  id              String   @id @default(uuid()) @db.Uuid
+  product_id      String   @db.Uuid
+  movement_type   MoveType
+  qty_change      Decimal  @db.Decimal(12, 3) // +ve for in, -ve for out
+  reference_model String?  @db.VarChar(100) // e.g., 'SalesOrder'
+  reference_id    String?  @db.Uuid // ID of the reference document
+  created_by      String?  @db.Uuid
+  timestamp       DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  product Product @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  user    User?   @relation(fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([product_id, timestamp(sort: Desc)])
+  @@index([movement_type])
+  @@index([reference_model, reference_id])
+  @@map("stock_ledger")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  user_id    String?     @db.Uuid
+  model_name String      @db.VarChar(100)
+  record_id  String      @db.Uuid
+  action     AuditAction
+  old_value  Json?
+  new_value  Json?
+  timestamp  DateTime    @default(now()) @db.Timestamptz()
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([model_name, record_id])
+  @@index([user_id])
+  @@index([timestamp(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model RiskAlert {
+  id                   String   @id @default(uuid()) @db.Uuid
+  product_id           String   @unique @db.Uuid
+  current_stock        Decimal? @db.Decimal(12, 3)
+  required_stock       Decimal? @db.Decimal(12, 3)
+  deficit              Decimal? @db.Decimal(12, 3)
+  severity             Severity
+  recommended_supplier String?  @db.VarChar(200)
+  lead_time_days       Int?
+  is_resolved          Boolean  @default(false)
+  updated_at           DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("risk_alerts")
+}
+
+model PasswordResetToken {
+  id         Int      @id @default(autoincrement())
+  user_id    String   @db.Uuid
+  token      String   @unique @db.VarChar(128)
+  expires_at DateTime @db.Timestamptz()
+  used       Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([user_id])
+  @@map("password_reset_tokens")
+}
