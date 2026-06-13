@@ -1,6 +1,6 @@
-# ERP-Nexus — Purchase Module Backend & DB Integration Plan
+# ERP-Nexus — Purchase Module Backend & Prisma ORM Integration Plan
 
-This plan outlines the routes, controller logic, database queries, and transaction flows required to connect the **Purchase Module** (vendors, raw materials, purchase orders, goods receipts, bills, inventory tracking) to the Express backend.
+This plan details how to implement the **Purchase Module** backend using the **Prisma ORM** and Express. It aligns with the existing codebase architecture by using the universal `Product` table and moving business logic/triggers into the Node.js application layer.
 
 ---
 
@@ -9,26 +9,21 @@ We will secure all purchase endpoints under a custom middleware that validates i
 
 ```js
 // src/middleware/purchaseAccess.middleware.js
-const pool = require('../config/db');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 module.exports = async (req, res, next) => {
-  if (req.user.is_admin) return next(); // Admin has override access
-
-  try {
-    const result = await pool.query(
-      `SELECT 1 FROM user_module_access a
-       JOIN modules m ON a.module_id = m.module_id
-       WHERE a.user_id = $1 AND m.module_name = 'purchase' AND m.is_active = TRUE`,
-      [req.user.user_id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied: Purchase Module not allocated or inactive.' });
-    }
-    next();
-  } catch (err) {
-    res.status(500).json({ error: 'Database access validation error.' });
+  // Admin and owner have access automatically
+  if (req.user.role === 'admin' || req.user.role === 'owner') {
+    return next();
   }
+
+  // Purchase users must be active and have the appropriate role
+  if (req.user.role === 'purchase' && req.user.is_active) {
+    return next();
+  }
+
+  return res.status(403).json({ error: 'Access denied: Purchase Module permissions required.' });
 };
 ```
 
@@ -38,95 +33,70 @@ module.exports = async (req, res, next) => {
 
 ### 1. Vendors Management (`/api/purchase/vendors`)
 * **`GET /`** — List all vendors.
-  * Query: `SELECT * FROM vendors ORDER BY name ASC;`
+  * Query: `prisma.vendor.findMany({ orderBy: { name: 'asc' } })`
 * **`POST /`** — Register a new vendor.
-  * Validation: Alphanumeric `vendor_code` (unique), `name` (required).
-  * Query: `INSERT INTO vendors (vendor_code, name, contact_name, email, phone, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`
+  * Validation: `name` (required), unique `email` (optional).
+  * Query: `prisma.vendor.create({ data: { name, email, phone, address } })`
 * **`PATCH /:id`** — Update vendor parameters.
 
 ---
 
-### 2. Raw Materials / Inventory Catalog (`/api/purchase/materials`)
-* **`GET /`** — List all raw materials with current stocks and UoM.
-  * Query: `SELECT * FROM raw_materials ORDER BY name ASC;`
-* **`POST /`** — Create new raw material.
-  * *Note*: If stock is lower than `reorder_level`, DB trigger `trigger_check_low_stock` automatically places a row in `procurement_suggestions`.
-  * Query: `INSERT INTO raw_materials (material_code, name, description, unit_of_measure, unit_price, reorder_level, current_stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`
+### 2. Materials Catalog (`/api/purchase/materials`)
+* **`GET /`** — List all raw materials (MTS Products).
+  * Query: `prisma.product.findMany({ where: { procurement_type: 'MTS' }, orderBy: { name: 'asc' } })`
+* **`POST /`** — Create new MTS product.
+  * *Note*: If initial stock is lower than `reorder_level`, backend logic automatically places an alert in `procurement_suggestions`.
 
 ---
 
 ### 3. Purchase Orders (`/api/purchase/orders`)
 
-* **`GET /`** — List POs. Support filter by `status`.
-* **`POST /`** — Create a Purchase Order (Must run inside a **Transaction** to populate PO and PO Items).
+* **`GET /`** — List POs. Support filter by `status` (draft, confirmed, received).
+* **`POST /`** — Create a Purchase Order (Must run inside a **Transaction** to populate PO and PO Lines).
 
 **Request Body:**
 ```json
 {
   "vendor_id": "83776f11-e0f4-e879-bf6f-6fea379227e2",
-  "expected_delivery": "2026-07-01",
   "items": [
-    { "material_id": "uuid-1", "quantity_ordered": 100, "unit_price": 42.50 },
-    { "material_id": "uuid-2", "quantity_ordered": 50, "unit_price": 115.00 }
+    { "product_id": "uuid-1", "quantity_ordered": 100, "unit_price": 42.50 },
+    { "product_id": "uuid-2", "quantity_ordered": 50, "unit_price": 115.00 }
   ]
 }
 ```
 
-**Transaction Query Logic:**
+**Transaction Logic:**
 ```javascript
-const client = await pool.connect();
-try {
-  await client.query('BEGIN');
-  
-  // 1. Generate unique PO number (e.g. PO-YYYYMMDD-seq)
-  const poNumber = `PO-${Date.now()}`;
-  
-  // 2. Insert PO Header
-  const poResult = await client.query(
-    `INSERT INTO purchase_orders (po_number, vendor_id, expected_delivery, created_by, status)
-     VALUES ($1, $2, $3, $4, 'DRAFT') RETURNING po_id`,
-    [poNumber, body.vendor_id, body.expected_delivery, req.user.user_id]
-  );
-  const poId = poResult.rows[0].po_id;
-  
-  // 3. Insert PO Line Items
-  let totalAmount = 0;
-  for (const item of body.items) {
-    const itemTotal = item.quantity_ordered * item.unit_price;
-    totalAmount += itemTotal;
-    await client.query(
-      `INSERT INTO purchase_order_items (po_id, material_id, quantity_ordered, unit_price)
-       VALUES ($1, $2, $3, $4)`,
-      [poId, item.material_id, item.quantity_ordered, item.unit_price]
-    );
-  }
-  
-  // 4. Update PO total amount
-  await client.query(
-    `UPDATE purchase_orders SET total_amount = $1 WHERE po_id = $2`,
-    [totalAmount, poId]
-  );
-  
-  await client.query('COMMIT');
-  res.status(201).json({ message: 'PO created in DRAFT status.', po_id: poId });
-} catch (err) {
-  await client.query('ROLLBACK');
-  res.status(500).json({ error: err.message });
-} finally {
-  client.release();
-}
+const result = await prisma.$transaction(async (tx) => {
+  // 1. Insert PO Header
+  const po = await tx.purchaseOrder.create({
+    data: {
+      vendor_id: body.vendor_id,
+      created_by: req.user.id,
+      status: 'draft',
+      lines: {
+        create: body.items.map(item => ({
+          product_id: item.product_id,
+          ordered_qty: item.quantity_ordered,
+          unit_price: item.unit_price
+        }))
+      }
+    },
+    include: { lines: true }
+  });
+  return po;
+});
 ```
 
 * **`POST /:id/approve`** — Admin-only PO approval.
-  * Backend must run: `SET LOCAL erp.is_admin = 'true';`
-  * Updates `status` to `'APPROVED'`, sets `approved_by` and `approved_at`.
+  * Updates `status` to `'confirmed'`.
 
 ---
 
 ### 4. Goods Receipts (`/api/purchase/receipts`)
 
 * **`POST /`** — Log a physical delivery.
-  * *Note*: DB trigger `trigger_process_goods_receipt` does the heavy lifting: increments `current_stock`, updates `quantity_received` on PO items, logs to `stock_ledger`, and updates PO status (`PARTIALLY_RECEIVED` / `FULLY_RECEIVED`).
+  * *Note*: Business logic runs inside a transaction, calling stock utilities and checking reorders.
 
 **Request Body:**
 ```json
@@ -134,44 +104,75 @@ try {
   "po_id": "po-uuid-here",
   "delivery_note_ref": "BOL-9921",
   "items": [
-    { "material_id": "uuid-1", "quantity_received": 40.00 },
-    { "material_id": "uuid-2", "quantity_received": 20.00 }
+    { "product_id": "uuid-1", "quantity_received": 40.00 },
+    { "product_id": "uuid-2", "quantity_received": 20.00 }
   ]
 }
 ```
 
-**Transaction Query Logic:**
+**Transaction Logic:**
 ```javascript
-const client = await pool.connect();
-try {
-  await client.query('BEGIN');
-  const grnNumber = `GRN-${Date.now()}`;
-  
-  // 1. Insert goods_receipts header
-  const receiptResult = await client.query(
-    `INSERT INTO goods_receipts (receipt_number, po_id, received_by, delivery_note_ref)
-     VALUES ($1, $2, $3, $4) RETURNING receipt_id`,
-    [grnNumber, body.po_id, req.user.user_id, body.delivery_note_ref]
-  );
-  const receiptId = receiptResult.rows[0].receipt_id;
-  
-  // 2. Insert items (Triggers automatically process stock, ledger, and PO quantities)
+const { addStockOnReceipt } = require('../../utils/stockMutations');
+
+const result = await prisma.$transaction(async (tx) => {
+  // 1. Insert goods_receipts header and line items
+  const receipt = await tx.goodsReceipt.create({
+    data: {
+      receipt_number: `GRN-${Date.now()}`,
+      po_id: body.po_id,
+      received_by: req.user.id,
+      delivery_note_ref: body.delivery_note_ref,
+      lines: {
+        create: body.items.map(item => ({
+          product_id: item.product_id,
+          qty_received: item.quantity_received
+        }))
+      }
+    }
+  });
+
+  // 2. Process each received item
   for (const item of body.items) {
-    await client.query(
-      `INSERT INTO goods_receipt_items (receipt_id, material_id, quantity_received)
-       VALUES ($1, $2, $3)`,
-      [receiptId, item.material_id, item.quantity_received]
-    );
+    // Add stock level atomically using existing mutation utility
+    const updatedProduct = await addStockOnReceipt(tx, item.product_id, item.quantity_received);
+
+    // Update received quantity on PO Line
+    await tx.purchaseOrderLine.updateMany({
+      where: { po_id: body.po_id, product_id: item.product_id },
+      data: {
+        received_qty: { increment: item.quantity_received }
+      }
+    });
+
+    // Write Stock Ledger entry
+    await tx.stockLedger.create({
+      data: {
+        product_id: item.product_id,
+        movement_type: 'purchase_in',
+        qty_change: item.quantity_received,
+        reference_model: 'GoodsReceipt',
+        reference_id: receipt.id,
+        created_by: req.user.id
+      }
+    });
+
+    // Check reorder levels
+    await checkAndSuggestReorder(tx, updatedProduct);
   }
+
+  // 3. Update PO status to received if all line items are fulfilled
+  const lines = await tx.purchaseOrderLine.findMany({ where: { po_id: body.po_id } });
+  const allReceived = lines.every(line => parseFloat(line.received_qty) >= parseFloat(line.ordered_qty));
   
-  await client.query('COMMIT');
-  res.status(201).json({ message: 'Goods receipt processed successfully.' });
-} catch (err) {
-  await client.query('ROLLBACK');
-  res.status(500).json({ error: err.message });
-} finally {
-  client.release();
-}
+  if (allReceived) {
+    await tx.purchaseOrder.update({
+      where: { id: body.po_id },
+      data: { status: 'received' }
+    });
+  }
+
+  return receipt;
+});
 ```
 
 ---
@@ -181,40 +182,41 @@ try {
 * **`POST /`** — Upload an invoice. Uses `multer` middleware to save PDF files to `profile_pic/` or a dedicated uploads directory.
   * Payload requires: `po_id`, `vendor_id`, `bill_number`, `invoice_date`, `due_date`, `subtotal`, `tax`, `total_amount`, and the uploaded file path saved to `attachment_url`.
 * **`POST /:id/pay`** — **Owner/Admin Only**.
-  * Updates status to `PAID`, sets `paid_at = NOW()`, `paid_by = admin_id`, and stores `payment_reference`.
-  * Guarded by `admin.middleware.js` to ensure non-admin purchase users cannot execute payments.
+  * Updates status to `paid`, sets `paid_at = NOW()`, `paid_by = admin_id`, and stores `payment_reference`.
+  * Guarded by `authorize(['admin', 'owner'])` to block standard purchase users.
 
 ---
 
 ### 6. Stock Ledger and Suggestions (`/api/purchase/reports`)
 * **`GET /ledger`** — Retrieve stock movements (sorted newest first).
+  * Query: `prisma.stockLedger.findMany({ orderBy: { timestamp: 'desc' }, include: { product: true } })`
 * **`GET /suggestions`** — List active/pending procurement suggestions from `procurement_suggestions` table.
-* **`PATCH /suggestions/:id`** — Mark suggestions as `PO_CREATED` or `IGNORED`.
+* **`PATCH /suggestions/:id`** — Mark suggestions as `po_created` or `ignored`.
 
 ---
 
 ## Complete API Routes Blueprint
 
 ```
-All routes below prefix with /api/purchase and require JWT Authentication + Purchase Module allocation.
+All routes below prefix with /api/purchase and require JWT Authentication.
 
 GET    /vendors                  → List vendors
 POST   /vendors                  → Create vendor
 PATCH  /vendors/:id              → Update vendor details
 
-GET    /materials                → List raw materials
-POST   /materials                → Create raw material
+GET    /materials                → List MTS Products
+POST   /materials                → Create Product
 
 GET    /orders                   → List purchase orders
-POST   /orders                   → Create PO draft (Transaction: po & items)
-POST   /orders/:id/approve       → Admin approves PO (Requires admin.middleware)
+POST   /orders                   → Create PO draft (Prisma transaction)
+POST   /orders/:id/approve       → Admin approves PO (Sets status to confirmed)
 
-POST   /receipts                 → Log physical delivery (Transaction: triggers update inventory)
+POST   /receipts                 → Log physical delivery (Calls processGoodsReceipt transaction)
 GET    /receipts                 → View goods receipts logs
 
 POST   /bills                    → Upload vendor bill invoice (multer upload)
 GET    /bills                    → View vendor bills
-POST   /bills/:id/pay            → Pay vendor bill (Requires admin.middleware)
+POST   /bills/:id/pay            → Pay vendor bill (Requires role: admin / owner)
 
 GET    /reports/ledger           → View stock ledger history
 GET    /reports/suggestions      → View reorder procurement suggestions
