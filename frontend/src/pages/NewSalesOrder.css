@@ -1,0 +1,557 @@
+.nso-page {
+  padding-bottom: var(--space-16);
+}
+
+/* ── Back Button ── */
+.nso-back-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-secondary);
+  background: var(--color-canvas);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  margin-bottom: var(--space-6);
+}
+
+.nso-back-btn:hover {
+  color: var(--color-primary);
+  background: var(--surface-low);
+}
+
+/* ── Header ── */
+.nso-header {
+  margin-bottom: var(--space-6);
+}
+
+.nso-order-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.nso-order-id {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--color-secondary);
+  background: var(--surface-high);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.05em;
+}
+
+.nso-status-badge {
+  font-size: 12px;
+}
+
+.nso-title {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ── Main Grid ── */
+.nso-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* ── Cards ── */
+.nso-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.nso-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--space-8));
+}
+
+.nso-card {
+  background: var(--color-canvas);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-outline-variant);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.nso-card-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-primary);
+  margin-bottom: var(--space-5);
+  letter-spacing: -0.01em;
+}
+
+/* ── Order Info Grid ── */
+.nso-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.nso-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-low);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.nso-info-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-secondary);
+}
+
+.nso-info-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* ── Line Items Table ── */
+.nso-items-card {}
+
+.nso-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-5);
+}
+
+.nso-th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+  border-bottom: 1px solid var(--color-outline-variant);
+  background: var(--surface-low);
+}
+
+.nso-th--center { text-align: center; }
+.nso-th--right  { text-align: right; }
+
+.nso-tr {
+  border-bottom: 1px solid var(--color-outline-variant);
+  cursor: pointer;
+}
+
+.nso-tr:last-child { border-bottom: none; }
+
+.nso-td {
+  padding: var(--space-4);
+  vertical-align: middle;
+}
+
+.nso-td--center { text-align: center; }
+.nso-td--right  { text-align: right; }
+
+.nso-product-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nso-sku {
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  color: var(--color-secondary);
+  font-weight: 600;
+}
+
+.nso-product-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.nso-qty {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.nso-unit-price {
+  font-size: 14px;
+  color: var(--color-secondary);
+}
+
+.nso-subtotal {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+/* ── Total ── */
+.nso-total-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nso-total-block {
+  width: 280px;
+  padding: var(--space-5);
+  background: var(--surface-low);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.nso-total-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--color-secondary);
+}
+
+.nso-total-divider {
+  height: 1px;
+  background: var(--color-outline-variant);
+}
+
+.nso-total-line--grand {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.nso-grand-total {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ── Ship To ── */
+.nso-ship-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.nso-ship-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--surface-low);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-secondary);
+}
+
+.nso-ship-header .nso-card-title {
+  margin-bottom: 0;
+}
+
+.nso-ship-input-wrapper {
+  position: relative;
+  margin-bottom: var(--space-5);
+}
+
+.nso-ship-pin {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  color: var(--color-secondary);
+}
+
+.nso-ship-textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4) var(--space-3) 38px;
+  background: var(--surface-low);
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--color-primary);
+  resize: none;
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  line-height: 1.5;
+}
+
+.nso-ship-textarea:focus {
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 3px rgba(78, 97, 110, 0.1);
+}
+
+/* ── Action Buttons ── */
+.nso-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.nso-btn {
+  flex: 1;
+  height: 46px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.nso-btn--outline {
+  background: transparent;
+  border: 1.5px solid var(--color-outline);
+  color: var(--color-primary);
+}
+
+.nso-btn--outline:hover {
+  background: var(--surface-low);
+}
+
+.nso-btn--solid {
+  background: var(--color-primary);
+  border: none;
+  color: var(--color-on-primary);
+}
+
+.nso-btn--solid:hover {
+  opacity: 0.88;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+}
+
+.nso-btn--confirmed {
+  background: var(--color-success);
+}
+
+/* ── Stock Check ── */
+.stock-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stock-check-item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border-left: 4px solid;
+}
+
+.stock-check-item--sufficient {
+  background: var(--color-success-container);
+  border-left-color: var(--color-success);
+}
+
+.stock-check-item--shortage {
+  background: var(--color-error-container);
+  border-left-color: var(--color-error);
+}
+
+.stock-check-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.stock-check-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stock-check-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.stock-check-note {
+  font-size: 12px;
+  color: var(--color-secondary);
+}
+
+.stock-check-numbers {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: 4px;
+}
+
+.stock-num {
+  font-size: 12px;
+  color: var(--color-secondary);
+}
+
+.stock-zero {
+  color: var(--color-error);
+}
+
+/* ── AI Card ── */
+.nso-ai-card {
+  background: #0F0F0F;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #ffffff;
+}
+
+.nso-ai-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.nso-ai-icon {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.12);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.nso-ai-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  flex: 1;
+}
+
+.nso-ai-dismiss {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.nso-ai-dismiss:hover { color: rgba(255,255,255,0.8); }
+
+.nso-ai-card .nso-card-title {
+  color: #ffffff;
+  margin-bottom: 0;
+}
+
+.nso-ai-title {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: var(--space-3);
+  line-height: 1.3;
+}
+
+.nso-ai-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.55;
+}
+
+.nso-ai-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.nso-ai-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 var(--space-4);
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.nso-ai-btn-primary:hover {
+  background: rgba(255,255,255,0.88);
+  transform: translateY(-1px);
+}
+
+.nso-ai-btn-ghost {
+  height: 36px;
+  padding: 0 var(--space-4);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.nso-ai-btn-ghost:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+/* ── Summary Card ── */
+.nso-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.nso-summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-low);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--color-secondary);
+}
+
+.nso-summary-value {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 14px;
+}
+
+.nso-summary-value--error {
+  color: var(--color-error);
+}
