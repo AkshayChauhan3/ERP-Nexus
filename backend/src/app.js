@@ -40,8 +40,8 @@ const salesRoutes        = require('./modules/sales/sales.routes');
 const purchaseRoutes     = require('./modules/purchase/purchase.routes');
 const manufacturingRoutes = require('./modules/manufacturing/bom.routes');
 const moRoutes           = require('./modules/manufacturing/mo.routes');
-// const inventoryRoutes    = require('./modules/inventory/inventory.routes');
-// const auditRoutes        = require('./modules/audit/audit.routes');
+const inventoryRoutes    = require('./modules/inventory/inventory.routes');
+const auditRoutes        = require('./modules/audit/audit.routes');
 // const intelligenceRoutes = require('./modules/intelligence/intelligence.routes');
 
 const app = express();
@@ -121,8 +121,8 @@ app.use('/api/sales-orders',         salesRoutes);
 app.use('/api/purchase-orders',      purchaseRoutes);
 app.use('/api/boms',                 manufacturingRoutes);
 app.use('/api/manufacturing-orders', moRoutes);
-// app.use('/api/stock-ledger',         inventoryRoutes);
-// app.use('/api/audit-logs',           auditRoutes);
+app.use('/api/stock-ledger',         inventoryRoutes);
+app.use('/api/audit-logs',           auditRoutes);
 // app.use('/api',                      intelligenceRoutes);    // /risk-alerts, /simulate, /ai-advisor, /digital-twin, /business-health-score, /dashboard
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
