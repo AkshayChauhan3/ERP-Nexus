@@ -194,8 +194,20 @@ async function addStockOnReceipt(prisma, productId, qty) {
  * @returns {object} Updated product
  */
 async function consumeComponentStock(prisma, productId, qty) {
-  // TODO: Implemented in Step 09
-  throw new Error('consumeComponentStock not yet implemented — coming in Step 09');
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  const newOnHand = parseFloat(product.on_hand_qty) - parseFloat(qty);
+  const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
+  validateStockLevels(product, newOnHand, newReserved);
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data: {
+      on_hand_qty: newOnHand,
+      reserved_qty: newReserved
+    }
+  });
 }
 
 /**
@@ -209,8 +221,16 @@ async function consumeComponentStock(prisma, productId, qty) {
  * @returns {object} Updated product
  */
 async function produceFinishedGoods(prisma, productId, qty) {
-  // TODO: Implemented in Step 09
-  throw new Error('produceFinishedGoods not yet implemented — coming in Step 09');
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  const newOnHand = parseFloat(product.on_hand_qty) + parseFloat(qty);
+  validateStockLevels(product, newOnHand, product.reserved_qty);
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data: { on_hand_qty: newOnHand }
+  });
 }
 
 module.exports = {
