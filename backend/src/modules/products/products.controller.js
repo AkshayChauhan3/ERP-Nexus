@@ -12,6 +12,7 @@ const productSchema = z.object({
   procurement_type: z.enum(['MTS', 'MTO']).optional(),
   procure_on_demand: z.boolean().optional(),
   vendor_id: z.string().uuid('Invalid vendor ID format').optional().nullable(),
+  bom_id: z.string().uuid('Invalid BOM ID format').optional().nullable(),
   image_url: z.string().optional().nullable(),
 });
 

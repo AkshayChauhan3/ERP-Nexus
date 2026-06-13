@@ -39,6 +39,7 @@ async function createProduct(data) {
         procurement_type: data.procurement_type,
         procure_on_demand: data.procure_on_demand,
         vendor_id: data.vendor_id,
+        bom_id: data.bom_id,
         image_url: data.image_url,
         inventory: {
           create: {
