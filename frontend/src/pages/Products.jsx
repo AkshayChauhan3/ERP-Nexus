@@ -28,6 +28,9 @@ export default function Products() {
   // Image uploading state
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  const [vendors, setVendors] = useState([]);
+  const [boms, setBoms] = useState([]);
+
   // Form state
   const [form, setForm] = useState({
     name: '',
@@ -38,6 +41,10 @@ export default function Products() {
     on_hand_qty: 0,
     reserved_qty: 0,
     reorder_level: 0,
+    procurement_type: 'MTS',
+    procure_on_demand: false,
+    vendor_id: '',
+    bom_id: '',
     image_url: ''
   });
 
@@ -55,8 +62,22 @@ export default function Products() {
     }
   };
 
+  const loadVendorsAndBoms = async () => {
+    try {
+      const [vendorRes, bomRes] = await Promise.all([
+        api.get('/vendors'),
+        api.get('/boms')
+      ]);
+      if (vendorRes.success) setVendors(vendorRes.data || []);
+      if (bomRes.success) setBoms(bomRes.data || []);
+    } catch (err) {
+      console.error('Failed to load vendors or boms:', err);
+    }
+  };
+
   useEffect(() => {
     loadProducts();
+    loadVendorsAndBoms();
   }, []);
 
   const showNotification = (msg, isError = false) => {
@@ -79,6 +100,10 @@ export default function Products() {
       on_hand_qty: 0,
       reserved_qty: 0,
       reorder_level: 5,
+      procurement_type: 'MTS',
+      procure_on_demand: false,
+      vendor_id: '',
+      bom_id: '',
       image_url: ''
     });
     setActiveModal('create');
@@ -95,6 +120,10 @@ export default function Products() {
       on_hand_qty: parseFloat(product.inventory?.on_hand_qty) || 0,
       reserved_qty: parseFloat(product.inventory?.reserved_qty) || 0,
       reorder_level: parseFloat(product.inventory?.reorder_level) || 0,
+      procurement_type: product.procurement_type || 'MTS',
+      procure_on_demand: product.procure_on_demand || false,
+      vendor_id: product.vendor_id || '',
+      bom_id: product.bom_id || '',
       image_url: product.image_url || ''
     });
     setActiveModal('edit');
@@ -143,6 +172,10 @@ export default function Products() {
         on_hand_qty: parseFloat(form.on_hand_qty),
         reserved_qty: parseFloat(form.reserved_qty),
         reorder_level: parseFloat(form.reorder_level),
+        procurement_type: form.procurement_type,
+        procure_on_demand: !!form.procure_on_demand,
+        vendor_id: form.vendor_id ? form.vendor_id : null,
+        bom_id: form.bom_id ? form.bom_id : null,
         image_url: form.image_url
       };
 
@@ -429,6 +462,47 @@ export default function Products() {
                   <div className="register-field" style={{ gridColumn: 'span 2' }}>
                     <label className="register-label">Reorder Level Alert Threshold</label>
                     <input type="number" className="register-input" value={form.reorder_level} onChange={e => setForm({ ...form, reorder_level: parseFloat(e.target.value) || 0 })} />
+                  </div>
+
+                  <div className="register-field">
+                    <label className="register-label">Procurement Strategy</label>
+                    <select className="register-input register-select" value={form.procurement_type} onChange={e => setForm({ ...form, procurement_type: e.target.value })}>
+                      <option value="MTS">MTS (Make To Stock)</option>
+                      <option value="MTO">MTO (Make To Order)</option>
+                    </select>
+                  </div>
+
+                  <div className="register-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '24px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="procure_on_demand"
+                      checked={form.procure_on_demand} 
+                      onChange={e => setForm({ ...form, procure_on_demand: e.target.checked })} 
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <label className="register-label" htmlFor="procure_on_demand" style={{ margin: 0, cursor: 'pointer' }}>Procure on Demand (Auto-Replenish)</label>
+                  </div>
+
+                  <div className="register-field">
+                    <label className="register-label">Preferred Vendor</label>
+                    <select className="register-input register-select" value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })}>
+                      <option value="">-- Select Preferred Vendor --</option>
+                      {vendors.map(v => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="register-field">
+                    <label className="register-label">Default Bill of Materials (BoM)</label>
+                    <select className="register-input register-select" value={form.bom_id} onChange={e => setForm({ ...form, bom_id: e.target.value })}>
+                      <option value="">-- Select Default BoM --</option>
+                      {boms.map(b => (
+                        <option key={b.id} value={b.id}>
+                          BoM for {b.product?.name || b.product_id}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
