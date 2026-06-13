@@ -6,6 +6,7 @@ const receiptSchema = z.object({
   delivery_note_ref: z.string().optional(),
   items: z.array(z.object({
     product_id: z.string().uuid(),
+    po_line_id: z.string().uuid().optional(),
     quantity_received: z.number().positive(),
     remarks: z.string().optional(),
   })).min(1, 'At least one item is required'),

@@ -1,3 +1,4 @@
+
 const prisma = require('../../config/db');
 const { addStockOnReceipt } = require('../../utils/stockMutations');
 
@@ -6,7 +7,7 @@ async function getAllPurchaseOrders() {
     orderBy: { created_at: 'desc' },
     include: {
       vendor: { select: { id: true, name: true } },
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, login_id: true } },
     },
   });
 }

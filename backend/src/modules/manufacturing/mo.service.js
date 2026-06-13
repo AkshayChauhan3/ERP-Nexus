@@ -75,16 +75,34 @@ async function confirmMO(id) {
       const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
       await reserveStock(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Reserved for MO ${id}`);
     }
-    const operations = [...new Set(mo.bom.lines.map(l => l.operation))];
-    
+    // Group lines by operation to find their work center and sum the expected durations
+    const operationsMap = {};
+    for (const line of mo.bom.lines) {
+      const op = line.operation;
+      if (!operationsMap[op]) {
+        operationsMap[op] = {
+          expected_duration_mins: 0,
+          work_center: line.work_center || `WC-${op.toUpperCase()}`,
+        };
+      }
+      operationsMap[op].expected_duration_mins += line.expected_duration_mins || 0;
+      if (line.work_center) {
+        operationsMap[op].work_center = line.work_center;
+      }
+    }
+
+    const workOrdersData = Object.keys(operationsMap).map(op => ({
+      mo_id: id,
+      operation: op,
+      work_center: operationsMap[op].work_center,
+      duration_mins: operationsMap[op].expected_duration_mins,
+      status: 'pending'
+    }));
+
     await tx.workOrder.createMany({
-      data: operations.map(op => ({
-        mo_id: id,
-        operation: op,
-        work_center: `WC-${op.toUpperCase()}`,
-        status: 'pending'
-      }))
+      data: workOrdersData
     });
+
     return await tx.manufacturingOrder.update({
       where: { id },
       data: { status: 'confirmed' },
@@ -120,7 +138,10 @@ async function completeMO(id) {
     });
     return await tx.manufacturingOrder.update({
       where: { id },
-      data: { status: 'completed' },
+      data: { 
+        status: 'completed',
+        produced_qty: mo.quantity,
+      },
     });
   });
 }

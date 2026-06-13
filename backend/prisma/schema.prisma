@@ -84,14 +84,6 @@ enum WOStatus {
   on_hold
 }
 
-enum Operation {
-  assembly
-  painting
-  packing
-  cutting
-  finishing
-}
-
 // ── Inventory ─────────────────────────────────────────────────────────────────
 
 /// Direction of a stock movement recorded in the ledger
@@ -136,8 +128,10 @@ model User {
   password_tokens PasswordResetToken[]
 
   // Business relations
-  sales_orders    SalesOrder[]
-  purchase_orders PurchaseOrder[]
+  sales_orders_created        SalesOrder[]         @relation("CreatedSalesOrders")
+  sales_orders_salesperson    SalesOrder[]         @relation("SalespersonOrders")
+  purchase_orders_created     PurchaseOrder[]      @relation("CreatedPurchaseOrders")
+  purchase_orders_responsible PurchaseOrder[]      @relation("ResponsiblePurchaseOrders")
   mfg_orders      ManufacturingOrder[]
   goods_receipts  GoodsReceipt[]
   vendor_bills    VendorBill[]
@@ -285,11 +279,13 @@ model BillOfMaterials {
 
 /// Each row = one component required by the BoM + which operation uses it
 model BOMLine {
-  id                   String    @id @default(uuid()) @db.Uuid
-  bom_id               String    @db.Uuid
-  component_product_id String    @db.Uuid
-  qty_per_unit         Decimal   @db.Decimal(12, 3) // qty needed per 1 finished unit
-  operation            Operation // which production step uses this component
+  id                     String  @id @default(uuid()) @db.Uuid
+  bom_id                 String  @db.Uuid
+  component_product_id   String  @db.Uuid
+  qty_per_unit           Decimal @db.Decimal(12, 3) // qty needed per 1 finished unit
+  operation              String  @db.VarChar(100) // which production step uses this component
+  expected_duration_mins Int     @default(0)
+  work_center            String? @db.VarChar(100)
 
   bom       BillOfMaterials @relation(fields: [bom_id], references: [id], onDelete: Cascade)
   component Product         @relation(fields: [component_product_id], references: [id], onDelete: Restrict)
@@ -332,16 +328,20 @@ model SalesOrder {
   status                 SOStatus @default(draft)
   remarks                String?  @db.Text
   created_by             String?  @db.Uuid
+  salesperson_id         String?  @db.Uuid
+  customer_address       String?  @db.Text
   created_at             DateTime @default(now()) @db.Timestamptz()
   updated_at             DateTime @updatedAt @db.Timestamptz()
 
-  customer Customer         @relation(fields: [customer_id], references: [id], onDelete: Restrict)
-  user     User?            @relation(fields: [created_by], references: [id], onDelete: SetNull)
-  lines    SalesOrderLine[]
+  customer    Customer         @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  user        User?            @relation("CreatedSalesOrders", fields: [created_by], references: [id], onDelete: SetNull)
+  salesperson User?            @relation("SalespersonOrders", fields: [salesperson_id], references: [id], onDelete: SetNull)
+  lines       SalesOrderLine[]
 
   @@index([customer_id])
   @@index([status])
   @@index([created_by])
+  @@index([salesperson_id])
   @@map("sales_orders")
 }
 
@@ -385,24 +385,28 @@ model Vendor {
 }
 
 model PurchaseOrder {
-  id         String   @id @default(uuid()) @db.Uuid
-  po_number  String   @unique @db.VarChar(30)
-  vendor_id  String   @db.Uuid
-  status     POStatus @default(draft)
-  remarks    String?  @db.Text
-  created_by String?  @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
+  id                    String   @id @default(uuid()) @db.Uuid
+  po_number             String   @unique @db.VarChar(30)
+  vendor_id             String   @db.Uuid
+  status                POStatus @default(draft)
+  remarks               String?  @db.Text
+  created_by            String?  @db.Uuid
+  responsible_person_id String?  @db.Uuid
+  vendor_address        String?  @db.Text
+  created_at            DateTime @default(now()) @db.Timestamptz()
+  updated_at            DateTime @updatedAt @db.Timestamptz()
 
-  vendor   Vendor              @relation(fields: [vendor_id], references: [id], onDelete: Restrict)
-  user     User?               @relation(fields: [created_by], references: [id], onDelete: SetNull)
-  lines    PurchaseOrderLine[]
-  receipts GoodsReceipt[]
-  bills    VendorBill[]
+  vendor             Vendor              @relation(fields: [vendor_id], references: [id], onDelete: Restrict)
+  user               User?               @relation("CreatedPurchaseOrders", fields: [created_by], references: [id], onDelete: SetNull)
+  responsible_person User?               @relation("ResponsiblePurchaseOrders", fields: [responsible_person_id], references: [id], onDelete: SetNull)
+  lines              PurchaseOrderLine[]
+  receipts           GoodsReceipt[]
+  bills              VendorBill[]
 
   @@index([vendor_id])
   @@index([status])
   @@index([created_by])
+  @@index([responsible_person_id])
   @@map("purchase_orders")
 }
 
@@ -414,8 +418,9 @@ model PurchaseOrderLine {
   received_qty Decimal @default(0) @db.Decimal(12, 3)
   unit_price   Decimal @db.Decimal(12, 2)
 
-  order   PurchaseOrder @relation(fields: [po_id], references: [id], onDelete: Cascade)
-  product Product       @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  order         PurchaseOrder      @relation(fields: [po_id], references: [id], onDelete: Cascade)
+  product       Product            @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  receipt_lines GoodsReceiptLine[]
 
   @@index([po_id])
   @@index([product_id])
@@ -444,14 +449,17 @@ model GoodsReceiptLine {
   id           String  @id @default(uuid()) @db.Uuid
   receipt_id   String  @db.Uuid
   product_id   String  @db.Uuid
+  po_line_id   String  @db.Uuid
   qty_received Decimal @db.Decimal(12, 3)
   remarks      String? @db.Text
 
-  receipt GoodsReceipt @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
-  product Product      @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  receipt GoodsReceipt      @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
+  product Product           @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  po_line PurchaseOrderLine @relation(fields: [po_line_id], references: [id], onDelete: Restrict)
 
   @@index([receipt_id])
   @@index([product_id])
+  @@index([po_line_id])
   @@map("goods_receipt_lines")
 }
 
@@ -489,17 +497,18 @@ model VendorBill {
 // ═════════════════════════════════════════════════════════════════════════════
 
 model ManufacturingOrder {
-  id         String   @id @default(uuid()) @db.Uuid
-  mo_number  String   @unique @db.VarChar(30)
-  product_id String   @db.Uuid
-  bom_id     String   @db.Uuid
-  quantity   Decimal  @db.Decimal(12, 3)
-  status     MOStatus @default(draft)
+  id           String   @id @default(uuid()) @db.Uuid
+  mo_number    String   @unique @db.VarChar(30)
+  product_id   String   @db.Uuid
+  bom_id       String   @db.Uuid
+  quantity     Decimal  @db.Decimal(12, 3)
+  produced_qty Decimal  @default(0) @db.Decimal(12, 3)
+  status       MOStatus @default(draft)
   /// Link back to the sales order that triggered this MO (MTO flow)
-  so_id      String?  @db.Uuid
-  created_by String?  @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
+  so_id        String?  @db.Uuid
+  created_by   String?  @db.Uuid
+  created_at   DateTime @default(now()) @db.Timestamptz()
+  updated_at   DateTime @updatedAt @db.Timestamptz()
 
   product     Product         @relation(fields: [product_id], references: [id], onDelete: Restrict)
   bom         BillOfMaterials @relation(fields: [bom_id], references: [id], onDelete: Restrict)
@@ -514,14 +523,15 @@ model ManufacturingOrder {
 
 /// One work order = one operation step (assembly, painting, packing …)
 model WorkOrder {
-  id            String    @id @default(uuid()) @db.Uuid
-  mo_id         String    @db.Uuid
-  operation     Operation
-  work_center   String    @db.VarChar(100)
-  duration_mins Int       @default(0)
-  status        WOStatus  @default(pending)
-  started_at    DateTime? @db.Timestamptz()
-  completed_at  DateTime? @db.Timestamptz()
+  id                 String    @id @default(uuid()) @db.Uuid
+  mo_id              String    @db.Uuid
+  operation          String    @db.VarChar(100)
+  work_center        String    @db.VarChar(100)
+  duration_mins      Int       @default(0)
+  real_duration_mins Int       @default(0)
+  status             WOStatus  @default(pending)
+  started_at         DateTime? @db.Timestamptz()
+  completed_at       DateTime? @db.Timestamptz()
 
   mfg_order ManufacturingOrder @relation(fields: [mo_id], references: [id], onDelete: Cascade)
 

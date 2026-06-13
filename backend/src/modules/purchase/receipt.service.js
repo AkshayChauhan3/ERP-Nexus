@@ -42,9 +42,11 @@ async function createReceipt(data, userId) {
       },
     });
     for (const item of data.items) {
-      const poLine = po.lines.find(l => l.product_id === item.product_id);
+      const poLine = item.po_line_id
+        ? po.lines.find(l => l.id === item.po_line_id)
+        : po.lines.find(l => l.product_id === item.product_id);
       if (!poLine) {
-        throw new BusinessLogicError(`Product ${item.product_id} is not part of this PO`);
+        throw new BusinessLogicError(`Product/PO Line reference is not part of this PO`);
       }
 
       const qtyReceived = parseFloat(item.quantity_received);
@@ -53,6 +55,7 @@ async function createReceipt(data, userId) {
         data: {
           receipt_id: receipt.id,
           product_id: item.product_id,
+          po_line_id: poLine.id,
           qty_received: qtyReceived,
           remarks: item.remarks,
         }
