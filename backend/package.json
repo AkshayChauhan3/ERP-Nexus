@@ -49,5 +49,8 @@
     "node": ">=18.0.0"
   },
   "author": "Shiv Furniture Works — Backend Team",
-  "license": "MIT"
+  "license": "MIT",
+  "prisma": {
+    "seed": "node seed/seed.js"
+  }
 }
