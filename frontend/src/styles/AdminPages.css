@@ -249,6 +249,9 @@
   box-shadow: var(--shadow-xl);
   overflow: hidden;
   animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-modal-header {
@@ -287,6 +290,8 @@
 
 .admin-modal-body {
   padding: var(--space-6);
+  overflow-y: auto;
+  flex: 1;
 }
 
 .admin-modal-form {

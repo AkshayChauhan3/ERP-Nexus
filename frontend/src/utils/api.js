@@ -25,6 +25,16 @@ async function request(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
+    
+    if (response.status === 401) {
+      localStorage.removeItem('auth_data');
+      // Only redirect if not already on the login page to prevent infinite redirects
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      throw new Error('Session expired. Please log in again.');
+    }
+
     const result = await response.json();
     
     if (!response.ok) {

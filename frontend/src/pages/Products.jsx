@@ -24,6 +24,7 @@ export default function Products() {
   // Modal states
   const [activeModal, setActiveModal] = useState(null); // 'create' or 'edit'
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   
   // Image uploading state
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -36,11 +37,11 @@ export default function Products() {
     name: '',
     sku: '',
     type: 'RAW_MATERIAL',
-    sales_price: 0,
-    cost_price: 0,
-    on_hand_qty: 0,
-    reserved_qty: 0,
-    reorder_level: 0,
+    sales_price: '',
+    cost_price: '',
+    on_hand_qty: '',
+    reserved_qty: '',
+    reorder_level: '',
     procurement_type: 'MTS',
     procure_on_demand: false,
     vendor_id: '',
@@ -95,11 +96,11 @@ export default function Products() {
       name: '',
       sku: `SKU-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       type: 'RAW_MATERIAL',
-      sales_price: 100,
-      cost_price: 50,
-      on_hand_qty: 0,
-      reserved_qty: 0,
-      reorder_level: 5,
+      sales_price: '100',
+      cost_price: '50',
+      on_hand_qty: '0',
+      reserved_qty: '0',
+      reorder_level: '5',
       procurement_type: 'MTS',
       procure_on_demand: false,
       vendor_id: '',
@@ -115,11 +116,11 @@ export default function Products() {
       name: product.name,
       sku: product.sku || '',
       type: product.type,
-      sales_price: parseFloat(product.sales_price) || 0,
-      cost_price: parseFloat(product.cost_price) || 0,
-      on_hand_qty: parseFloat(product.inventory?.on_hand_qty) || 0,
-      reserved_qty: parseFloat(product.inventory?.reserved_qty) || 0,
-      reorder_level: parseFloat(product.inventory?.reorder_level) || 0,
+      sales_price: product.sales_price !== undefined ? String(product.sales_price) : '0',
+      cost_price: product.cost_price !== undefined ? String(product.cost_price) : '0',
+      on_hand_qty: product.inventory?.on_hand_qty !== undefined ? String(product.inventory.on_hand_qty) : '0',
+      reserved_qty: product.inventory?.reserved_qty !== undefined ? String(product.inventory.reserved_qty) : '0',
+      reorder_level: product.inventory?.reorder_level !== undefined ? String(product.inventory.reorder_level) : '0',
       procurement_type: product.procurement_type || 'MTS',
       procure_on_demand: product.procure_on_demand || false,
       vendor_id: product.vendor_id || '',
@@ -157,7 +158,9 @@ export default function Products() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.name || form.sales_price <= 0 || form.cost_price <= 0) {
+    const salesPriceNum = parseFloat(form.sales_price) || 0;
+    const costPriceNum = parseFloat(form.cost_price) || 0;
+    if (!form.name || salesPriceNum <= 0 || costPriceNum <= 0) {
       showNotification('Please fill in all required fields.', true);
       return;
     }
@@ -167,11 +170,11 @@ export default function Products() {
         name: form.name,
         sku: form.sku,
         type: form.type,
-        sales_price: parseFloat(form.sales_price),
-        cost_price: parseFloat(form.cost_price),
-        on_hand_qty: parseFloat(form.on_hand_qty),
-        reserved_qty: parseFloat(form.reserved_qty),
-        reorder_level: parseFloat(form.reorder_level),
+        sales_price: salesPriceNum,
+        cost_price: costPriceNum,
+        on_hand_qty: parseFloat(form.on_hand_qty) || 0,
+        reserved_qty: parseFloat(form.reserved_qty) || 0,
+        reorder_level: parseFloat(form.reorder_level) || 0,
         procurement_type: form.procurement_type,
         procure_on_demand: !!form.procure_on_demand,
         vendor_id: form.vendor_id ? form.vendor_id : null,
@@ -198,7 +201,6 @@ export default function Products() {
   };
 
   const handleDelete = async (productId) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
     try {
       const res = await api.delete(`/products/${productId}`);
       if (res.success) {
@@ -359,7 +361,7 @@ export default function Products() {
                       <td className="products-td" style={{ textAlign: 'right' }}>
                         <div className="product-actions" style={{ justifyContent: 'flex-end', gap: '8px' }}>
                           <button className="product-action-btn" onClick={() => handleOpenEdit(product)}>Edit</button>
-                          <button className="product-action-btn product-action-btn--ghost" style={{ color: 'var(--color-error)' }} onClick={() => handleDelete(product.id)}>
+                          <button className="product-action-btn product-action-btn--ghost" style={{ color: 'var(--color-error)' }} onClick={() => setDeleteTarget(product)}>
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -441,27 +443,27 @@ export default function Products() {
 
                   <div className="register-field">
                     <label className="register-label">Sales Price (₹) *</label>
-                    <input type="number" className="register-input" value={form.sales_price} onChange={e => setForm({ ...form, sales_price: parseFloat(e.target.value) || 0 })} required />
+                    <input type="number" className="register-input" value={form.sales_price} onChange={e => setForm({ ...form, sales_price: e.target.value })} required />
                   </div>
 
                   <div className="register-field">
                     <label className="register-label">Cost Price (₹) *</label>
-                    <input type="number" className="register-input" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: parseFloat(e.target.value) || 0 })} required />
+                    <input type="number" className="register-input" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: e.target.value })} required />
                   </div>
 
                   <div className="register-field">
                     <label className="register-label">On Hand Qty</label>
-                    <input type="number" className="register-input" value={form.on_hand_qty} onChange={e => setForm({ ...form, on_hand_qty: parseFloat(e.target.value) || 0 })} />
+                    <input type="number" className="register-input" value={form.on_hand_qty} onChange={e => setForm({ ...form, on_hand_qty: e.target.value })} />
                   </div>
 
                   <div className="register-field">
                     <label className="register-label">Reserved Qty</label>
-                    <input type="number" className="register-input" value={form.reserved_qty} onChange={e => setForm({ ...form, reserved_qty: parseFloat(e.target.value) || 0 })} />
+                    <input type="number" className="register-input" value={form.reserved_qty} onChange={e => setForm({ ...form, reserved_qty: e.target.value })} />
                   </div>
 
                   <div className="register-field" style={{ gridColumn: 'span 2' }}>
                     <label className="register-label">Reorder Level Alert Threshold</label>
-                    <input type="number" className="register-input" value={form.reorder_level} onChange={e => setForm({ ...form, reorder_level: parseFloat(e.target.value) || 0 })} />
+                    <input type="number" className="register-input" value={form.reorder_level} onChange={e => setForm({ ...form, reorder_level: e.target.value })} />
                   </div>
 
                   <div className="register-field">
@@ -511,6 +513,47 @@ export default function Products() {
                   <button type="submit" className="dashboard-new-order-btn" style={{ height: '36px', padding: '0 16px', margin: 0 }}>Save Product</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal" style={{ maxWidth: '400px' }}>
+            <div className="admin-modal-header">
+              <h3 className="admin-modal-title" style={{ color: 'var(--color-error)' }}>Confirm Deletion</h3>
+              <button className="admin-modal-close" onClick={() => setDeleteTarget(null)}><X size={16}/></button>
+            </div>
+            <div className="admin-modal-body" style={{ textAlign: 'center', padding: '24px' }}>
+              <Trash2 size={48} style={{ color: 'var(--color-error)', marginBottom: '16px', display: 'inline-block' }} />
+              <p style={{ color: 'var(--color-primary)', fontSize: '15px', marginBottom: '8px', fontWeight: '600' }}>
+                Are you sure you want to delete this product?
+              </p>
+              <p style={{ color: 'var(--color-secondary)', fontSize: '13px', marginBottom: '24px' }}>
+                This will permanently delete <strong>{deleteTarget.name}</strong> from the catalog. This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <button 
+                  type="button" 
+                  className="profile-drawer-signout-btn" 
+                  style={{ height: '36px', padding: '0 16px', border: '1.5px solid var(--color-outline-variant)' }} 
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="dashboard-new-order-btn" 
+                  style={{ height: '36px', padding: '0 16px', margin: 0, background: 'var(--color-error)', color: '#fff' }} 
+                  onClick={() => {
+                    handleDelete(deleteTarget.id);
+                    setDeleteTarget(null);
+                  }}
+                >
+                  Delete Product
+                </button>
+              </div>
             </div>
           </div>
         </div>
