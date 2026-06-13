@@ -12,13 +12,10 @@ datasource db {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-enum Role {
-  admin
-  sales
-  purchase
-  manufacturing
-  inventory
-  owner
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum ProcureType {
@@ -84,15 +81,24 @@ enum Severity {
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
-  id         String   @id @default(uuid()) @db.Uuid
-  name       String   @db.VarChar(150)
-  email      String   @unique @db.VarChar(254)
-  password   String   @db.VarChar(128)
-  role       Role
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamptz()
+  id                String             @id @default(uuid()) @map("user_id") @db.Uuid
+  login_id          String             @unique @db.VarChar(50)
+  email             String             @unique @db.VarChar(255)
+  password          String             @db.Text
+  is_admin          Boolean            @default(false)
+  status            RegistrationStatus @default(PENDING)
+  requested_modules Int[] // Array of module IDs
+  rejected_reason   String?            @db.Text
+  last_login_at     DateTime?          @db.Timestamptz()
+  created_at        DateTime           @default(now()) @db.Timestamptz()
+  updated_at        DateTime           @updatedAt @db.Timestamptz()
 
   // Relations
+  profile        UserProfile?
+  module_access  UserModuleAccess[] @relation("UserAccess")
+  granted_access UserModuleAccess[] @relation("GrantedByAdmin")
+  refresh_tokens RefreshToken[]
+
   sales_orders    SalesOrder[]
   purchase_orders PurchaseOrder[]
   mfg_orders      ManufacturingOrder[]
@@ -101,8 +107,65 @@ model User {
   password_tokens PasswordResetToken[]
 
   @@index([email])
-  @@index([role])
+  @@index([login_id])
   @@map("users")
+}
+
+model UserProfile {
+  id            String   @id @default(uuid()) @map("profile_id") @db.Uuid
+  user_id       String   @unique @db.Uuid
+  full_name     String   @db.VarChar(150)
+  position      String   @db.VarChar(100)
+  email_display String   @db.VarChar(255)
+  address       String?  @db.Text
+  mobile_no     String?  @db.VarChar(15)
+  profile_photo String?  @db.Text
+  updated_at    DateTime @updatedAt @db.Timestamptz()
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Module {
+  id          Int      @id @default(autoincrement()) @map("module_id")
+  module_name String   @unique @db.VarChar(50)
+  description String?  @db.Text
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz()
+
+  user_access UserModuleAccess[]
+
+  @@map("modules")
+}
+
+model UserModuleAccess {
+  id         Int      @id @default(autoincrement()) @map("access_id")
+  user_id    String   @db.Uuid
+  module_id  Int
+  granted_at DateTime @default(now()) @db.Timestamptz()
+  granted_by String?  @db.Uuid
+
+  user   User   @relation("UserAccess", fields: [user_id], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  admin  User?  @relation("GrantedByAdmin", fields: [granted_by], references: [id], onDelete: SetNull)
+
+  @@unique([user_id, module_id])
+  @@map("user_module_access")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid()) @map("token_id") @db.Uuid
+  user_id    String   @db.Uuid
+  token_hash String   @db.Text
+  is_revoked Boolean  @default(false)
+  issued_at  DateTime @default(now()) @db.Timestamptz()
+  expires_at DateTime @db.Timestamptz()
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("refresh_tokens")
 }
 
 model Vendor {

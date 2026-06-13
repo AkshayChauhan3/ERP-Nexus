@@ -15,7 +15,7 @@ const authService = require('./auth.service');
 // ─── Zod Schemas ─────────────────────────────────────────────────────────────
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email format'),
+  login_id: z.string().min(3, 'login_id is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -23,12 +23,17 @@ const refreshSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
-// Assuming only admin creates users for now
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+
 const registerSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
+  login_id: z.string().min(3, 'login_id is required').max(50),
   email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['admin', 'sales', 'purchase', 'manufacturing', 'inventory', 'owner']),
+  password: z.string().regex(passwordRegex, 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.'),
+  full_name: z.string().min(2, 'Full name is required'),
+  position: z.string().min(2, 'Position is required'),
+  address: z.string().optional(),
+  mobile_no: z.string().optional(),
+  requested_modules: z.array(z.number()).min(1, 'At least one module must be requested'),
 });
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
@@ -38,7 +43,7 @@ async function login(req, res) {
   const data = loginSchema.parse(req.body);
   
   // Call service
-  const result = await authService.login(data.email, data.password);
+  const result = await authService.login(data.login_id, data.password);
   
   // Respond
   res.json({
@@ -69,17 +74,15 @@ async function register(req, res) {
   });
 }
 
-/**
- * Logout in a JWT stateless system means deleting the tokens on the client side.
- * However, the API provides this endpoint so the client has a formal way to end the session.
- * In a more complex setup, we would add the refreshToken to a Redis blacklist here.
- */
 async function logout(req, res) {
-  // For now, stateless logout: the client drops the tokens.
+  const { refreshToken } = req.body;
+  if (req.user && refreshToken) {
+    await authService.logout(req.user.id, refreshToken);
+  }
+  
   res.json({
     success: true,
-    message: 'Logged out successfully',
-    hint: 'Client must discard access and refresh tokens locally',
+    message: 'Logged out successfully'
   });
 }
 
