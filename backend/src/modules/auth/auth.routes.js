@@ -25,11 +25,10 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, password]
+ *             required: [login_id, password]
  *             properties:
- *               email:
+ *               login_id:
  *                 type: string
- *                 format: email
  *               password:
  *                 type: string
  *                 format: password
@@ -49,8 +48,8 @@ const router = express.Router();
  *                   type: object
  *                   properties:
  *                     id: { type: 'string' }
- *                     email: { type: 'string' }
- *                     role: { type: 'string' }
+ *                     login_id: { type: 'string' }
+ *                     is_admin: { type: 'boolean' }
  *       400:
  *         description: Validation error
  *         content:
@@ -115,30 +114,34 @@ router.post('/logout', authenticate, authController.logout);
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register a new user (Admin only)
+ *     summary: Register a new user (Public Sign-Up)
  *     tags: [Authentication]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password, role]
+ *             required: [login_id, email, password, full_name, position, requested_modules]
  *             properties:
- *               name: { type: 'string' }
+ *               login_id: { type: 'string' }
  *               email: { type: 'string', format: 'email' }
  *               password: { type: 'string', format: 'password' }
- *               role:
- *                 type: 'string'
- *                 enum: [admin, sales, purchase, manufacturing, inventory, owner]
+ *               full_name: { type: 'string' }
+ *               position: { type: 'string' }
+ *               address: { type: 'string' }
+ *               mobile_no: { type: 'string' }
+ *               requested_modules: 
+ *                 type: array
+ *                 items: { type: 'number' }
  *     responses:
  *       201:
- *         description: User created
- *       403:
- *         description: Access denied (not an admin)
+ *         description: Registration submitted (PENDING)
+ *       409:
+ *         description: Conflict (login_id or email already taken)
  */
-// Only admins can create new users
-router.post('/register', authenticate, authorize('admin'), authController.register);
+router.post('/register', authController.register);
 
 // STUBS for Forgot Password (Step 15)
 // These routes exist so Swagger picks them up, but they do nothing until Step 15

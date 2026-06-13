@@ -1,23 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Briefcase, Eye, EyeOff, RefreshCw, Check, Zap } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, RefreshCw, Check, Zap } from 'lucide-react';
+import { api } from '../utils/api';
 import './Login.css';
-
-const ROLES = [
-  'Operations Manager',
-  'Sales Executive',
-  'Warehouse Supervisor',
-  'Production Lead',
-  'Logistics Coordinator',
-  'Finance Analyst',
-  'Administrator',
-];
 
 export default function Login() {
   const navigate = useNavigate();
   const cardRef = useRef(null);
 
-  const [form, setForm] = useState({ email: '', password: '', role: '' });
+  const [form, setForm] = useState({ login_id: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [submitState, setSubmitState] = useState('idle'); // idle | validating | granted | error
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -39,16 +30,36 @@ export default function Login() {
   /* ── Submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.email || !form.password || !form.role) {
-      setErrorMsg('Please fill in all fields.');
+    if (!form.login_id || !form.password) {
+      setErrorMsg('Please enter your Login ID and password.');
       return;
     }
     setErrorMsg('');
     setSubmitState('validating');
-    await new Promise(r => setTimeout(r, 1400));
-    setSubmitState('granted');
-    await new Promise(r => setTimeout(r, 800));
-    navigate('/dashboard');
+    
+    try {
+      // Send login_id as 'email' since the backend matches by email
+      const result = await api.post('/auth/login', {
+        email: form.login_id,
+        password: form.password,
+      });
+
+      // Save auth response in localStorage
+      localStorage.setItem('auth_data', JSON.stringify({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user,
+      }));
+
+      setSubmitState('granted');
+      await new Promise(r => setTimeout(r, 800));
+      navigate('/dashboard');
+    } catch (err) {
+      setSubmitState('error');
+      setErrorMsg(err.message || 'Invalid Login ID or password.');
+      // Re-enable submit after 2 seconds
+      setTimeout(() => setSubmitState('idle'), 2000);
+    }
   };
 
   const cardStyle = {
@@ -81,19 +92,19 @@ export default function Login() {
 
         {/* Form */}
         <form className="login-form" onSubmit={handleSubmit} noValidate>
-          {/* Email */}
+          {/* Login ID */}
           <div className="login-field">
-            <label className="login-label" htmlFor="login-email">Email Address</label>
+            <label className="login-label" htmlFor="login-id">Login ID (Email)</label>
             <div className="login-input-wrapper">
               <Mail size={16} className="login-input-icon login-input-icon--left" strokeWidth={1.75} />
               <input
-                id="login-email"
-                type="email"
+                id="login-id"
+                type="text"
                 className="login-input"
                 placeholder="you@company.com"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                autoComplete="email"
+                value={form.login_id}
+                onChange={e => setForm(f => ({ ...f, login_id: e.target.value }))}
+                autoComplete="username"
               />
             </div>
           </div>
@@ -125,25 +136,6 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Role selector */}
-          <div className="login-field">
-            <label className="login-label" htmlFor="login-role">Access Role</label>
-            <div className="login-input-wrapper">
-              <Briefcase size={16} className="login-input-icon login-input-icon--left" strokeWidth={1.75} />
-              <select
-                id="login-role"
-                className="login-input login-select"
-                value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-              >
-                <option value="">Select your role…</option>
-                {ROLES.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
           {/* Error */}
           {errorMsg && (
             <p className="login-error">{errorMsg}</p>
@@ -169,15 +161,27 @@ export default function Login() {
                 Access Granted
               </>
             )}
+            {submitState === 'error' && (
+              <>
+                Failed
+              </>
+            )}
           </button>
         </form>
 
         {/* Footer */}
         <p className="login-footer-text">
-          Need access? Contact your{' '}
-          <a href="#" className="login-footer-link">System Administrator</a>
+          Need access?{' '}
+          <span 
+            className="login-footer-link" 
+            style={{ cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+            onClick={() => navigate('/register')}
+          >
+            Request an Account (Sign Up)
+          </span>
         </p>
       </div>
     </div>
   );
 }
+

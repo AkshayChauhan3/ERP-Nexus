@@ -1,21 +1,44 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, Warehouse,
-  Truck, Settings, Zap, ChevronRight
+  Truck, Settings, Zap, ChevronRight, Factory,
+  ClipboardList, Users, ShieldAlert, BarChart2, ShoppingBag
 } from 'lucide-react';
 import './Sidebar.css';
 
-const navItems = [
-  { path: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { path: '/products',   label: 'Products',   icon: Package },
-  { path: '/orders',     label: 'Orders',     icon: ShoppingCart },
-  { path: '/warehouse',  label: 'Warehouse',  icon: Warehouse },
-  { path: '/logistics',  label: 'Logistics',  icon: Truck },
-  { path: '/settings',   label: 'Settings',   icon: Settings },
-];
-
 export default function Sidebar() {
   const location = useLocation();
+  const [user, setUser] = useState({ role: 'sales' });
+
+  useEffect(() => {
+    const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+    if (authData?.user) {
+      setUser(authData.user);
+    }
+  }, []);
+
+  const isAdminOrOwner = user.role === 'admin' || user.role === 'owner';
+
+  const navItems = isAdminOrOwner ? [
+    { path: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
+    { path: '/products',      label: 'Products',      icon: Package },
+    { path: '/sales',         label: 'Sales',         icon: ShoppingCart },
+    { path: '/purchase',      label: 'Purchase',      icon: ShoppingBag },
+    { path: '/manufacturing', label: 'Manufacturing', icon: Factory },
+    { path: '/inventory',     label: 'Inventory',     icon: Warehouse },
+    { path: '/procurement',   label: 'Procurement',   icon: ClipboardList },
+    { path: '/users',         label: 'Users',         icon: Users },
+    { path: '/audit-logs',    label: 'Audit Logs',    icon: ShieldAlert },
+    { path: '/reports',       label: 'Reports',       icon: BarChart2 },
+  ] : [
+    { path: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
+    { path: '/products',   label: 'Products',   icon: Package },
+    { path: '/orders',     label: 'Orders',     icon: ShoppingCart },
+    { path: '/warehouse',  label: 'Warehouse',  icon: Warehouse },
+    { path: '/logistics',  label: 'Logistics',  icon: Truck },
+    { path: '/settings',   label: 'Settings',   icon: Settings },
+  ];
 
   return (
     <aside className="sidebar">
@@ -34,10 +57,12 @@ export default function Sidebar() {
       <div className="sidebar-divider" />
 
       {/* Nav section label */}
-      <span className="sidebar-section-label">Navigation</span>
+      <span className="sidebar-section-label">
+        {isAdminOrOwner ? 'Admin Panel' : 'Navigation'}
+      </span>
 
       {/* Nav Links */}
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" style={{ overflowY: 'auto', flex: 1 }}>
         {navItems.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path ||
             (path === '/orders' && location.pathname === '/new-sales-order');
@@ -74,3 +99,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

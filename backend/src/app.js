@@ -32,14 +32,19 @@ const errorHandler = require('./middleware/errorHandler');
 
 // ─── Future module imports (added step by step) ───────────
 const authRoutes         = require('./modules/auth/auth.routes');
+const adminRoutes        = require('./modules/admin/admin.routes');
 const productRoutes      = require('./modules/products/products.routes');
 const vendorRoutes       = require('./modules/vendors/vendors.routes');
 const customerRoutes     = require('./modules/customers/customers.routes');
 const salesRoutes        = require('./modules/sales/sales.routes');
 const purchaseRoutes     = require('./modules/purchase/purchase.routes');
+const receiptRoutes      = require('./modules/purchase/receipt.routes');
+const billRoutes         = require('./modules/purchase/bill.routes');
+const suggestionRoutes   = require('./modules/purchase/suggestion.routes');
 const manufacturingRoutes = require('./modules/manufacturing/bom.routes');
-// const inventoryRoutes    = require('./modules/inventory/inventory.routes');
-// const auditRoutes        = require('./modules/audit/audit.routes');
+const moRoutes           = require('./modules/manufacturing/mo.routes');
+const inventoryRoutes    = require('./modules/inventory/inventory.routes');
+const auditRoutes        = require('./modules/audit/audit.routes');
 // const intelligenceRoutes = require('./modules/intelligence/intelligence.routes');
 
 const app = express();
@@ -108,17 +113,22 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 }));
 
 // Routes are mounted here as each module is built (Steps 03–13).
-// Currently only the health check is active.
+// ─── API Routes ───────────────────────────────────────────────────────────────
 
 app.use('/api/auth',                 authRoutes);
+app.use('/api/admin',                adminRoutes);
 app.use('/api/products',             productRoutes);
 app.use('/api/vendors',              vendorRoutes);
 app.use('/api/customers',            customerRoutes);
 app.use('/api/sales-orders',         salesRoutes);
 app.use('/api/purchase-orders',      purchaseRoutes);
+app.use('/api/purchase/receipts',    receiptRoutes);
+app.use('/api/purchase/bills',       billRoutes);
+app.use('/api/purchase/suggestions', suggestionRoutes);
 app.use('/api/boms',                 manufacturingRoutes);
-// app.use('/api/stock-ledger',         inventoryRoutes);
-// app.use('/api/audit-logs',           auditRoutes);
+app.use('/api/manufacturing-orders', moRoutes);
+app.use('/api/stock-ledger',         inventoryRoutes);
+app.use('/api/audit-logs',           auditRoutes);
 // app.use('/api',                      intelligenceRoutes);    // /risk-alerts, /simulate, /ai-advisor, /digital-twin, /business-health-score, /dashboard
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
