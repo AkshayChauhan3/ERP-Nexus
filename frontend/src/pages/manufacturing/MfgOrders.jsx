@@ -13,18 +13,18 @@ const STATUS_CLS = {
 
 const MOCK_MOS = [
   { id: 'MO-4005', product: 'Executive Chair', qty: 20, status: 'In Production', start: '2026-06-12', finish: '2026-06-16', user: 'Rahul K.' },
-  { id: 'MO-4004', product: 'Oak Dining Table', qty: 5,  status: 'Confirmed',    start: '2026-06-13', finish: '2026-06-17', user: 'Priya M.' },
-  { id: 'MO-4003', product: 'Comfort Sofa',     qty: 8,  status: 'Reserved',     start: '2026-06-14', finish: '2026-06-18', user: 'Rahul K.' },
-  { id: 'MO-4002', product: 'Wooden Bookshelf', qty: 12, status: 'Completed',    start: '2026-06-08', finish: '2026-06-11', user: 'Nikhil S.' },
-  { id: 'MO-4001', product: 'Swivel Chair',     qty: 15, status: 'Cancelled',    start: '2026-06-05', finish: '2026-06-09', user: 'Rahul K.' },
+  { id: 'MO-4004', product: 'Oak Dining Table', qty: 5, status: 'Confirmed', start: '2026-06-13', finish: '2026-06-17', user: 'Priya M.' },
+  { id: 'MO-4003', product: 'Comfort Sofa', qty: 8, status: 'Reserved', start: '2026-06-14', finish: '2026-06-18', user: 'Rahul K.' },
+  { id: 'MO-4002', product: 'Wooden Bookshelf', qty: 12, status: 'Completed', start: '2026-06-08', finish: '2026-06-11', user: 'Nikhil S.' },
+  { id: 'MO-4001', product: 'Swivel Chair', qty: 15, status: 'Cancelled', start: '2026-06-05', finish: '2026-06-09', user: 'Rahul K.' },
 ];
 
 const EMPTY_FORM = { product: '', qty: '', bom: '', start: '', finish: '', priority: 'medium', user: '' };
 const COMPONENTS_PREVIEW = [
-  { component: 'Foam Padding',   required: 20, available: 35, reserved: 20 },
-  { component: 'Steel Frame',    required: 20, available: 12, reserved: 12 },
-  { component: 'Fabric Cover',   required: 20, available: 40, reserved: 20 },
-  { component: 'Caster Wheels',  required: 100, available: 110, reserved: 100 },
+  { component: 'Foam Padding', required: 20, available: 35, reserved: 20 },
+  { component: 'Steel Frame', required: 20, available: 12, reserved: 12 },
+  { component: 'Fabric Cover', required: 20, available: 40, reserved: 20 },
+  { component: 'Caster Wheels', required: 100, available: 110, reserved: 100 },
 ];
 
 export default function MfgOrders() {
@@ -60,17 +60,17 @@ export default function MfgOrders() {
             <p className="mfg-page-sub">Create and manage production orders through their full lifecycle</p>
           </div>
           <button id="btn-new-mo" className="btn btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', fontSize: '13px' }} onClick={() => setShowModal(true)}>
-            <Plus size={14}/> New MO
+            <Plus size={14} /> New MO
           </button>
         </div>
 
-        {}
+        { }
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', padding: '14px 18px', flexWrap: 'wrap' }}>
           <input id="mo-search" className="mfg-search-input" style={{ maxWidth: '260px', flex: 1 }}
             placeholder="Search by product or MO number…" value={search} onChange={e => setSearch(e.target.value)} />
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
             {['all', ...STATUSES].map(s => (
-              <button key={s} id={`mo-filter-${s.replace(/\s/g,'').toLowerCase()}`}
+              <button key={s} id={`mo-filter-${s.replace(/\s/g, '').toLowerCase()}`}
                 className={`mfg-role-btn ${statusFilter === s ? 'mfg-role-btn--active' : ''}`}
                 style={{ fontSize: '11px' }} onClick={() => setStatus(s)}>
                 {s === 'all' ? 'All' : s}
@@ -79,7 +79,7 @@ export default function MfgOrders() {
           </div>
         </div>
 
-        {}
+        { }
         <div className="admin-panel" style={{ padding: 0 }}>
           <div className="admin-table-wrapper" style={{ border: 'none' }}>
             <table className="admin-table">
@@ -98,7 +98,7 @@ export default function MfgOrders() {
                     <td>{mo.user}</td>
                     <td>
                       <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-secondary)' }} onClick={() => setViewOrder(mo)} title="View Details">
-                        <Eye size={15}/>
+                        <Eye size={15} />
                       </button>
                     </td>
                   </tr>
@@ -112,13 +112,13 @@ export default function MfgOrders() {
         </div>
       </div>
 
-      {}
+      { }
       {showModal && (
         <div className="admin-modal-overlay" onClick={() => setShowModal(false)}>
           <div className="admin-modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
             <div className="admin-modal-header">
               <h3 className="admin-modal-title">Create Manufacturing Order</h3>
-              <button className="admin-modal-close" onClick={() => setShowModal(false)}><X size={18}/></button>
+              <button className="admin-modal-close" onClick={() => setShowModal(false)}><X size={18} /></button>
             </div>
             <div className="admin-modal-body">
               <div className="admin-modal-form">
@@ -163,7 +163,7 @@ export default function MfgOrders() {
                   </div>
                 </div>
 
-                {}
+                { }
                 {form.product && (
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Component Requirements (Auto-fetched)</p>
@@ -196,13 +196,13 @@ export default function MfgOrders() {
         </div>
       )}
 
-      {}
+      { }
       {viewOrder && (
         <div className="admin-modal-overlay" onClick={() => setViewOrder(null)}>
           <div className="admin-modal" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
             <div className="admin-modal-header">
               <h3 className="admin-modal-title">{viewOrder.id} — Details</h3>
-              <button className="admin-modal-close" onClick={() => setViewOrder(null)}><X size={18}/></button>
+              <button className="admin-modal-close" onClick={() => setViewOrder(null)}><X size={18} /></button>
             </div>
             <div className="admin-modal-body">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

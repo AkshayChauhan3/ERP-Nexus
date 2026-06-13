@@ -58,7 +58,7 @@ export default function OwnerApprovals() {
         </div>
 
         {/* Filters */}
-        <div className="purchase-panel" style={{ display: 'flex', flexDirection: 'row', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="purchase-panel" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-secondary)' }}>Status:</span>
           {['All', 'Pending', 'Approved', 'Rejected'].map(status => (
             <button
@@ -82,7 +82,7 @@ export default function OwnerApprovals() {
             <div className="purchase-panel-header">
               <h3 className="purchase-panel-title">Pending & Past Approval Decisions</h3>
             </div>
-            
+
             {filteredApprovals.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-secondary)' }}>
                 No requests found matching the current status filter.
