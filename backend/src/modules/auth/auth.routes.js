@@ -107,7 +107,6 @@ router.post('/refresh', authController.refresh);
  *       200:
  *         description: Logged out successfully
  */
-// Protected route — user must have a valid access token to log out
 router.post('/logout', authenticate, authController.logout);
 
 /**
@@ -142,9 +141,6 @@ router.post('/logout', authenticate, authController.logout);
  *         description: Conflict (login_id or email already taken)
  */
 router.post('/register', authController.register);
-
-// STUBS for Forgot Password (Step 15)
-// These routes exist so Swagger picks them up, but they do nothing until Step 15
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password/verify', authController.verifyResetToken);
 router.post('/reset-password', authController.resetPassword);

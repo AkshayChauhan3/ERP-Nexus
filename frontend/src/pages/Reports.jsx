@@ -26,14 +26,14 @@ const SLOW_MOVING = [
 ];
 
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState('revenue'); // 'revenue' | 'products' | 'manufacturing'
+  const [activeTab, setActiveTab] = useState('revenue');
 
   const maxVal = Math.max(...REVENUE_DATA.map(d => d.revenue)) || 100;
 
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* Header Panel */}
+      {}
       <div className="admin-panel" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="kpi-icon kpi-icon--primary" style={{ width: '40px', height: '40px' }}><BarChart2 size={18} /></div>
@@ -43,7 +43,7 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Tab filters */}
+        {}
         <div style={{ display: 'flex', gap: '6px', background: 'var(--surface-low)', padding: '4px', borderRadius: 'var(--radius-full)', border: '1px solid var(--color-outline-variant)' }}>
           {[
             { id: 'revenue', label: 'Revenue & Cost' },
@@ -70,17 +70,17 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* ── Tab Content: REVENUE & COST ── */}
+      {}
       {activeTab === 'revenue' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 'var(--space-6)' }}>
-          {/* Revenue Chart */}
+          {}
           <div className="admin-panel">
             <div className="admin-panel-header">
               <h3 className="admin-panel-title">Revenue vs Operating Cost</h3>
               <span style={{ fontSize: '12px', color: 'var(--color-secondary)', fontWeight: 600 }}>(Values in Thousands ₹)</span>
             </div>
             
-            {/* Custom Multi-bar Chart */}
+            {}
             <div className="chart-container" style={{ height: '260px', padding: '16px 0 8px' }}>
               {REVENUE_DATA.map((d, i) => {
                 const revPct = (d.revenue / maxVal) * 100;
@@ -98,7 +98,7 @@ export default function Reports() {
                 );
               })}
             </div>
-            {/* Legend */}
+            {}
             <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
                 <div style={{ width: '12px', height: '12px', background: 'var(--color-primary)', borderRadius: '2px' }} />
@@ -115,7 +115,7 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Key metrics */}
+          {}
           <div className="admin-panel" style={{ justifyContent: 'center', gap: '24px' }}>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <div className="kpi-icon kpi-icon--green" style={{ width: '48px', height: '48px' }}><TrendingUp size={20} /></div>
@@ -139,10 +139,10 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ── Tab Content: PRODUCT SPEED & MARGINS ── */}
+      {}
       {activeTab === 'products' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
-          {/* Most Profitable */}
+          {}
           <div className="admin-panel">
             <div className="admin-panel-header">
               <h3 className="admin-panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -176,7 +176,7 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Slow Moving Products */}
+          {}
           <div className="admin-panel">
             <div className="admin-panel-header">
               <h3 className="admin-panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -212,10 +212,10 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ── Tab Content: MANUFACTURING METRICS ── */}
+      {}
       {activeTab === 'manufacturing' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
-          {/* Output metrics */}
+          {}
           <div className="admin-panel" style={{ gap: '20px' }}>
             <h3 className="admin-panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Hammer size={18} /> Production Output Analytics
@@ -254,7 +254,7 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Summary */}
+          {}
           <div className="admin-panel" style={{ justifyContent: 'center', gap: '16px' }}>
             {[
               { label: 'Total Units Produced (Month)', value: '1,248 Units' },

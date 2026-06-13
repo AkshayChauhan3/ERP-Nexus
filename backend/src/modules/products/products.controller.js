@@ -3,10 +3,12 @@ const productService = require('./products.service');
 
 const productSchema = z.object({
   name: z.string().min(2, 'Name is required'),
+  type: z.enum(['RAW_MATERIAL', 'FINISHED_GOOD']).default('RAW_MATERIAL'),
   sales_price: z.number().positive('Sales price must be positive'),
   cost_price: z.number().positive('Cost price must be positive'),
   on_hand_qty: z.number().min(0, 'On hand quantity cannot be negative').optional(),
   reserved_qty: z.number().min(0, 'Reserved quantity cannot be negative').optional(),
+  reorder_level: z.number().min(0, 'Reorder level cannot be negative').optional(),
   procurement_type: z.enum(['MTS', 'MTO']).optional(),
   procure_on_demand: z.boolean().optional(),
   vendor_id: z.string().uuid('Invalid vendor ID format').optional().nullable(),

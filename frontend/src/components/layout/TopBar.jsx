@@ -38,8 +38,6 @@ export default function TopBar() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-  
-  // Local states for the profile form
   const [profileForm, setProfileForm] = useState({
     name: '',
     address: '',
@@ -48,8 +46,6 @@ export default function TopBar() {
   });
 
   const meta = PAGE_TITLES[pathname] || { breadcrumb: 'Nexus ERP', title: 'Overview' };
-
-  // Read current user info from localStorage and wrap in state so updates propagate
   const [user, setUser] = useState({ name: 'Alexander Sterling', role: 'admin', email: 'admin@erp-nexus.local' });
 
   useEffect(() => {
@@ -58,8 +54,8 @@ export default function TopBar() {
       setUser(authData.user);
       setProfileForm({
         name: authData.user.name || '',
-        address: authData.user.address || 'Colaba, Mumbai, 400001', // default template
-        mobile: authData.user.mobile || '+918000000000', // default template
+        address: authData.user.address || 'Colaba, Mumbai, 400001',
+        mobile: authData.user.mobile || '+918000000000',
         photo: authData.user.profile_photo || '',
       });
     }
@@ -100,8 +96,6 @@ export default function TopBar() {
       authData.user = updatedUser;
       localStorage.setItem('auth_data', JSON.stringify(authData));
       setUser(updatedUser);
-      
-      // Let's trigger a custom event so other components (like Dashboard) update their name greeting if needed
       window.dispatchEvent(new Event('storage'));
 
       setSuccessMsg('Profile updated successfully!');
@@ -114,13 +108,13 @@ export default function TopBar() {
 
   return (
     <header className="topbar">
-      {/* Left: breadcrumb + title */}
+      {}
       <div className="topbar-left">
         <span className="topbar-breadcrumb">{meta.breadcrumb}</span>
         <h1 className="topbar-title">{meta.title}</h1>
       </div>
 
-      {/* Right: search + notif + avatar */}
+      {}
       <div className="topbar-right">
         <button className="topbar-icon-btn" aria-label="Search">
           <Search size={18} strokeWidth={1.75} />
@@ -131,7 +125,7 @@ export default function TopBar() {
         </button>
         <div className="topbar-divider" />
         
-        {/* User profile avatar triggers Profile Detail Management side drawer */}
+        {}
         <button 
           className="topbar-user" 
           onClick={() => setDrawerOpen(true)}
@@ -152,7 +146,7 @@ export default function TopBar() {
         </button>
       </div>
 
-      {/* ── Profile side drawer overlay ── */}
+      {}
       {drawerOpen && (
         <>
           <div className="profile-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
@@ -165,7 +159,7 @@ export default function TopBar() {
             </div>
 
             <div className="profile-drawer-content">
-              {/* Profile Photo */}
+              {}
               <div className="profile-photo-wrapper">
                 <div className="profile-photo-container" onClick={handlePhotoClick}>
                   {profileForm.photo ? (
@@ -186,9 +180,8 @@ export default function TopBar() {
                 />
               </div>
 
-              {/* Form */}
               <form className="profile-drawer-form" onSubmit={handleSaveProfile}>
-                {/* Name */}
+                {}
                 <div className="profile-drawer-field">
                   <label className="profile-drawer-label" htmlFor="drawer-name">Name</label>
                   <input
@@ -201,7 +194,7 @@ export default function TopBar() {
                   />
                 </div>
 
-                {/* Address */}
+                {}
                 <div className="profile-drawer-field">
                   <label className="profile-drawer-label" htmlFor="drawer-address">Address</label>
                   <textarea
@@ -213,7 +206,7 @@ export default function TopBar() {
                   />
                 </div>
 
-                {/* Mobile Number */}
+                {}
                 <div className="profile-drawer-field">
                   <label className="profile-drawer-label" htmlFor="drawer-mobile">Mobile Number</label>
                   <input
@@ -226,7 +219,7 @@ export default function TopBar() {
                   />
                 </div>
 
-                {/* Email ID (Disabled/Read-only) */}
+                {}
                 <div className="profile-drawer-field">
                   <label className="profile-drawer-label">Email ID</label>
                   <input
@@ -237,7 +230,7 @@ export default function TopBar() {
                   />
                 </div>
 
-                {/* Position (Disabled/Read-only) */}
+                {}
                 <div className="profile-drawer-field">
                   <label className="profile-drawer-label">Position</label>
                   <input
@@ -248,12 +241,12 @@ export default function TopBar() {
                   />
                 </div>
 
-                {/* Status Message */}
+                {}
                 {successMsg && (
                   <div className="profile-drawer-success-msg">{successMsg}</div>
                 )}
 
-                {/* Actions */}
+                {}
                 <div className="profile-drawer-actions">
                   <button type="submit" className="profile-drawer-save-btn">
                     Save Changes

@@ -7,8 +7,6 @@ import '../styles/AdminPages.css';
 export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // Filters
   const [searchUser, setSearchUser] = useState('');
   const [selectedModule, setSelectedModule] = useState('All');
   const [selectedAction, setSelectedAction] = useState('All');
@@ -28,12 +26,8 @@ export default function AuditLogs() {
       setLoading(false);
     }
   };
-
-  // Extract unique values for filter dropdowns
   const modules = ['All', ...new Set(logs.map(log => log.module))];
   const actions = ['All', ...new Set(logs.map(log => log.action))];
-
-  // Filtering logic
   const filteredLogs = logs.filter(log => {
     const matchesUser = log.user.toLowerCase().includes(searchUser.toLowerCase());
     const matchesModule = selectedModule === 'All' || log.module === selectedModule;
@@ -44,7 +38,7 @@ export default function AuditLogs() {
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* Header Panel */}
+      {}
       <div className="admin-panel" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="kpi-icon kpi-icon--error" style={{ width: '40px', height: '40px' }}><ShieldAlert size={18} /></div>
@@ -58,14 +52,14 @@ export default function AuditLogs() {
         </button>
       </div>
 
-      {/* Filters Board */}
+      {}
       <div className="admin-panel" style={{ padding: '16px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--color-secondary)' }}>
             <Filter size={14} /> Filter Logs:
           </div>
           
-          {/* User search */}
+          {}
           <div className="login-input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
             <Search size={14} className="login-input-icon login-input-icon--left" style={{ color: 'var(--color-secondary)' }} />
             <input
@@ -78,7 +72,7 @@ export default function AuditLogs() {
             />
           </div>
 
-          {/* Module select */}
+          {}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <select
               className="login-input register-select"
@@ -93,7 +87,7 @@ export default function AuditLogs() {
             </select>
           </div>
 
-          {/* Action type select */}
+          {}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <select
               className="login-input register-select"
@@ -110,7 +104,7 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Logs Table */}
+      {}
       <div className="admin-panel">
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-secondary)' }}>

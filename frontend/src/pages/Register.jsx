@@ -19,11 +19,10 @@ export default function Register() {
 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [submitState, setSubmitState] = useState('idle'); // idle | registering | success | error
+  const [submitState, setSubmitState] = useState('idle');
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [errorMsg, setErrorMsg] = useState('');
 
-  /* ── Parallax tilt ── */
   const handleMouseMove = (e) => {
     const rect = cardRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -36,7 +35,6 @@ export default function Register() {
 
   const handleMouseLeave = () => setTilt({ x: 0, y: 0 });
 
-  /* ── Submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password || !form.role) {
@@ -54,7 +52,6 @@ export default function Register() {
       await api.post('/auth/register-public', form);
       
       setSubmitState('success');
-      // Show success screen then redirect to login
       await new Promise(r => setTimeout(r, 2500));
       navigate('/login');
     } catch (err) {
@@ -71,19 +68,19 @@ export default function Register() {
 
   return (
     <div className="register-page" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-      {/* Ambient blobs */}
+      {}
       <div className="register-blob register-blob--tl" />
       <div className="register-blob register-blob--br" />
       <div className="register-blob register-blob--tr" />
 
-      {/* Card */}
+      {}
       <div className="register-card" ref={cardRef} style={cardStyle}>
-        {/* Back button */}
+        {}
         <button className="register-back-btn" onClick={() => navigate('/login')}>
           <ArrowLeft size={16} /> Back to Sign In
         </button>
 
-        {/* Header */}
+        {}
         <div className="register-card-header">
           <div className="register-logo-mark">
             <Zap size={20} strokeWidth={2.5} />
@@ -94,10 +91,10 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Divider */}
+        {}
         <div className="register-divider" />
 
-        {/* Success State */}
+        {}
         {submitState === 'success' ? (
           <div className="register-success-pane animate-fade-in">
             <div className="register-success-icon-wrapper">
@@ -111,9 +108,9 @@ export default function Register() {
             <p className="register-success-redirect">Redirecting to login page...</p>
           </div>
         ) : (
-          /* Form */
+          
           <form className="register-form" onSubmit={handleSubmit} noValidate>
-            {/* Name */}
+            {}
             <div className="register-field">
               <label className="register-label" htmlFor="register-name">Full Name</label>
               <div className="register-input-wrapper">
@@ -130,7 +127,7 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Email */}
+            {}
             <div className="register-field">
               <label className="register-label" htmlFor="register-email">Email Address</label>
               <div className="register-input-wrapper">
@@ -147,7 +144,7 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Password */}
+            {}
             <div className="register-field">
               <label className="register-label" htmlFor="register-password">Password</label>
               <div className="register-input-wrapper">
@@ -174,7 +171,7 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Role Select */}
+            {}
             <div className="register-field">
               <label className="register-label" htmlFor="register-role">Requested Access Role</label>
               <div className="register-input-wrapper">
@@ -193,12 +190,12 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Error */}
+            {}
             {errorMsg && (
               <p className="register-error">{errorMsg}</p>
             )}
 
-            {/* Submit */}
+            {}
             <button
               type="submit"
               id="register-submit-btn"

@@ -31,7 +31,6 @@ async function getMOById(id) {
 }
 
 async function createMO(data, userId) {
-  // Check if product has a BOM
   const bom = await prisma.billOfMaterials.findUnique({
     where: { product_id: data.product_id },
     include: { lines: true },
@@ -72,15 +71,10 @@ async function confirmMO(id) {
       error.name = 'BusinessLogicError';
       throw error;
     }
-
-    // 1. Reserve component stock
     for (const line of mo.bom.lines) {
       const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
-      await reserveStock(tx, line.component_product_id, requiredQty);
+      await reserveStock(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Reserved for MO ${id}`);
     }
-
-    // 2. Generate Work Orders based on BOM lines operations
-    // Extract unique operations
     const operations = [...new Set(mo.bom.lines.map(l => l.operation))];
     
     await tx.workOrder.createMany({
@@ -91,8 +85,6 @@ async function confirmMO(id) {
         status: 'pending'
       }))
     });
-
-    // 3. Update status
     return await tx.manufacturingOrder.update({
       where: { id },
       data: { status: 'confirmed' },
@@ -113,23 +105,19 @@ async function completeMO(id) {
       error.name = 'BusinessLogicError';
       throw error;
     }
-
-    // 1. Consume components (deducts on_hand and reserved)
     for (const line of mo.bom.lines) {
       const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
-      await consumeComponentStock(tx, line.component_product_id, requiredQty);
+      await consumeComponentStock(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Consumed for MO ${id}`);
     }
 
     // 2. Produce finished goods (adds on_hand)
-    await produceFinishedGoods(tx, mo.product_id, mo.quantity);
+    await produceFinishedGoods(tx, mo.product_id, mo.quantity, 'MANUFACTURING_ORDER', id, `Produced finished product from MO ${id}`);
 
     // 3. Mark all incomplete work orders as completed (auto-complete)
     await tx.workOrder.updateMany({
       where: { mo_id: id, status: { not: 'completed' } },
       data: { status: 'completed', completed_at: new Date() }
     });
-
-    // 4. Update status
     return await tx.manufacturingOrder.update({
       where: { id },
       data: { status: 'completed' },
@@ -149,16 +137,12 @@ async function cancelMO(id) {
       error.name = 'BusinessLogicError';
       throw error;
     }
-
-    // If it was confirmed/in_progress, we need to release reserved components
     if (mo.status === 'confirmed' || mo.status === 'in_progress') {
       for (const line of mo.bom.lines) {
         const requiredQty = parseFloat(line.qty_per_unit) * parseFloat(mo.quantity);
-        await releaseReservation(tx, line.component_product_id, requiredQty);
+        await releaseReservation(tx, line.component_product_id, requiredQty, 'MANUFACTURING_ORDER', id, `Released due to MO cancel`);
       }
     }
-
-    // Delete associated work orders
     await tx.workOrder.deleteMany({
       where: { mo_id: id }
     });

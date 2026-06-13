@@ -27,14 +27,10 @@ async function approveRegistration(userId, adminId) {
       error.status = 400;
       throw error;
     }
-
-    // 1. Update user to APPROVED
     const updatedUser = await tx.user.update({
       where: { id: userId },
       data: { status: 'APPROVED' },
     });
-
-    // 2. Grant requested modules
     const modulesToGrant = user.requested_modules || [];
     if (modulesToGrant.length > 0) {
       await tx.userModuleAccess.createMany({

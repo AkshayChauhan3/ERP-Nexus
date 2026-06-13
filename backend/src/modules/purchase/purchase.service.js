@@ -89,7 +89,7 @@ async function receivePurchaseOrder(id) {
         data: { received_qty: line.ordered_qty },
       });
 
-      await addStockOnReceipt(tx, line.product_id, line.ordered_qty);
+      await addStockOnReceipt(tx, line.product_id, line.ordered_qty, 'PURCHASE_ORDER', po.id, 'Direct PO reception');
     }
 
     return updatedPo;

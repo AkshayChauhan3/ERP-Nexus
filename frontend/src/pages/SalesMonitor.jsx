@@ -22,7 +22,7 @@ export default function SalesMonitor() {
   return (
     <AppShell>
       <div className="animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* ── Section 1: Summary Cards ── */}
+      {}
       <div className="admin-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="admin-panel" style={{ padding: '16px', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
           <div className="kpi-icon kpi-icon--blue" style={{ width: '36px', height: '36px' }}><Clock size={16} /></div>
@@ -61,9 +61,9 @@ export default function SalesMonitor() {
         </div>
       </div>
 
-      {/* ── Section 2: Dual Grid (Orders & Top Products) ── */}
+      {}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
-        {/* Recent Orders Table */}
+        {}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <h3 className="admin-panel-title">Recent Sales Operations</h3>
@@ -104,7 +104,7 @@ export default function SalesMonitor() {
           </div>
         </div>
 
-        {/* Top Selling Products */}
+        {}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <h3 className="admin-panel-title">Top Selling Products</h3>

@@ -3,20 +3,11 @@ const crypto = require('crypto');
 const prisma = require('../../config/db');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../../config/jwt');
 
-/**
- * auth.service.js — Auth Business Logic
- */
-
 function hashRefreshToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-/**
- * Public Sign-Up
- * Creates user in PENDING state. Admin must approve later.
- */
 async function registerUser(data) {
-  // Check existing login_id or email
   const existing = await prisma.user.findFirst({
     where: {
       OR: [{ login_id: data.login_id }, { email: data.email }],
@@ -56,11 +47,7 @@ async function registerUser(data) {
   });
 }
 
-/**
- * Authenticates a user by login_id and password.
- */
 async function login(login_id, password) {
-  // Find user by login_id
   const user = await prisma.user.findUnique({ where: { login_id } });
   
   if (!user) {
@@ -68,16 +55,12 @@ async function login(login_id, password) {
     error.status = 401;
     throw error;
   }
-  
-  // Verify password
   const isValid = await bcrypt.compare(password, user.password);
   if (!isValid) {
     const error = new Error('Invalid login_id or password');
     error.status = 401;
     throw error;
   }
-
-  // Check Approval Status
   if (user.status === 'PENDING') {
     const error = new Error('Registration is awaiting admin approval');
     error.status = 403;
@@ -88,34 +71,24 @@ async function login(login_id, password) {
     error.status = 403;
     throw error;
   }
-  
-  // Create token payload
   const payload = { id: user.id, login_id: user.login_id, is_admin: user.is_admin };
-  
-  // Generate tokens
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
-  
-  // Hash refresh token and store in DB
   const tokenHash = hashRefreshToken(refreshToken);
   
   await prisma.$transaction([
-    // Update last login
     prisma.user.update({
       where: { id: user.id },
       data: { last_login_at: new Date() }
     }),
-    // Store refresh token
     prisma.refreshToken.create({
       data: {
         user_id: user.id,
         token_hash: tokenHash,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       }
     })
   ]);
-  
-  // Remove password before returning
   const { password: _, ...userWithoutPassword } = user;
   
   return {
@@ -125,16 +98,10 @@ async function login(login_id, password) {
   };
 }
 
-/**
- * Generates a new access token using a valid refresh token.
- */
 async function refreshAccessToken(token) {
-  // Throws if invalid or expired
   const decoded = verifyRefreshToken(token);
   
   const tokenHash = hashRefreshToken(token);
-  
-  // Verify token exists in DB and is not revoked
   const dbToken = await prisma.refreshToken.findFirst({
     where: { token_hash: tokenHash, is_revoked: false }
   });
@@ -144,8 +111,6 @@ async function refreshAccessToken(token) {
     error.status = 403;
     throw error;
   }
-
-  // Verify user still exists and is approved
   const user = await prisma.user.findUnique({ where: { id: decoded.id } });
   if (!user || user.status !== 'APPROVED') {
     const error = new Error('User inactive or not approved');
@@ -168,8 +133,6 @@ async function logout(userId, refreshToken) {
     });
   }
 }
-
-// STUBS for Forgot Password (Step 15)
 async function forgotPassword(email) {
   return null;
 }

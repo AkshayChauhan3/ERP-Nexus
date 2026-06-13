@@ -11,7 +11,7 @@ async function getAllSuggestions(filters = {}) {
     where,
     orderBy: { created_at: 'desc' },
     include: {
-      product: { select: { id: true, name: true, on_hand_qty: true, reorder_level: true, vendor_id: true } }
+      product: { select: { id: true, name: true, vendor_id: true, inventory: { select: { on_hand_qty: true, reorder_level: true } } } }
     }
   });
 }

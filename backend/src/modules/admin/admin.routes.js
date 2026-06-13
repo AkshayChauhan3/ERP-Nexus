@@ -11,11 +11,7 @@ const router = express.Router();
  *   name: Admin
  *   description: Admin management and user approvals
  */
-
-// All admin routes require authentication and admin role
 router.use(authenticate);
-// Since we removed the role enum, our authorize middleware will be updated in Step 04.4.
-// For now, we'll assume `authorize('admin')` checks `req.user.is_admin`.
 router.use(authorize('admin'));
 
 /**

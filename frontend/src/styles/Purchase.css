@@ -1,0 +1,375 @@
+/* ── ERP-Nexus Purchase Module Stylesheet ── */
+
+.purchase-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.purchase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.purchase-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.purchase-sub {
+  font-size: 13px;
+  color: var(--color-secondary);
+  margin: 4px 0 0 32px;
+}
+
+/* ── Panel Components ── */
+.purchase-panel {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.purchase-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.purchase-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-outline-variant);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.purchase-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── KPI Grid ── */
+.purchase-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.purchase-kpi-card {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  transition: all 0.2s var(--ease-out);
+}
+
+.purchase-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
+}
+
+.purchase-kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.purchase-kpi-icon--blue {
+  background: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.purchase-kpi-icon--green {
+  background: var(--color-success-container);
+  color: var(--color-on-success-container);
+}
+
+.purchase-kpi-icon--error {
+  background: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+.purchase-kpi-icon--warning {
+  background: var(--color-amber-container);
+  color: var(--color-amber);
+}
+
+.purchase-kpi-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1.2;
+}
+
+.purchase-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-secondary);
+}
+
+/* ── Split Grid Layouts ── */
+.purchase-split-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 1024px) {
+  .purchase-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Table Styling ── */
+.purchase-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.purchase-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.purchase-table th {
+  background: var(--surface-low);
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--color-secondary);
+  border-bottom: 1px solid var(--color-outline-variant);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.purchase-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-outline-variant);
+  color: var(--color-primary);
+}
+
+.purchase-table tr:last-child td {
+  border-bottom: none;
+}
+
+.purchase-table tr:hover td {
+  background: var(--surface-low);
+}
+
+/* ── Badges ── */
+.purchase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.purchase-badge--primary {
+  background: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.purchase-badge--success {
+  background: var(--color-success-container);
+  color: var(--color-on-success-container);
+}
+
+.purchase-badge--warning {
+  background: var(--color-amber-container);
+  color: var(--color-amber);
+}
+
+.purchase-badge--error {
+  background: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+.purchase-badge--outline {
+  border: 1px solid var(--color-outline-variant);
+  color: var(--color-secondary);
+  background: transparent;
+}
+
+/* ── Modal Design ── */
+.purchase-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease both;
+}
+
+.purchase-modal {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+  animation: slideUp 0.3s var(--ease-spring) both;
+}
+
+.purchase-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-outline-variant);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.purchase-modal-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.purchase-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-secondary);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.purchase-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.purchase-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.purchase-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.purchase-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-low);
+  color: var(--color-primary);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.purchase-input:focus {
+  border-color: var(--color-primary);
+  background: var(--color-canvas);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+/* ── Tabs ── */
+.purchase-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--color-outline-variant);
+  margin-bottom: var(--space-4);
+}
+
+.purchase-tab {
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: -2px;
+  transition: all 0.2s ease;
+}
+
+.purchase-tab:hover {
+  color: var(--color-primary);
+}
+
+.purchase-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* ── Stock Risk Bar ── */
+.purchase-progress-bar {
+  height: 6px;
+  background: var(--surface-high);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.purchase-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

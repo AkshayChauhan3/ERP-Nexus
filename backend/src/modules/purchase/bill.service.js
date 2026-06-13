@@ -23,7 +23,6 @@ async function getBillById(id) {
 }
 
 async function createBill(data) {
-  // Validate PO belongs to Vendor
   const po = await prisma.purchaseOrder.findUniqueOrThrow({
     where: { id: data.po_id },
   });

@@ -6,8 +6,6 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seed: Starting database seeding...');
-
-  // 1. Seed Modules
   const modulesToSeed = [
     { name: 'sales', desc: 'Sales Order management and Customer relations' },
     { name: 'purchase', desc: 'Purchase Order management, Vendors and Goods Receipts' },
@@ -28,12 +26,8 @@ async function main() {
     });
   }
   console.log(`Seed: Mapped ${modulesToSeed.length} modules.`);
-
-  // 2. Hash default passwords
   const adminPasswordHash = await bcrypt.hash('admin', 10);
   const ownerPasswordHash = await bcrypt.hash('owner', 10);
-
-  // 3. Seed Admin Super User
   console.log('Seed: Seeding Admin User...');
   const adminUser = await prisma.user.upsert({
     where: { login_id: 'admin' },
@@ -59,8 +53,6 @@ async function main() {
       },
     },
   });
-
-  // 4. Seed Owner Super User (Admin Task + Finance)
   console.log('Seed: Seeding Owner User...');
   const ownerUser = await prisma.user.upsert({
     where: { login_id: 'owner' },

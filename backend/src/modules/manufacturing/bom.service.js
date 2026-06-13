@@ -24,9 +24,7 @@ async function getBomById(id) {
 }
 
 async function createBom(data) {
-  // data: { product_id, lines: [{ component_product_id, qty_per_unit, operation }] }
   return await prisma.$transaction(async (tx) => {
-    // Check if product already has a BOM
     const existing = await tx.billOfMaterials.findUnique({
       where: { product_id: data.product_id },
     });
@@ -49,8 +47,6 @@ async function createBom(data) {
       },
       include: { lines: true },
     });
-
-    // Automatically set product to MTO and link bom_id
     await tx.product.update({
       where: { id: data.product_id },
       data: { 
@@ -64,7 +60,6 @@ async function createBom(data) {
 }
 
 async function updateBom(id, data) {
-  // To update BOM lines safely, we delete old lines and recreate them in a transaction
   return await prisma.$transaction(async (tx) => {
     const bom = await tx.billOfMaterials.findUniqueOrThrow({
       where: { id },
@@ -104,8 +99,6 @@ async function deleteBom(id) {
     await tx.billOfMaterials.delete({
       where: { id },
     });
-
-    // Unlink from product
     await tx.product.update({
       where: { id: bom.product_id },
       data: { bom_id: null },

@@ -11,8 +11,6 @@ const router = express.Router();
  *   name: Vendors
  *   description: Vendor management
  */
-
-// All vendor routes require authentication
 router.use(authenticate);
 
 /**
@@ -25,7 +23,6 @@ router.use(authenticate);
  *       200:
  *         description: List of vendors
  */
-// Admin, purchase, owner can list vendors
 router.get('/', authorize('admin', 'purchase', 'owner', 'inventory'), vendorController.getAll);
 
 /**
@@ -50,7 +47,6 @@ router.get('/', authorize('admin', 'purchase', 'owner', 'inventory'), vendorCont
  *       201:
  *         description: Vendor created
  */
-// Only admin, purchase, owner can create vendors
 router.post('/', authorize('admin', 'purchase', 'owner'), vendorController.create);
 
 /**
