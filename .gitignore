@@ -1,0 +1,28 @@
+# Root-level gitignore — applies to entire ERP-Nexus repo
+
+# ─── Node ─────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ─── Environment ──────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.env
+
+# ─── OS / Editor ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+
+# ─── Build Outputs ────────────────────────────────────────
+dist/
+build/
+
+# ─── Test Coverage ────────────────────────────────────────
+coverage/
+
+# ─── Logs ─────────────────────────────────────────────────
+logs/
+*.log
