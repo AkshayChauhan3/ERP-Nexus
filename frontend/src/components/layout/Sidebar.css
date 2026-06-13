@@ -94,8 +94,8 @@
   font-weight: 500;
   color: var(--color-secondary);
   transition: background-color var(--duration-fast) var(--ease-out),
-              color var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
   text-decoration: none;
   position: relative;
 }
@@ -147,7 +147,7 @@
   border-radius: var(--radius-xl);
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .sidebar-footer-card:hover {
@@ -158,7 +158,7 @@
 .sidebar-footer-icon {
   width: 28px;
   height: 28px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -180,5 +180,5 @@
 
 .sidebar-footer-sub {
   font-size: 11px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255, 0.6);
 }
