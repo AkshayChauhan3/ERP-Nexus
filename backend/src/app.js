@@ -32,10 +32,10 @@ const errorHandler = require('./middleware/errorHandler');
 
 // ─── Future module imports (added step by step) ───────────
 const authRoutes         = require('./modules/auth/auth.routes');
-// const productRoutes      = require('./modules/products/products.routes');
-// const vendorRoutes       = require('./modules/vendors/vendors.routes');
-// const customerRoutes     = require('./modules/customers/customers.routes');
-// const salesRoutes        = require('./modules/sales/sales.routes');
+const productRoutes      = require('./modules/products/products.routes');
+const vendorRoutes       = require('./modules/vendors/vendors.routes');
+const customerRoutes     = require('./modules/customers/customers.routes');
+const salesRoutes        = require('./modules/sales/sales.routes');
 // const purchaseRoutes     = require('./modules/purchase/purchase.routes');
 // const manufacturingRoutes = require('./modules/manufacturing/manufacturing.routes');
 // const inventoryRoutes    = require('./modules/inventory/inventory.routes');
@@ -111,10 +111,10 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // Currently only the health check is active.
 
 app.use('/api/auth',                 authRoutes);
-// app.use('/api/products',             productRoutes);
-// app.use('/api/vendors',              vendorRoutes);
-// app.use('/api/customers',            customerRoutes);
-// app.use('/api/sales-orders',         salesRoutes);
+app.use('/api/products',             productRoutes);
+app.use('/api/vendors',              vendorRoutes);
+app.use('/api/customers',            customerRoutes);
+app.use('/api/sales-orders',         salesRoutes);
 // app.use('/api/purchase-orders',      purchaseRoutes);
 // app.use('/api',                      manufacturingRoutes);   // /boms, /bom-lines, /manufacturing-orders, /work-orders
 // app.use('/api/stock-ledger',         inventoryRoutes);

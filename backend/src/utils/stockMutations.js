@@ -97,8 +97,16 @@ function getFreeQty(product) {
  * @returns {object} Updated product
  */
 async function reserveStock(prisma, productId, qty) {
-  // TODO: Implemented in Step 06
-  throw new Error('reserveStock not yet implemented — coming in Step 06');
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  const newReserved = parseFloat(product.reserved_qty) + parseFloat(qty);
+  validateStockLevels(product, product.on_hand_qty, newReserved);
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data: { reserved_qty: newReserved }
+  });
 }
 
 /**
@@ -112,8 +120,16 @@ async function reserveStock(prisma, productId, qty) {
  * @returns {object} Updated product
  */
 async function releaseReservation(prisma, productId, qty) {
-  // TODO: Implemented in Step 06
-  throw new Error('releaseReservation not yet implemented — coming in Step 06');
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
+  validateStockLevels(product, product.on_hand_qty, newReserved);
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data: { reserved_qty: newReserved }
+  });
 }
 
 /**
@@ -127,8 +143,20 @@ async function releaseReservation(prisma, productId, qty) {
  * @returns {object} Updated product
  */
 async function deductStockOnDelivery(prisma, productId, qty) {
-  // TODO: Implemented in Step 06
-  throw new Error('deductStockOnDelivery not yet implemented — coming in Step 06');
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new BusinessLogicError(`Product ${productId} not found`);
+
+  const newOnHand = parseFloat(product.on_hand_qty) - parseFloat(qty);
+  const newReserved = parseFloat(product.reserved_qty) - parseFloat(qty);
+  validateStockLevels(product, newOnHand, newReserved);
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data: {
+      on_hand_qty: newOnHand,
+      reserved_qty: newReserved
+    }
+  });
 }
 
 /**
