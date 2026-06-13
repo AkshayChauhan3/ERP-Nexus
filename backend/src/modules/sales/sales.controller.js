@@ -29,7 +29,7 @@ async function create(req, res) {
 }
 
 async function confirm(req, res) {
-  const order = await salesService.confirmSalesOrder(req.params.id);
+  const order = await salesService.confirmSalesOrder(req.params.id, req.user.id);
   res.json({ success: true, message: 'Sales order confirmed. Stock reserved.', data: order });
 }
 

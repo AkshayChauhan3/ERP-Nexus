@@ -43,6 +43,7 @@ export default function Products() {
     reserved_qty: '',
     reorder_level: '',
     procurement_type: 'MTS',
+    procurement_method: 'PURCHASE',
     procure_on_demand: false,
     vendor_id: '',
     bom_id: '',
@@ -102,6 +103,7 @@ export default function Products() {
       reserved_qty: '0',
       reorder_level: '5',
       procurement_type: 'MTS',
+      procurement_method: 'PURCHASE',
       procure_on_demand: false,
       vendor_id: '',
       bom_id: '',
@@ -122,6 +124,7 @@ export default function Products() {
       reserved_qty: product.inventory?.reserved_qty !== undefined ? String(product.inventory.reserved_qty) : '0',
       reorder_level: product.inventory?.reorder_level !== undefined ? String(product.inventory.reorder_level) : '0',
       procurement_type: product.procurement_type || 'MTS',
+      procurement_method: product.procurement_method || 'PURCHASE',
       procure_on_demand: product.procure_on_demand || false,
       vendor_id: product.vendor_id || '',
       bom_id: product.bom_id || '',
@@ -176,6 +179,7 @@ export default function Products() {
         reserved_qty: parseFloat(form.reserved_qty) || 0,
         reorder_level: parseFloat(form.reorder_level) || 0,
         procurement_type: form.procurement_type,
+        procurement_method: form.procurement_method,
         procure_on_demand: !!form.procure_on_demand,
         vendor_id: form.vendor_id ? form.vendor_id : null,
         bom_id: form.bom_id ? form.bom_id : null,
@@ -471,6 +475,14 @@ export default function Products() {
                     <select className="register-input register-select" value={form.procurement_type} onChange={e => setForm({ ...form, procurement_type: e.target.value })}>
                       <option value="MTS">MTS (Make To Stock)</option>
                       <option value="MTO">MTO (Make To Order)</option>
+                    </select>
+                  </div>
+
+                  <div className="register-field">
+                    <label className="register-label">Procurement Type</label>
+                    <select className="register-input register-select" value={form.procurement_method} onChange={e => setForm({ ...form, procurement_method: e.target.value })}>
+                      <option value="PURCHASE">Purchase (Generate PO)</option>
+                      <option value="MANUFACTURING">Manufacturing (Generate MO)</option>
                     </select>
                   </div>
 

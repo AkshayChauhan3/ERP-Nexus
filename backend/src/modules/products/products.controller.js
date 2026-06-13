@@ -10,6 +10,7 @@ const productSchema = z.object({
   reserved_qty: z.number().min(0, 'Reserved quantity cannot be negative').optional(),
   reorder_level: z.number().min(0, 'Reorder level cannot be negative').optional(),
   procurement_type: z.enum(['MTS', 'MTO']).optional(),
+  procurement_method: z.enum(['PURCHASE', 'MANUFACTURING']).default('PURCHASE').optional(),
   procure_on_demand: z.boolean().optional(),
   vendor_id: z.string().uuid('Invalid vendor ID format').optional().nullable(),
   bom_id: z.string().uuid('Invalid BOM ID format').optional().nullable(),

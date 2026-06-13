@@ -27,8 +27,8 @@ async function checkReorderLevel(tx, productId) {
           product_id: productId,
           current_stock: product.inventory.on_hand_qty,
           shortage_qty: suggestedQty,
-          procurement_source: product.procurement_type === 'MTO' ? 'MANUFACTURING' : 'PURCHASE',
-          status: 'pending',
+          procurement_source: product.procurement_method || (product.procurement_type === 'MTO' ? 'MANUFACTURING' : 'PURCHASE'),
+          status: 'PENDING',
           reason: `Stock level (${parseFloat(product.inventory.on_hand_qty).toFixed(3)}) fell below reorder level (${parseFloat(product.inventory.reorder_level).toFixed(3)})`
         }
       });

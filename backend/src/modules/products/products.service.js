@@ -37,6 +37,7 @@ async function createProduct(data) {
         sales_price: data.sales_price,
         cost_price: data.cost_price,
         procurement_type: data.procurement_type,
+        procurement_method: data.procurement_method,
         procure_on_demand: data.procure_on_demand,
         vendor_id: data.vendor_id,
         bom_id: data.bom_id,

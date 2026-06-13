@@ -17,7 +17,7 @@ async function getAllSuggestions(filters = {}) {
 }
 
 async function updateSuggestionStatus(id, newStatus) {
-  const validStatuses = ['pending', 'po_created', 'ignored'];
+  const validStatuses = ['PENDING', 'PO_CREATED', 'MO_CREATED', 'IGNORED', 'pending', 'po_created', 'mo_created', 'ignored'];
   if (!validStatuses.includes(newStatus)) {
     throw new BusinessLogicError(`Invalid status: ${newStatus}`);
   }

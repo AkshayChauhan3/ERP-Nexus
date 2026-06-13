@@ -229,6 +229,7 @@ model Product {
   sales_price       Decimal     @db.Decimal(12, 2)
   cost_price        Decimal     @db.Decimal(12, 2)
   procurement_type  ProcureType @default(MTS)
+  procurement_method String      @default("PURCHASE") @db.VarChar(20) // PURCHASE or MANUFACTURING
   procure_on_demand Boolean     @default(false)
   vendor_id         String?     @db.Uuid // preferred vendor for MTS-purchase products
   bom_id            String?     @db.Uuid // default BOM for MTO-manufacture products
