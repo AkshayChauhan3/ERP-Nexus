@@ -675,3 +675,4 @@ model RiskAlert {
 
   @@map("risk_alerts")
 }
+

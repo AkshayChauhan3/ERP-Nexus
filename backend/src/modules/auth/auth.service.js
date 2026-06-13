@@ -64,6 +64,7 @@ async function login(login_id, password) {
     error.status = 401;
     throw error;
   }
+  
   if (user.status === 'PENDING') {
     const error = new Error('Registration is awaiting admin approval');
     error.status = 403;
