@@ -121,3 +121,11 @@
   animation: spin 0.8s linear infinite;
   display: inline-block;
 }
+
+/* ── Prevent fixed overlay clipping when modals/drawers are open ── */
+body:has(.admin-modal-overlay) .animate-page,
+body:has(.purchase-modal-backdrop) .animate-page,
+body:has(.profile-drawer-backdrop) .animate-page {
+  transform: none !important;
+  animation: none !important;
+}
