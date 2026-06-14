@@ -123,10 +123,13 @@ async function main() {
   });
 
   // Reserve 8 chairs for SO3
-  await prisma.inventory.update({
-    where: { product_id: officeChair.id },
-    data: { reserved_qty: { increment: 8 } },
-  });
+  const invChairReserve = await prisma.inventory.findFirst({ where: { product_id: officeChair.id } });
+  if (invChairReserve) {
+    await prisma.inventory.update({
+      where: { id: invChairReserve.id },
+      data: { reserved_qty: { increment: 8 } },
+    });
+  }
   await prisma.stockReservation.create({
     data: {
       product_id: officeChair.id,
@@ -179,15 +182,21 @@ async function main() {
 
   // ─── Update inventory to reflect enriched data realistically ─────────────
   console.log('Enrich: Setting realistic inventory levels...');
-  await prisma.inventory.update({
-    where: { product_id: officeChair.id },
-    data: { on_hand_qty: 50 }, // bump up to realistic stock level for a furniture mfg company
-  });
+  const invChair = await prisma.inventory.findFirst({ where: { product_id: officeChair.id } });
+  if (invChair) {
+    await prisma.inventory.update({
+      where: { id: invChair.id },
+      data: { on_hand_qty: 50 },
+    });
+  }
 
-  await prisma.inventory.update({
-    where: { product_id: diningTable.id },
-    data: { on_hand_qty: 8, reserved_qty: 0 },
-  });
+  const invTable = await prisma.inventory.findFirst({ where: { product_id: diningTable.id } });
+  if (invTable) {
+    await prisma.inventory.update({
+      where: { id: invTable.id },
+      data: { on_hand_qty: 8, reserved_qty: 0 },
+    });
+  }
 
   console.log('Enrich: Sales data enrichment complete!');
   console.log('\nDatabase summary:');

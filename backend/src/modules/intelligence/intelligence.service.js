@@ -44,7 +44,7 @@ async function getDashboardStats() {
   let lowStock = 0;
   for (const inv of inventory) {
     invValue += Number(inv.on_hand_qty) * Number(inv.product.cost_price);
-    if (Number(inv.on_hand_qty) < Number(inv.product.reorder_level)) {
+    if (Number(inv.on_hand_qty) < Number(inv.reorder_level)) {
       lowStock++;
     }
   }
