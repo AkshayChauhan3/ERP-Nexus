@@ -28,11 +28,18 @@ async function getPurchaseOrderById(id) {
 
 async function createPurchaseOrder(data, userId) {
   return await prisma.$transaction(async (tx) => {
+    // Generate a unique PO number (required field)
+    const poCount = await tx.purchaseOrder.count();
+    const poNumber = `PO-${new Date().getFullYear()}-${String(poCount + 1).padStart(3, '0')}-${Date.now().toString().slice(-4)}`;
+
     const po = await tx.purchaseOrder.create({
       data: {
+        po_number: poNumber,
         vendor_id: data.vendor_id,
         created_by: userId,
         status: 'draft',
+        remarks: data.remarks || null,
+        vendor_address: data.vendor_address || null,
         lines: {
           create: data.lines.map((line) => ({
             product_id: line.product_id,
