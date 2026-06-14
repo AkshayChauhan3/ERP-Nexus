@@ -1,6 +1,8 @@
 const { z } = require('zod');
 const adminService = require('./admin.service');
 
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+
 const rejectSchema = z.object({
   reason: z.string().min(5, 'Reason must be at least 5 characters'),
 });
@@ -8,7 +10,7 @@ const rejectSchema = z.object({
 const createSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address').endsWith('.com', 'Email address must end with .com'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().regex(passwordRegex, 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.'),
   role: z.string().min(2, 'Role is required'),
 });
 
@@ -19,7 +21,7 @@ const updateSchema = z.object({
 });
 
 const passwordSchema = z.object({
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().regex(passwordRegex, 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.'),
 });
 
 function mapUserForFrontend(user) {

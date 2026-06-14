@@ -79,20 +79,25 @@ export default function UserManagement() {
       setError('Please fill in all fields.');
       return;
     }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+    if (!passwordRegex.test(form.password)) {
+      setError('Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.');
+      return;
+    }
     try {
       await api.post('/users', form);
       setActiveModal(null);
       showNotification(`User "${form.name}" created successfully.`);
       loadUsers();
     } catch (err) {
-      showNotification(err.message || 'Failed to create user.', 'error');
+      setError(err.message || 'Failed to create user.');
     }
   };
 
   const handleEditUser = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.role) {
-      showNotification('Please fill in all fields.', 'error');
+      setError('Please fill in all fields.');
       return;
     }
     try {
@@ -101,7 +106,7 @@ export default function UserManagement() {
       showNotification(`User "${form.name}" updated successfully.`);
       loadUsers();
     } catch (err) {
-      showNotification(err.message || 'Failed to update user.', 'error');
+      setError(err.message || 'Failed to update user.');
     }
   };
 
@@ -122,11 +127,12 @@ export default function UserManagement() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (pwForm.password !== pwForm.confirmPassword) {
-      showNotification('Passwords do not match.', 'error');
+      setError('Passwords do not match.');
       return;
     }
-    if (pwForm.password.length < 6) {
-      showNotification('Password must be at least 6 characters.', 'error');
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+    if (!passwordRegex.test(pwForm.password)) {
+      setError('Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.');
       return;
     }
     try {
@@ -134,7 +140,7 @@ export default function UserManagement() {
       setActiveModal(null);
       showNotification(`Password for "${selectedUser.name}" reset successfully.`);
     } catch (err) {
-      showNotification(err.message || 'Failed to reset password.', 'error');
+      setError(err.message || 'Failed to reset password.');
     }
   };
 

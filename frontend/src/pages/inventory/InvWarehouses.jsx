@@ -42,7 +42,7 @@ export default function InvWarehouses() {
     setSelectedWH(wh);
     const items = allProds.filter(p => p.warehouseId === wh.warehouse_code || p.warehouseUuid === wh.id);
     setStoredItems(items);
-    
+
     // Calculate total stock qty stored in this warehouse
     const totalQty = items.reduce((sum, item) => sum + item.currentStock, 0);
     setUsedCapacity(totalQty);
@@ -93,7 +93,7 @@ export default function InvWarehouses() {
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>{w.name}</div>
                     <div style={{ fontSize: '12px', color: 'var(--color-secondary)', marginTop: '2px' }}>Manager: {w.manager}</div>
-                    
+
                     {/* Progress bar */}
                     <div style={{ marginTop: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
@@ -138,7 +138,7 @@ export default function InvWarehouses() {
                 </div>
                 <div>
                   <span style={{ fontSize: '10px', color: 'var(--color-secondary)', display: 'block' }}>TOTAL VALUE</span>
-                  <strong>₹{selectedWH.value.toLocaleString()}</strong>
+                  <strong>₹{storedItems.reduce((sum, item) => sum + (item.currentStock * item.costPrice), 0).toLocaleString()}</strong>
                 </div>
               </div>
 
