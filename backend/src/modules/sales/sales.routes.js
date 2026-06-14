@@ -1,5 +1,6 @@
 const express = require('express');
 const salesController = require('./sales.controller');
+const { generateInvoicePDF } = require('./invoice.controller');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 
@@ -42,6 +43,9 @@ router.get('/', authorize('admin', 'sales', 'owner'), salesController.getAll);
  *       200:
  *         description: Sales order details
  */
+// ⚠️ Must be registered BEFORE /:id to avoid route conflict
+router.get('/:id/invoice', authorize('admin', 'owner'), generateInvoicePDF);
+
 router.get('/:id', authorize('admin', 'sales', 'owner', 'inventory'), salesController.getById);
 
 /**

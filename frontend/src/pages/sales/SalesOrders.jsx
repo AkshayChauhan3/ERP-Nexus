@@ -14,6 +14,7 @@ export default function SalesOrders() {
   // Modals
   const [showCreate, setShowCreate] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loadingOrder, setLoadingOrder] = useState(false);
 
   // Form State
   const [formCust, setFormCust] = useState('');
@@ -23,7 +24,10 @@ export default function SalesOrders() {
   const [remarks, setRemarks] = useState('');
 
   const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
-  const isOwner = authData?.user?.role === 'owner' || authData?.user?.is_admin === true;
+  const isOwner = authData?.user?.role === 'owner' 
+    || authData?.user?.role === 'admin'
+    || authData?.user?.is_admin === true
+    || authData?.user?.login_id === 'owner';
 
   const loadData = async () => {
     try {
@@ -125,22 +129,41 @@ export default function SalesOrders() {
 
   const steps = ['draft', 'confirmed', 'processing', 'delivered', 'cancelled'];
 
-  const handleDownloadInvoice = () => {
+  const handleViewOrder = async (o) => {
+    setLoadingOrder(true);
+    try {
+      const res = await api.get(`/sales-orders/${o.id}`);
+      setSelectedOrder(res.data || o);
+    } catch (err) {
+      console.error('Failed to fetch order details', err);
+      setSelectedOrder(o); // fallback to list data
+    } finally {
+      setLoadingOrder(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
     if (!selectedOrder) return;
-    const total = selectedOrder.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0;
-    const invoiceText = `=================================\nNEXUS ERP - COMMERCIAL INVOICE\n=================================\nInvoice No: INV-${selectedOrder.id.substring(0,8).toUpperCase()}\nDate: ${new Date().toLocaleDateString()}\n\nBilled To:\nCustomer: ${selectedOrder.customer?.name || 'N/A'}\nAddress: ${selectedOrder.customer_address || 'N/A'}\n\nOrder Details:\nDate: ${new Date(selectedOrder.created_at).toLocaleDateString()}\nStatus: ${selectedOrder.status.toUpperCase()}\n\nLine Items:\n` + 
-      (selectedOrder.lines || []).map(l => `- ${l.product?.name || 'Item'} (Qty: ${l.ordered_qty}) @ ₹${Number(l.unit_price).toLocaleString()} = ₹${(l.ordered_qty * l.unit_price).toLocaleString()}`).join('\n') +
-      `\n\n---------------------------------\nTotal Amount: ₹${total.toLocaleString()}\n=================================\nThank you for your business!`;
-      
-    const blob = new Blob([invoiceText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Invoice_${selectedOrder.id.substring(0,8).toUpperCase()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+      const res = await fetch(`http://localhost:3000/api/sales-orders/${selectedOrder.id}/invoice`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${authData?.accessToken}` }
+      });
+      if (!res.ok) throw new Error('Failed to generate invoice');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice_${selectedOrder.order_number || selectedOrder.id.substring(0, 8).toUpperCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Invoice download error:', err);
+      alert('Failed to download invoice. Please try again.');
+    }
   };
 
   return (
@@ -205,8 +228,8 @@ export default function SalesOrders() {
                         </span>
                       </td>
                       <td>
-                        <button className="btn btn--secondary" style={{ padding: '6px 12px', fontSize: '11px', gap: '4px' }} onClick={() => setSelectedOrder(o)}>
-                          <Eye size={12} /> View Details
+                        <button className="btn btn--secondary" style={{ padding: '6px 12px', fontSize: '11px', gap: '4px' }} onClick={() => handleViewOrder(o)}>
+                          <Eye size={12} /> {loadingOrder ? 'Loading...' : 'View Details'}
                         </button>
                       </td>
                     </tr>
