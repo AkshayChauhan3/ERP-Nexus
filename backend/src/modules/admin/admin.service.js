@@ -31,15 +31,43 @@ async function approveRegistration(userId, adminId) {
       where: { id: userId },
       data: { status: 'APPROVED' },
     });
-    const modulesToGrant = user.requested_modules || [];
-    if (modulesToGrant.length > 0) {
-      await tx.userModuleAccess.createMany({
-        data: modulesToGrant.map(moduleId => ({
-          user_id: userId,
-          module_id: moduleId,
-          granted_by: adminId,
-        }))
-      });
+    
+    const modulesToGrantRaw = user.requested_modules || [];
+    if (modulesToGrantRaw.length > 0) {
+      const allDbModules = await tx.module.findMany();
+      const hardcodedMap = {
+        1: 'sales',
+        2: 'purchase',
+        3: 'manufacturing',
+        4: 'inventory'
+      };
+
+      const resolvedModuleIds = [];
+      for (const rawId of modulesToGrantRaw) {
+        const expectedName = hardcodedMap[rawId];
+        if (expectedName) {
+          const matchedDbModule = allDbModules.find(m => m.module_name === expectedName);
+          if (matchedDbModule) {
+            resolvedModuleIds.push(matchedDbModule.id);
+          }
+        } else {
+          const matchedDbModule = allDbModules.find(m => m.id === rawId);
+          if (matchedDbModule) {
+            resolvedModuleIds.push(matchedDbModule.id);
+          }
+        }
+      }
+
+      const uniqueModuleIds = [...new Set(resolvedModuleIds)];
+      if (uniqueModuleIds.length > 0) {
+        await tx.userModuleAccess.createMany({
+          data: uniqueModuleIds.map(moduleId => ({
+            user_id: userId,
+            module_id: moduleId,
+            granted_by: adminId,
+          }))
+        });
+      }
     }
 
     return updatedUser;
@@ -204,16 +232,69 @@ async function updateUser(userId, data, adminId) {
 }
 
 async function toggleUserStatus(userId) {
-  const user = await prisma.user.findUniqueOrThrow({
-    where: { id: userId }
-  });
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUniqueOrThrow({
+      where: { id: userId }
+    });
 
-  const newStatus = user.status === 'APPROVED' ? 'REJECTED' : 'APPROVED';
+    const newStatus = user.status === 'APPROVED' ? 'REJECTED' : 'APPROVED';
 
-  return await prisma.user.update({
-    where: { id: userId },
-    data: { status: newStatus },
-    include: { profile: true }
+    const updatedUser = await tx.user.update({
+      where: { id: userId },
+      data: { status: newStatus },
+      include: { profile: true }
+    });
+
+    // If we are approving a pending user, grant access to their requested modules
+    if (user.status === 'PENDING' && newStatus === 'APPROVED') {
+      const modulesToGrantRaw = user.requested_modules || [];
+      if (modulesToGrantRaw.length > 0) {
+        const allDbModules = await tx.module.findMany();
+        const hardcodedMap = {
+          1: 'sales',
+          2: 'purchase',
+          3: 'manufacturing',
+          4: 'inventory'
+        };
+
+        const resolvedModuleIds = [];
+        for (const rawId of modulesToGrantRaw) {
+          const expectedName = hardcodedMap[rawId];
+          if (expectedName) {
+            const matchedDbModule = allDbModules.find(m => m.module_name === expectedName);
+            if (matchedDbModule) {
+              resolvedModuleIds.push(matchedDbModule.id);
+            }
+          } else {
+            const matchedDbModule = allDbModules.find(m => m.id === rawId);
+            if (matchedDbModule) {
+              resolvedModuleIds.push(matchedDbModule.id);
+            }
+          }
+        }
+
+        const uniqueModuleIds = [...new Set(resolvedModuleIds)];
+        if (uniqueModuleIds.length > 0) {
+          // Check existing to avoid duplication
+          const existingAccess = await tx.userModuleAccess.findMany({
+            where: { user_id: userId }
+          });
+          const existingModuleIds = existingAccess.map(ea => ea.module_id);
+          const modulesToInsert = uniqueModuleIds.filter(mid => !existingModuleIds.includes(mid));
+
+          if (modulesToInsert.length > 0) {
+            await tx.userModuleAccess.createMany({
+              data: modulesToInsert.map(moduleId => ({
+                user_id: userId,
+                module_id: moduleId,
+              }))
+            });
+          }
+        }
+      }
+    }
+
+    return updatedUser;
   });
 }
 
