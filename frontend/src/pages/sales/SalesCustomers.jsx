@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, Plus, Mail, Phone, MapPin, ClipboardList, CheckCircle } from 'lucide-react';
+import { Users, Search, Plus, Mail, Phone, MapPin } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesCustomers() {
@@ -12,43 +12,83 @@ export default function SalesCustomers() {
   const [quotations, setQuotations] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
 
+  // Store all records locally to filter on selection
+  const [allOrders, setAllOrders] = useState([]);
+  const [allQuotations, setAllQuotations] = useState([]);
+  const [allDeliveries, setAllDeliveries] = useState([]);
+
   // Form
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', mobile: '', email: '', gst: '', address: '', city: '', state: '', country: 'India' });
 
-  const loadCustomers = () => {
-    const list = salesApi.getCustomers();
-    setCustomers(list);
-    if (list.length > 0 && !selectedCust) {
-      handleSelectCustomer(list[0]);
+  const loadData = async () => {
+    try {
+      const [custRes, orderRes, qtnRes, dlvRes] = await Promise.all([
+        api.get('/customers'),
+        api.get('/sales-orders'),
+        api.get('/sales-quotations'),
+        api.get('/sales-deliveries')
+      ]);
+      const custs = custRes.data || [];
+      const ords = orderRes.data || [];
+      const qtns = qtnRes.data || [];
+      const dlvs = dlvRes.data || [];
+
+      setCustomers(custs);
+      setAllOrders(ords);
+      setAllQuotations(qtns);
+      setAllDeliveries(dlvs);
+
+      if (custs.length > 0) {
+        const current = selectedCust ? custs.find(c => c.id === selectedCust.id) || custs[0] : custs[0];
+        setSelectedCust(current);
+        filterCustomerTransactions(current.id, ords, qtns, dlvs);
+      }
+    } catch (err) {
+      console.error('Failed to load customers data', err);
     }
   };
 
   useEffect(() => {
-    loadCustomers();
+    loadData();
   }, []);
+
+  const filterCustomerTransactions = (custId, ords, qtns, dlvs) => {
+    const orders = ords.filter(o => o.customer_id === custId);
+    setHistory(orders);
+    const quotationsFiltered = qtns.filter(q => q.customer_id === custId);
+    setQuotations(quotationsFiltered);
+    const deliveriesFiltered = dlvs.filter(d => d.customer_id === custId);
+    setDeliveries(deliveriesFiltered);
+  };
 
   const handleSelectCustomer = (c) => {
     setSelectedCust(c);
-    const orders = salesApi.getOrders().filter(o => o.customerId === c.id);
-    setHistory(orders);
-    const qtns = salesApi.getQuotations().filter(q => q.customerId === c.id);
-    setQuotations(qtns);
-    const dlvs = salesApi.getDeliveries().filter(d => d.customerId === c.id);
-    setDeliveries(dlvs);
+    filterCustomerTransactions(c.id, allOrders, allQuotations, allDeliveries);
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    salesApi.addCustomer(form);
-    setShowAdd(false);
-    setForm({ name: '', mobile: '', email: '', gst: '', address: '', city: '', state: '', country: 'India' });
-    loadCustomers();
+    try {
+      const fullAddress = [form.address, form.city, form.state, form.country].filter(Boolean).join(', ');
+      await api.post('/customers', {
+        name: form.name,
+        email: form.email,
+        phone: form.mobile,
+        address: fullAddress,
+        gst_no: form.gst,
+      });
+      setShowAdd(false);
+      setForm({ name: '', mobile: '', email: '', gst: '', address: '', city: '', state: '', country: 'India' });
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to add customer');
+    }
   };
 
   const filtered = customers.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase()) ||
+    (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
     c.id.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -101,11 +141,11 @@ export default function SalesCustomers() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{c.id}</span>
-                    <span className="purchase-badge purchase-badge--success" style={{ fontSize: '10px' }}>{c.status}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{c.customer_code || 'CUSTOMER'}</span>
+                    <span className="purchase-badge purchase-badge--success" style={{ fontSize: '10px' }}>{c.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>{c.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--color-secondary)', marginTop: '2px' }}>{c.email}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-secondary)', marginTop: '2px' }}>{c.email || 'No Email'}</div>
                 </div>
               ))}
             </div>
@@ -117,7 +157,7 @@ export default function SalesCustomers() {
               <div className="purchase-panel-header">
                 <div>
                   <h3 className="purchase-panel-title">{selectedCust.name}</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>ID: {selectedCust.id} • Customer Profile</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>ID: {selectedCust.customer_code || selectedCust.id} • Customer Profile</span>
                 </div>
               </div>
 
@@ -125,20 +165,20 @@ export default function SalesCustomers() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: 'var(--surface-low)', padding: '16px', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Phone size={14} style={{ color: 'var(--color-secondary)' }} />
-                    <span>{selectedCust.mobile}</span>
+                    <span style={{ fontWeight: 600 }}>Phone:</span>
+                    <span>{selectedCust.phone || 'N/A'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Mail size={14} style={{ color: 'var(--color-secondary)' }} />
-                    <span>{selectedCust.email}</span>
+                    <span style={{ fontWeight: 600 }}>Email:</span>
+                    <span>{selectedCust.email || 'N/A'}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <MapPin size={14} style={{ color: 'var(--color-secondary)', marginTop: '2px' }} />
-                    <span>{selectedCust.address}, {selectedCust.city}, {selectedCust.state}</span>
+                    <span>{selectedCust.address || 'No Address registered'}</span>
                   </div>
-                  <div>GSTIN: <strong>{selectedCust.gst || 'Unregistered'}</strong></div>
+                  <div>GSTIN: <strong>{selectedCust.gst_no || 'Unregistered'}</strong></div>
                 </div>
               </div>
 
@@ -156,16 +196,19 @@ export default function SalesCustomers() {
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map(h => (
-                        <tr key={h.id}>
-                          <td style={{ fontWeight: 600 }}>{h.id}</td>
-                          <td>{h.orderDate}</td>
-                          <td>
-                            <span className="purchase-badge purchase-badge--success">{h.status}</span>
-                          </td>
-                          <td style={{ fontWeight: 600 }}>₹{h.amount.toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {history.map(h => {
+                        const amount = h.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+                        return (
+                          <tr key={h.id}>
+                            <td style={{ fontWeight: 600 }}>{h.order_number}</td>
+                            <td>{new Date(h.created_at).toLocaleDateString()}</td>
+                            <td>
+                              <span className="purchase-badge purchase-badge--success" style={{ textTransform: 'capitalize' }}>{h.status}</span>
+                            </td>
+                            <td style={{ fontWeight: 600 }}>₹{amount.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                       {history.length === 0 && (
                         <tr>
                           <td colSpan="4" style={{ textAlign: 'center', color: 'var(--color-secondary)' }}>No orders placed.</td>
@@ -178,57 +221,57 @@ export default function SalesCustomers() {
             </div>
           )}
         </div>
-
-        {/* Add Customer Modal */}
-        {showAdd && (
-          <div className="purchase-modal-backdrop" onClick={() => setShowAdd(false)}>
-            <div className="purchase-modal" onClick={e => e.stopPropagation()}>
-              <div className="purchase-modal-header">
-                <h3 className="purchase-modal-title">Add Customer Account</h3>
-                <button className="purchase-modal-close" onClick={() => setShowAdd(false)}>&times;</button>
-              </div>
-              <form onSubmit={handleAddSubmit}>
-                <div className="purchase-form-group">
-                  <label className="purchase-label">Company / Client Name</label>
-                  <input type="text" className="purchase-input" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-                </div>
-                <div className="purchase-form-row">
-                  <div className="purchase-form-group">
-                    <label className="purchase-label">Mobile Number</label>
-                    <input type="text" className="purchase-input" required value={form.mobile} onChange={e => setForm({ ...form, mobile: e.target.value })} />
-                  </div>
-                  <div className="purchase-form-group">
-                    <label className="purchase-label">Email</label>
-                    <input type="email" className="purchase-input" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-                  </div>
-                </div>
-                <div className="purchase-form-group">
-                  <label className="purchase-label">GST Registration Number</label>
-                  <input type="text" className="purchase-input" placeholder="e.g. 27AAAAA1111A1Z1" value={form.gst} onChange={e => setForm({ ...form, gst: e.target.value })} />
-                </div>
-                <div className="purchase-form-group">
-                  <label className="purchase-label">Shipping / Billing Address</label>
-                  <textarea className="purchase-input" style={{ minHeight: '60px', fontFamily: 'inherit' }} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
-                </div>
-                <div className="purchase-form-row">
-                  <div className="purchase-form-group">
-                    <label className="purchase-label">City</label>
-                    <input type="text" className="purchase-input" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
-                  </div>
-                  <div className="purchase-form-group">
-                    <label className="purchase-label">State</label>
-                    <input type="text" className="purchase-input" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
-                  <button type="button" className="btn btn--secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-                  <button type="submit" className="btn btn--primary">Save Customer</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Add Customer Modal */}
+      {showAdd && (
+        <div className="purchase-modal-backdrop" onClick={() => setShowAdd(false)}>
+          <div className="purchase-modal" onClick={e => e.stopPropagation()}>
+            <div className="purchase-modal-header">
+              <h3 className="purchase-modal-title">Add Customer Account</h3>
+              <button className="purchase-modal-close" onClick={() => setShowAdd(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleAddSubmit}>
+              <div className="purchase-form-group">
+                <label className="purchase-label">Company / Client Name</label>
+                <input type="text" className="purchase-input" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div className="purchase-form-row">
+                <div className="purchase-form-group">
+                  <label className="purchase-label">Mobile Number</label>
+                  <input type="text" className="purchase-input" required value={form.mobile} onChange={e => setForm({ ...form, mobile: e.target.value })} />
+                </div>
+                <div className="purchase-form-group">
+                  <label className="purchase-label">Email</label>
+                  <input type="email" className="purchase-input" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                </div>
+              </div>
+              <div className="purchase-form-group">
+                <label className="purchase-label">GST Registration Number</label>
+                <input type="text" className="purchase-input" placeholder="e.g. 27AAAAA1111A1Z1" value={form.gst} onChange={e => setForm({ ...form, gst: e.target.value })} />
+              </div>
+              <div className="purchase-form-group">
+                <label className="purchase-label">Shipping / Billing Address</label>
+                <textarea className="purchase-input" style={{ minHeight: '60px', fontFamily: 'inherit' }} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
+              </div>
+              <div className="purchase-form-row">
+                <div className="purchase-form-group">
+                  <label className="purchase-label">City</label>
+                  <input type="text" className="purchase-input" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} />
+                </div>
+                <div className="purchase-form-group">
+                  <label className="purchase-label">State</label>
+                  <input type="text" className="purchase-input" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+                <button type="button" className="btn btn--secondary" onClick={() => setShowAdd(false)}>Cancel</button>
+                <button type="submit" className="btn btn--primary">Save Customer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

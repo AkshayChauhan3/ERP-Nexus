@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FileText, Search, Plus, Check, ArrowRight, Eye } from 'lucide-react';
+import { FileText, Search, Plus, ArrowRight, Eye } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesQuotations() {
@@ -20,18 +20,30 @@ export default function SalesQuotations() {
   const [formItems, setFormItems] = useState([{ productId: '', qty: 1, discount: 0, tax: 18 }]);
   const [remarks, setRemarks] = useState('');
 
-  const loadData = () => {
-    setQtns(salesApi.getQuotations());
-    setCustomers(salesApi.getCustomers());
-    const cat = salesApi.getCatalog();
-    setCatalog(cat);
-    if (cat.length > 0) {
-      setFormItems([{ productId: cat[0].id, qty: 1, discount: 0, tax: 18 }]);
+  const loadData = async () => {
+    try {
+      const [qtnRes, custRes, catRes] = await Promise.all([
+        api.get('/sales-quotations'),
+        api.get('/customers'),
+        api.get('/products')
+      ]);
+      const qtnsList = qtnRes.data || [];
+      const custsList = custRes.data || [];
+      const catList = catRes.data || [];
+      setQtns(qtnsList);
+      setCustomers(custsList);
+      setCatalog(catList);
+
+      if (catList.length > 0) {
+        setFormItems([{ productId: catList[0].id, qty: 1, discount: 0, tax: 18 }]);
+      }
+      if (custsList.length > 0) {
+        setFormCust(custsList[0].id);
+      }
+      setFormExpiry(new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]); // 15 days expiry
+    } catch (err) {
+      console.error('Failed to load data', err);
     }
-    if (salesApi.getCustomers().length > 0) {
-      setFormCust(salesApi.getCustomers()[0].id);
-    }
-    setFormExpiry(new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]); // 15 days expiry
   };
 
   useEffect(() => {
@@ -56,23 +68,22 @@ export default function SalesQuotations() {
   const calculateTotal = () => {
     return formItems.reduce((sum, item) => {
       const prod = catalog.find(p => p.id === item.productId);
-      const basePrice = prod ? prod.price : 0;
+      const basePrice = prod ? Number(prod.sales_price) : 0;
       const discounted = basePrice * (1 - Number(item.discount) / 100);
       const totalItem = discounted * Number(item.qty) * (1 + Number(item.tax) / 100);
       return sum + totalItem;
     }, 0);
   };
 
-  const handleCreateSubmit = (e, status = 'Sent') => {
+  const handleCreateSubmit = async (e, status = 'Sent') => {
     e.preventDefault();
-    const items = formItems.map(item => {
+    const lines = formItems.map(item => {
       const prod = catalog.find(p => p.id === item.productId);
-      const basePrice = prod ? prod.price : 0;
+      const basePrice = prod ? Number(prod.sales_price) : 0;
       const discounted = basePrice * (1 - Number(item.discount) / 100);
       const totalItem = Math.round(discounted * Number(item.qty) * (1 + Number(item.tax) / 100));
       return {
-        productId: item.productId,
-        name: prod ? prod.name : 'Unknown Product',
+        product_id: item.productId,
         qty: Number(item.qty),
         price: basePrice,
         discount: Number(item.discount),
@@ -81,38 +92,46 @@ export default function SalesQuotations() {
       };
     });
 
-    salesApi.createQuotation({
-      customerId: formCust,
-      expiryDate: formExpiry,
-      items,
-      amount: Math.round(calculateTotal()),
-      status,
-      remarks
-    });
+    try {
+      await api.post('/sales-quotations', {
+        customer_id: formCust,
+        expiry_date: formExpiry,
+        lines,
+        amount: Math.round(calculateTotal()),
+        status,
+        remarks
+      });
 
-    setShowCreate(false);
-    setRemarks('');
-    loadData();
+      setShowCreate(false);
+      setRemarks('');
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to create quotation');
+    }
   };
 
-  const handleConvertToOrder = (qtn) => {
-    salesApi.createOrder({
-      customerId: qtn.customerId,
-      deliveryDate: qtn.expiryDate,
-      items: qtn.items,
-      amount: qtn.amount,
-      shippingAddress: 'Client Office Delivery',
-      remarks: `Converted from Quotation ${qtn.id}. ${qtn.remarks}`
-    });
+  const handleConvertToOrder = async (qtn) => {
+    try {
+      await api.post(`/sales-quotations/${qtn.id}/convert`);
+      alert(`Quotation ${qtn.quotation_number} converted to Sales Order successfully! Stock allocated.`);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to convert quotation to order');
+    }
+  };
 
-    salesApi.updateQuotation(qtn.id, { status: 'Approved' });
-    alert(`Quotation ${qtn.id} converted to Sales Order successfully! Stock allocated.`);
-    loadData();
+  const handleViewDetails = async (id) => {
+    try {
+      const res = await api.get(`/sales-quotations/${id}`);
+      setSelectedQtn(res.data);
+    } catch (err) {
+      alert('Failed to fetch quotation details');
+    }
   };
 
   const filtered = qtns.filter(q => 
-    q.id.toLowerCase().includes(search.toLowerCase()) ||
-    (customers.find(c => c.id === q.customerId)?.name || '').toLowerCase().includes(search.toLowerCase())
+    (q.quotation_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (q.customer?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -161,14 +180,13 @@ export default function SalesQuotations() {
               </thead>
               <tbody>
                 {filtered.map(q => {
-                  const cust = customers.find(c => c.id === q.customerId);
                   return (
                     <tr key={q.id}>
-                      <td style={{ fontWeight: 700 }}>{q.id}</td>
-                      <td style={{ fontWeight: 600 }}>{cust ? cust.name : q.customerId}</td>
-                      <td>{q.date}</td>
-                      <td>{q.expiryDate}</td>
-                      <td style={{ fontWeight: 700 }}>₹{q.amount.toLocaleString()}</td>
+                      <td style={{ fontWeight: 700 }}>{q.quotation_number}</td>
+                      <td style={{ fontWeight: 600 }}>{q.customer?.name || 'Unknown'}</td>
+                      <td>{new Date(q.created_at).toLocaleDateString()}</td>
+                      <td>{new Date(q.expiry_date).toLocaleDateString()}</td>
+                      <td style={{ fontWeight: 700 }}>₹{Number(q.amount).toLocaleString()}</td>
                       <td>
                         <span className={`purchase-badge purchase-badge--${
                           q.status === 'Approved' ? 'success' :
@@ -179,7 +197,7 @@ export default function SalesQuotations() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button className="btn btn--secondary" style={{ padding: '6px 12px', fontSize: '11px', gap: '4px' }} onClick={() => { setSelectedQtn(q); }}>
+                          <button className="btn btn--secondary" style={{ padding: '6px 12px', fontSize: '11px', gap: '4px' }} onClick={() => handleViewDetails(q.id)}>
                             <Eye size={12} /> View
                           </button>
                           {q.status !== 'Approved' && (
@@ -232,7 +250,7 @@ export default function SalesQuotations() {
                       <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <div style={{ flex: 2 }}>
                           <select className="purchase-input" value={item.productId} onChange={e => handleFieldChange(idx, 'productId', e.target.value)}>
-                            {catalog.map(c => <option key={c.id} value={c.id}>{c.name} (₹{c.price})</option>)}
+                            {catalog.map(c => <option key={c.id} value={c.id}>{c.name} (₹{c.sales_price})</option>)}
                           </select>
                         </div>
                         <div style={{ flex: 1 }}>
@@ -273,9 +291,9 @@ export default function SalesQuotations() {
                 <button className="purchase-modal-close" onClick={() => setSelectedQtn(null)}>&times;</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '13px' }}>
-                <div><strong>Quotation ID:</strong> {selectedQtn.id}</div>
-                <div><strong>Client Account:</strong> {customers.find(c => c.id === selectedQtn.customerId)?.name}</div>
-                <div><strong>Expiry date:</strong> {selectedQtn.expiryDate}</div>
+                <div><strong>Quotation ID:</strong> {selectedQtn.quotation_number}</div>
+                <div><strong>Client Account:</strong> {selectedQtn.customer?.name}</div>
+                <div><strong>Expiry date:</strong> {new Date(selectedQtn.expiry_date).toLocaleDateString()}</div>
                 <div><strong>Terms/Notes:</strong> {selectedQtn.remarks || 'None'}</div>
 
                 <div style={{ borderTop: '1px solid var(--color-outline-variant)', paddingTop: '10px' }}>
@@ -290,19 +308,19 @@ export default function SalesQuotations() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedQtn.items.map((item, idx) => (
+                      {selectedQtn.lines?.map((item, idx) => (
                         <tr key={idx}>
-                          <td style={{ fontWeight: 600 }}>{item.name}</td>
-                          <td>{item.qty}</td>
-                          <td>₹{item.price}</td>
-                          <td>{item.discount}%</td>
-                          <td>₹{item.total.toLocaleString()}</td>
+                          <td style={{ fontWeight: 600 }}>{item.product?.name || 'Unknown'}</td>
+                          <td>{Number(item.qty)}</td>
+                          <td>₹{Number(item.price).toLocaleString()}</td>
+                          <td>{Number(item.discount)}%</td>
+                          <td>₹{Number(item.total).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', fontWeight: 800, fontSize: '14px', marginTop: '12px' }}>
-                    Total Value: ₹{selectedQtn.amount.toLocaleString()}
+                    Total Value: ₹{Number(selectedQtn.amount).toLocaleString()}
                   </div>
                 </div>
               </div>

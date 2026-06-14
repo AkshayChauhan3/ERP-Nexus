@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowRightLeft, Plus, Check, Trash2, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvStockTransfers() {
@@ -18,18 +18,28 @@ export default function InvStockTransfers() {
   const [qty, setQty] = useState(1);
   const [reason, setReason] = useState('');
 
-  const loadData = () => {
-    setTransfers(inventoryApi.getTransfers());
-    const whs = inventoryApi.getWarehouses();
-    const prods = inventoryApi.getProducts();
-    setWarehouses(whs);
-    setProducts(prods);
-    if (whs.length > 0) {
-      setSourceWH(whs[0].id);
-      setDestWH(whs[1]?.id || whs[0].id);
-    }
-    if (prods.length > 0) {
-      setProductId(prods[0].id);
+  const loadData = async () => {
+    try {
+      const [trfsRes, whsRes, prodsRes] = await Promise.all([
+        api.get('/inventory/transfers'),
+        api.get('/inventory/warehouses'),
+        api.get('/products')
+      ]);
+      setTransfers(trfsRes.data);
+      setWarehouses(whsRes.data);
+      
+      const prods = prodsRes.data || [];
+      setProducts(prods);
+      
+      if (whsRes.data.length > 0) {
+        setSourceWH(whsRes.data[0].warehouse_code);
+        setDestWH(whsRes.data[1]?.warehouse_code || whsRes.data[0].warehouse_code);
+      }
+      if (prods.length > 0) {
+        setProductId(prods[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load transfers:', err);
     }
   };
 
@@ -37,32 +47,36 @@ export default function InvStockTransfers() {
     loadData();
   }, []);
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     if (sourceWH === destWH) {
       alert('Source and Destination Warehouses cannot be the same!');
       return;
     }
 
-    inventoryApi.createTransfer({
-      source: sourceWH,
-      destination: destWH,
-      productId,
-      qty: Number(qty),
-      reason
-    });
+    try {
+      await api.post('/inventory/transfers', {
+        source: sourceWH,
+        destination: destWH,
+        productId,
+        qty: Number(qty),
+        reason
+      });
 
-    setShowCreate(false);
-    setQty(1);
-    setReason('');
-    setSuccessMsg('Stock Transfer request submitted successfully.');
-    setTimeout(() => setSuccessMsg(''), 5000);
-    loadData();
+      setShowCreate(false);
+      setQty(1);
+      setReason('');
+      setSuccessMsg('Stock Transfer request submitted successfully.');
+      setTimeout(() => setSuccessMsg(''), 5000);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to create transfer.');
+    }
   };
 
-  const handleComplete = (id) => {
+  const handleComplete = async (id) => {
     try {
-      inventoryApi.completeTransfer(id);
+      await api.post(`/inventory/transfers/${id}/complete`);
       setSuccessMsg(`Transfer ${id} completed. Inventory balances adjusted.`);
       setTimeout(() => setSuccessMsg(''), 5000);
       loadData();
@@ -162,13 +176,13 @@ export default function InvStockTransfers() {
                   <div className="purchase-form-group">
                     <label className="purchase-label">Source Warehouse</label>
                     <select className="purchase-input" value={sourceWH} onChange={e => setSourceWH(e.target.value)}>
-                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      {warehouses.map(w => <option key={w.id} value={w.warehouse_code}>{w.name}</option>)}
                     </select>
                   </div>
                   <div className="purchase-form-group">
                     <label className="purchase-label">Destination Warehouse</label>
                     <select className="purchase-input" value={destWH} onChange={e => setDestWH(e.target.value)}>
-                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                      {warehouses.map(w => <option key={w.id} value={w.warehouse_code}>{w.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -177,7 +191,7 @@ export default function InvStockTransfers() {
                   <div className="purchase-form-group">
                     <label className="purchase-label">Product to Move</label>
                     <select className="purchase-input" value={productId} onChange={e => setProductId(e.target.value)}>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku || p.code})</option>)}
                     </select>
                   </div>
                   <div className="purchase-form-group">

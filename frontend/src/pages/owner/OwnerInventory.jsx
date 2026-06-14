@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Warehouse, RefreshCw, AlertTriangle, CheckCircle, Package } from 'lucide-react';
+import { Warehouse, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -9,20 +9,33 @@ export default function OwnerInventory() {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadStock = () => {
+  const loadStock = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setMaterials(purchaseApi.getMaterials());
+    try {
+      const res = await api.get('/products');
+      setMaterials((res.data || []).filter(p => p.type === 'RAW_MATERIAL'));
+    } catch (err) {
+      console.error('Failed to load owner stock data', err);
+    } finally {
       setLoading(false);
-    }, 250);
+    }
   };
 
   useEffect(() => {
     loadStock();
   }, []);
 
-  const totalValuation = materials.reduce((sum, mat) => sum + (mat.currentStock * mat.price), 0);
-  const lowStockCount = materials.filter(mat => mat.currentStock <= mat.reorderLevel).length;
+  const totalValuation = materials.reduce((sum, mat) => {
+    const onHand = Number(mat.inventory?.on_hand_qty || 0);
+    const costPrice = Number(mat.cost_price || 0);
+    return sum + (onHand * costPrice);
+  }, 0);
+
+  const lowStockCount = materials.filter(mat => {
+    const onHand = Number(mat.inventory?.on_hand_qty || 0);
+    const reorder = Number(mat.inventory?.reorder_level || 0);
+    return onHand <= reorder;
+  }).length;
 
   return (
     <AppShell>
@@ -85,15 +98,18 @@ export default function OwnerInventory() {
                 </thead>
                 <tbody>
                   {materials.map(mat => {
-                    const isLow = mat.currentStock <= mat.reorderLevel;
-                    const stockVal = mat.currentStock * mat.price;
+                    const onHand = Number(mat.inventory?.on_hand_qty || 0);
+                    const reorder = Number(mat.inventory?.reorder_level || 0);
+                    const costPrice = Number(mat.cost_price || 0);
+                    const isLow = onHand <= reorder;
+                    const stockVal = onHand * costPrice;
                     return (
                       <tr key={mat.id}>
                         <td style={{ fontWeight: 600 }}>{mat.name}</td>
-                        <td style={{ fontFamily: 'monospace' }}>{mat.sku}</td>
-                        <td style={{ fontWeight: 600 }}>{mat.currentStock} {mat.unit}</td>
-                        <td>{mat.reorderLevel} {mat.unit}</td>
-                        <td>₹{mat.price.toLocaleString()}</td>
+                        <td style={{ fontFamily: 'monospace' }}>{mat.sku || 'N/A'}</td>
+                        <td style={{ fontWeight: 600 }}>{onHand} units</td>
+                        <td>{reorder} units</td>
+                        <td>₹{costPrice.toLocaleString()}</td>
                         <td style={{ fontWeight: 600 }}>₹{stockVal.toLocaleString()}</td>
                         <td>
                           <span className={`health-chip ${isLow ? 'health-chip--red' : 'health-chip--green'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -104,6 +120,13 @@ export default function OwnerInventory() {
                       </tr>
                     );
                   })}
+                  {materials.length === 0 && (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
+                        No inventory registry records found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, RefreshCw, Layers } from 'lucide-react';
+import { ShoppingBag, RefreshCw } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
 export default function OwnerPurchase() {
   const [pos, setPos] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadPurchaseData = () => {
+  const loadPurchaseData = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setPos(purchaseApi.getPOs());
-      setVendors(purchaseApi.getVendors());
+    try {
+      const [posRes, vendRes, billsRes] = await Promise.all([
+        api.get('/purchase-orders'),
+        api.get('/vendors'),
+        api.get('/purchase/bills')
+      ]);
+      setPos(posRes.data || []);
+      setVendors(vendRes.data || []);
+      setBills(billsRes.data || []);
+    } catch (err) {
+      console.error('Failed to load owner purchase oversight data', err);
+    } finally {
       setLoading(false);
-    }, 250);
+    }
   };
 
   useEffect(() => {
     loadPurchaseData();
   }, []);
 
-  const totalProcurementValue = pos.reduce((sum, p) => sum + p.totalValue, 0);
-  const pendingPOs = pos.filter(p => p.status === 'Confirmed' || p.status === 'Draft').length;
+  const totalProcurementValue = pos.reduce((sum, p) => {
+    if (p.status === 'draft') return sum;
+    const poTotal = p.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+    return sum + poTotal;
+  }, 0);
+
+  const pendingPOs = pos.filter(p => p.status === 'confirmed' || p.status === 'partially_received').length;
 
   return (
     <AppShell>
@@ -85,22 +100,35 @@ export default function OwnerPurchase() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pos.map(po => (
-                      <tr key={po.id}>
-                        <td style={{ fontWeight: 'bold' }}>{po.id}</td>
-                        <td>{po.orderDate}</td>
-                        <td style={{ fontSize: '12px' }}>
-                          {po.items.map(item => `${item.name} (x${item.qty})`).join(', ')}
-                        </td>
-                        <td style={{ fontWeight: 600 }}>₹{po.totalValue.toLocaleString()}</td>
-                        <td>{po.receiptStatus}</td>
-                        <td>
-                          <span className={`health-chip ${po.status === 'Closed' ? 'health-chip--green' : po.status === 'Confirmed' ? 'health-chip--amber' : 'health-chip--red'}`}>
-                            {po.status}
-                          </span>
+                    {pos.map(po => {
+                      const totalOutlay = po.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+                      const orderDate = new Date(po.created_at).toLocaleDateString();
+                      const itemsText = po.lines?.map(item => `${item.product?.name || 'Product'} (x${Number(item.ordered_qty)})`).join(', ') || 'None';
+                      const receiptStatus = po.status === 'received' ? 'Fully Received' : po.status === 'partially_received' ? 'Partial' : 'Pending';
+                      const statusDisplay = po.status.toUpperCase();
+                      
+                      return (
+                        <tr key={po.id}>
+                          <td style={{ fontWeight: 'bold' }}>{po.po_number}</td>
+                          <td>{orderDate}</td>
+                          <td style={{ fontSize: '12px' }}>{itemsText}</td>
+                          <td style={{ fontWeight: 600 }}>₹{totalOutlay.toLocaleString()}</td>
+                          <td>{receiptStatus}</td>
+                          <td>
+                            <span className={`health-chip ${po.status === 'received' ? 'health-chip--green' : po.status === 'confirmed' || po.status === 'partially_received' ? 'health-chip--amber' : 'health-chip--red'}`}>
+                              {statusDisplay}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {pos.length === 0 && (
+                      <tr>
+                        <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
+                          No purchase orders recorded.
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -112,17 +140,27 @@ export default function OwnerPurchase() {
                 <h3 className="purchase-panel-title">Vendor Accounts Outstanding</h3>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {vendors.map(v => (
-                  <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{v.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>Rating: {v.rating} ★ | Contact: {v.contact}</div>
+                {vendors.map(v => {
+                  const vendorBills = bills.filter(b => b.vendor_id === v.id && b.status !== 'paid');
+                  const balance = vendorBills.reduce((sum, b) => sum + Number(b.total_amount), 0);
+                  
+                  return (
+                    <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{v.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>Contact Person: {v.contact_person || 'N/A'}</div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: balance > 0 ? 'var(--color-amber)' : 'var(--color-success)' }}>
+                        ₹{balance.toLocaleString()}
+                      </div>
                     </div>
-                    <div style={{ fontWeight: 700, color: v.balance > 0 ? 'var(--color-amber)' : 'var(--color-success)' }}>
-                      ₹{v.balance.toLocaleString()}
-                    </div>
+                  );
+                })}
+                {vendors.length === 0 && (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-secondary)', fontSize: '12px' }}>
+                    No vendor directory found.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { History, Search, Filter, Download } from 'lucide-react';
+import { History, Download } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesHistory() {
@@ -17,9 +17,21 @@ export default function SalesHistory() {
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    setOrders(salesApi.getOrders());
-    setCustomers(salesApi.getCustomers());
-    setCatalog(salesApi.getCatalog());
+    const loadData = async () => {
+      try {
+        const [ordRes, custRes, catRes] = await Promise.all([
+          api.get('/sales-orders'),
+          api.get('/customers'),
+          api.get('/products')
+        ]);
+        setOrders(ordRes.data || []);
+        setCustomers(custRes.data || []);
+        setCatalog(catRes.data || []);
+      } catch (err) {
+        console.error('Failed to load history data', err);
+      }
+    };
+    loadData();
   }, []);
 
   const handleExport = () => {
@@ -27,11 +39,11 @@ export default function SalesHistory() {
   };
 
   const filtered = orders.filter(o => {
-    const matchCust = selectedCust === 'All' || o.customerId === selectedCust;
-    const matchProd = selectedProd === 'All' || o.items.some(i => i.productId === selectedProd);
+    const matchCust = selectedCust === 'All' || o.customer_id === selectedCust;
+    const matchProd = selectedProd === 'All' || o.lines?.some(i => i.product_id === selectedProd);
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
-    const matchDate = (!startDate || new Date(o.orderDate) >= new Date(startDate)) &&
-                      (!endDate || new Date(o.orderDate) <= new Date(endDate));
+    const matchDate = (!startDate || new Date(o.created_at) >= new Date(startDate)) &&
+                      (!endDate || new Date(o.created_at) <= new Date(endDate));
 
     return matchCust && matchProd && matchStatus && matchDate;
   });
@@ -75,10 +87,11 @@ export default function SalesHistory() {
               <label className="purchase-label">Status</label>
               <select className="purchase-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="All">All Statuses</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Processing">Processing</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="draft">Draft</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="dispatched">Dispatched</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
 
@@ -110,25 +123,25 @@ export default function SalesHistory() {
               </thead>
               <tbody>
                 {filtered.map(o => {
-                  const cust = customers.find(c => c.id === o.customerId);
+                  const amount = o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
                   return (
                     <tr key={o.id}>
-                      <td style={{ fontWeight: 700 }}>{o.id}</td>
-                      <td style={{ fontWeight: 600 }}>{cust ? cust.name : o.customerId}</td>
+                      <td style={{ fontWeight: 700 }}>{o.order_number}</td>
+                      <td style={{ fontWeight: 600 }}>{o.customer?.name || 'Unknown'}</td>
                       <td>
-                        {o.items.map((item, idx) => (
+                        {o.lines?.map((item, idx) => (
                           <div key={idx} style={{ fontSize: '12px' }}>
-                            • {item.name} x {item.qty}
+                            • {item.product?.name || 'Unknown'} x {Number(item.ordered_qty)}
                           </div>
                         ))}
                       </td>
-                      <td style={{ fontWeight: 700 }}>₹{o.amount.toLocaleString()}</td>
-                      <td>{o.orderDate}</td>
+                      <td style={{ fontWeight: 700 }}>₹{amount.toLocaleString()}</td>
+                      <td>{new Date(o.created_at).toLocaleDateString()}</td>
                       <td>
                         <span className={`purchase-badge purchase-badge--${
-                          o.status === 'Delivered' ? 'success' :
-                          o.status === 'Cancelled' ? 'error' : 'warning'
-                        }`}>
+                          o.status === 'delivered' ? 'success' :
+                          o.status === 'cancelled' ? 'error' : 'warning'
+                        }`} style={{ textTransform: 'capitalize' }}>
                           {o.status}
                         </span>
                       </td>

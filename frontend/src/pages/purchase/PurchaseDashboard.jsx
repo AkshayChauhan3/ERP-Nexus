@@ -5,7 +5,7 @@ import {
   Plus, ArrowDownLeft, Upload, ArrowRight, Zap, RefreshCw
 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseDashboard() {
@@ -25,26 +25,66 @@ export default function PurchaseDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       setLoading(true);
-      const pos = purchaseApi.getPOs();
-      const mats = purchaseApi.getMaterials();
-      const bills = purchaseApi.getBills();
+      try {
+        const [posRes, matRes, billsRes] = await Promise.all([
+          api.get('/purchase-orders'),
+          api.get('/products'),
+          api.get('/purchase/bills')
+        ]);
+        
+        const pos = posRes.data || [];
+        const mats = (matRes.data || []).filter(p => p.type === 'RAW_MATERIAL');
+        const bills = billsRes.data || [];
 
-      const totalPOs = pos.length;
-      const pending = pos.filter(p => p.receiptStatus === 'Pending' && p.status !== 'Draft').length;
-      const partial = pos.filter(p => p.receiptStatus === 'Partial').length;
-      const fullyReceived = pos.filter(p => p.receiptStatus === 'Fully Received').length;
-      const delayed = pos.filter(p => p.status === 'Confirmed' && new Date(p.deliveryDate) < new Date()).length;
-      const pendingBills = bills.filter(b => b.status === 'Submitted').length;
-      const lowStock = mats.filter(m => m.currentStock <= m.reorderLevel).length;
-      const totalValue = pos.reduce((sum, p) => sum + (p.status !== 'Draft' ? p.totalValue : 0), 0);
+        const totalPOs = pos.length;
+        const pending = pos.filter(p => p.status === 'confirmed').length;
+        const partial = pos.filter(p => p.status === 'partially_received').length;
+        const fullyReceived = pos.filter(p => p.status === 'received').length;
+        const delayed = 0; 
+        const pendingBills = bills.filter(b => b.status === 'pending_payment' || b.status === 'approved_for_payment').length;
+        const lowStock = mats.filter(m => Number(m.inventory?.on_hand_qty || 0) <= Number(m.inventory?.reorder_level || 0)).length;
+        const totalValue = pos.reduce((sum, p) => {
+          if (p.status === 'draft') return sum;
+          const poTotal = p.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+          return sum + poTotal;
+        }, 0);
 
-      setStats({
-        totalPOs, pending, partial, fullyReceived, delayed, pendingBills, lowStock, totalValue
-      });
-      setRecentPOs(pos.slice(-4).reverse());
-      setLoading(false);
+        setStats({
+          totalPOs, pending, partial, fullyReceived, delayed, pendingBills, lowStock, totalValue
+        });
+
+        const mappedRecent = pos.slice(-4).reverse().map(p => {
+          const poTotal = p.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+          const recStatus = p.status === 'received' ? 'Fully Received' : 
+                            p.status === 'partially_received' ? 'Partial' : 
+                            p.status === 'confirmed' ? 'Confirmed' : 
+                            p.status === 'cancelled' ? 'Cancelled' : 'Draft';
+          
+          let billStatus = 'Pending';
+          if (p.bills && p.bills.length > 0) {
+            const hasPaid = p.bills.some(b => b.status === 'paid');
+            const hasSubmitted = p.bills.some(b => b.status === 'pending_payment' || b.status === 'approved_for_payment');
+            billStatus = hasPaid ? 'Paid' : hasSubmitted ? 'Submitted' : 'Pending';
+          }
+
+          return {
+            id: p.id,
+            po_number: p.po_number,
+            orderDate: new Date(p.created_at).toLocaleDateString(),
+            totalValue: poTotal,
+            receiptStatus: recStatus,
+            billStatus: billStatus
+          };
+        });
+
+        setRecentPOs(mappedRecent);
+      } catch (err) {
+        console.error('Failed to load dashboard data', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
@@ -165,7 +205,7 @@ export default function PurchaseDashboard() {
                     <tbody>
                       {recentPOs.map(po => (
                         <tr key={po.id}>
-                          <td style={{ fontWeight: 700 }}>{po.id}</td>
+                          <td style={{ fontWeight: 700 }}>{po.po_number}</td>
                           <td>{po.orderDate}</td>
                           <td style={{ fontWeight: 600 }}>₹{po.totalValue.toLocaleString()}</td>
                           <td>

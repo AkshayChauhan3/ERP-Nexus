@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Warehouse, MapPin, User, BarChart2, ShieldAlert } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvWarehouses() {
@@ -13,13 +13,23 @@ export default function InvWarehouses() {
   const [storedItems, setStoredItems] = useState([]);
   const [usedCapacity, setUsedCapacity] = useState(0);
 
-  const loadData = () => {
-    const whs = inventoryApi.getWarehouses();
-    const prods = inventoryApi.getProducts();
-    setWarehouses(whs);
-    setProducts(prods);
-    if (whs.length > 0 && !selectedWH) {
-      handleSelectWH(whs[0], prods);
+  const loadData = async () => {
+    try {
+      const [whRes, invRes] = await Promise.all([
+        api.get('/inventory/warehouses'),
+        api.get('/inventory')
+      ]);
+      const whs = whRes.data;
+      const prods = invRes.data;
+      setWarehouses(whs);
+      setProducts(prods);
+      if (whs.length > 0) {
+        // Find if we already have a selection
+        const currentSelected = selectedWH ? whs.find(w => w.id === selectedWH.id) : whs[0];
+        handleSelectWH(currentSelected || whs[0], prods);
+      }
+    } catch (err) {
+      console.error('Failed to load warehouses:', err);
     }
   };
 
@@ -28,8 +38,9 @@ export default function InvWarehouses() {
   }, []);
 
   const handleSelectWH = (wh, allProds = products) => {
+    if (!wh) return;
     setSelectedWH(wh);
-    const items = allProds.filter(p => p.warehouseId === wh.id);
+    const items = allProds.filter(p => p.warehouseId === wh.warehouse_code || p.warehouseUuid === wh.id);
     setStoredItems(items);
     
     // Calculate total stock qty stored in this warehouse
@@ -58,7 +69,7 @@ export default function InvWarehouses() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {warehouses.map(w => {
-                const whItems = products.filter(p => p.warehouseId === w.id);
+                const whItems = products.filter(p => p.warehouseId === w.warehouse_code || p.warehouseUuid === w.id);
                 const whQty = whItems.reduce((sum, item) => sum + item.currentStock, 0);
                 const utilization = Math.min(Math.round((whQty / w.capacity) * 100), 100);
 
@@ -77,7 +88,7 @@ export default function InvWarehouses() {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{w.id}</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{w.warehouse_code}</span>
                       <span className="purchase-badge purchase-badge--success" style={{ fontSize: '10px' }}>{w.status}</span>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>{w.name}</div>
@@ -105,7 +116,7 @@ export default function InvWarehouses() {
               <div className="inventory-panel-header">
                 <div>
                   <h3 className="inventory-panel-title">{selectedWH.name}</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>{selectedWH.id} • Storehouse Configuration</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>{selectedWH.warehouse_code} • Storehouse Configuration</span>
                 </div>
               </div>
 

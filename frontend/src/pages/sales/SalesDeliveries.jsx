@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Truck, Search, CheckCircle, Package, ArrowRight } from 'lucide-react';
+import { Truck, Search, CheckCircle, Package } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesDeliveries() {
@@ -10,12 +10,28 @@ export default function SalesDeliveries() {
   const [selectedDlv, setSelectedDlv] = useState(null);
   const [search, setSearch] = useState('');
 
-  const loadData = () => {
-    const list = salesApi.getDeliveries();
-    setDeliveries(list);
-    setCustomers(salesApi.getCustomers());
-    if (list.length > 0 && !selectedDlv) {
-      setSelectedDlv(list[0]);
+  const loadData = async () => {
+    try {
+      const [dlvRes, custRes] = await Promise.all([
+        api.get('/sales-deliveries'),
+        api.get('/customers')
+      ]);
+      const list = dlvRes.data || [];
+      setDeliveries(list);
+      setCustomers(custRes.data || []);
+      if (list.length > 0) {
+        setSelectedDlv(prev => {
+          if (prev) {
+            const updated = list.find(d => d.id === prev.id);
+            return updated || list[0];
+          }
+          return list[0];
+        });
+      } else {
+        setSelectedDlv(null);
+      }
+    } catch (err) {
+      console.error('Failed to load deliveries data', err);
     }
   };
 
@@ -27,19 +43,19 @@ export default function SalesDeliveries() {
     setSelectedDlv(d);
   };
 
-  const handleUpdateStatus = (id, status) => {
-    salesApi.updateDeliveryStatus(id, status);
-    loadData();
-    // Refresh selected details
-    const list = salesApi.getDeliveries();
-    const updated = list.find(d => d.id === id);
-    if (updated) setSelectedDlv(updated);
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await api.patch(`/sales-deliveries/${id}/status`, { status });
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to update delivery status');
+    }
   };
 
   const filtered = deliveries.filter(d => 
-    d.id.toLowerCase().includes(search.toLowerCase()) ||
-    d.soId.toLowerCase().includes(search.toLowerCase()) ||
-    (customers.find(c => c.id === d.customerId)?.name || '').toLowerCase().includes(search.toLowerCase())
+    (d.delivery_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (d.sales_order?.order_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (d.customer?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -88,7 +104,7 @@ export default function SalesDeliveries() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{d.id}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{d.delivery_number}</span>
                     <span className={`purchase-badge purchase-badge--${
                       d.status === 'Delivered' ? 'success' :
                       d.status === 'Dispatched' || d.status === 'Packed' ? 'warning' : 'outline'
@@ -96,9 +112,9 @@ export default function SalesDeliveries() {
                       {d.status}
                     </span>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>SO Reference: {d.soId}</div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>SO Reference: {d.sales_order?.order_number}</div>
                   <div style={{ fontSize: '12px', color: 'var(--color-secondary)', marginTop: '2px' }}>
-                    Client: {customers.find(c => c.id === d.customerId)?.name || d.customerId}
+                    Client: {d.customer?.name || 'Unknown'}
                   </div>
                 </div>
               ))}
@@ -110,17 +126,17 @@ export default function SalesDeliveries() {
             <div className="purchase-panel">
               <div className="purchase-panel-header">
                 <div>
-                  <h3 className="purchase-panel-title">Shipment Details — {selectedDlv.id}</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>Ref Order: {selectedDlv.soId}</span>
+                  <h3 className="purchase-panel-title">Shipment Details — {selectedDlv.delivery_number}</h3>
+                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>Ref Order: {selectedDlv.sales_order?.order_number}</span>
                 </div>
               </div>
 
               {/* Delivery info */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--surface-low)', padding: '16px', borderRadius: 'var(--radius-lg)', fontSize: '13px' }}>
-                <div>Client Account: <strong>{customers.find(c => c.id === selectedDlv.customerId)?.name}</strong></div>
-                <div>Shipping Target: <strong>{selectedDlv.shippingAddress}</strong></div>
-                <div>Commitment Date: <strong>{selectedDlv.deliveryDate}</strong></div>
-                <div>Carrier Dispatch Date: <strong>{selectedDlv.dispatchDate}</strong></div>
+                <div>Client Account: <strong>{selectedDlv.customer?.name}</strong></div>
+                <div>Shipping Target: <strong>{selectedDlv.shipping_address}</strong></div>
+                <div>Commitment Date: <strong>{new Date(selectedDlv.delivery_date).toLocaleDateString()}</strong></div>
+                <div>Carrier Dispatch Date: <strong>{selectedDlv.dispatch_date ? new Date(selectedDlv.dispatch_date).toLocaleDateString() : '-'}</strong></div>
               </div>
 
               {/* Items */}
@@ -134,10 +150,10 @@ export default function SalesDeliveries() {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedDlv.items.map((item, idx) => (
+                    {selectedDlv.lines?.map((item, idx) => (
                       <tr key={idx}>
-                        <td style={{ fontWeight: 600 }}>{item.name}</td>
-                        <td style={{ fontWeight: 700 }}>{item.qty} units</td>
+                        <td style={{ fontWeight: 600 }}>{item.product?.name || 'Unknown'}</td>
+                        <td style={{ fontWeight: 700 }}>{Number(item.qty)} units</td>
                       </tr>
                     ))}
                   </tbody>

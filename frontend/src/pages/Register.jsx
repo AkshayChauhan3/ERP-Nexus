@@ -34,6 +34,18 @@ export default function Register() {
   };
 
   const handleMouseLeave = () => setTilt({ x: 0, y: 0 });
+  const getRequestedModules = (role) => {
+    if (role === 'admin' || role === 'owner') {
+      return [1, 2, 3, 4];
+    }
+    const roleMap = {
+      sales: [1],
+      purchase: [2],
+      manufacturing: [3],
+      inventory: [4],
+    };
+    return roleMap[role] || [1];
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,15 +53,27 @@ export default function Register() {
       setErrorMsg('Please fill in all fields.');
       return;
     }
-    if (form.password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters.');
+    // Match password validation regex from backend
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+    if (!passwordRegex.test(form.password)) {
+      setErrorMsg('Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character (e.g., !@#$%^&*).');
       return;
     }
+    
     setErrorMsg('');
     setSubmitState('registering');
     
     try {
-      await api.post('/auth/register-public', form);
+      const payload = {
+        login_id: form.email,
+        email: form.email,
+        password: form.password,
+        full_name: form.name,
+        position: ROLES.find(r => r.value === form.role)?.label || 'Employee',
+        requested_modules: getRequestedModules(form.role)
+      };
+
+      await api.post('/auth/register', payload);
       
       setSubmitState('success');
       await new Promise(r => setTimeout(r, 2500));

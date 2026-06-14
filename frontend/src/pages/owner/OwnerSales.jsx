@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, RefreshCw, ChevronRight, CheckCircle, Package } from 'lucide-react';
+import { ShoppingCart, RefreshCw } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -10,21 +10,32 @@ export default function OwnerSales() {
   const [catalog, setCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadSales = () => {
+  const loadSales = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setOrders(salesApi.getOrders());
-      setCatalog(salesApi.getCatalog());
+    try {
+      const [ordRes, catRes] = await Promise.all([
+        api.get('/sales-orders'),
+        api.get('/products')
+      ]);
+      setOrders(ordRes.data || []);
+      setCatalog(catRes.data || []);
+    } catch (err) {
+      console.error('Failed to load owner sales view', err);
+    } finally {
       setLoading(false);
-    }, 250);
+    }
   };
 
   useEffect(() => {
     loadSales();
   }, []);
 
-  const totalSalesVal = orders.reduce((sum, o) => sum + o.amount, 0);
-  const activeOrdersCount = orders.filter(o => o.status !== 'Delivered').length;
+  const getOrderAmount = (o) => {
+    return o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+  };
+
+  const totalSalesVal = orders.reduce((sum, o) => sum + getOrderAmount(o), 0);
+  const activeOrdersCount = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
 
   return (
     <AppShell>
@@ -88,12 +99,12 @@ export default function OwnerSales() {
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.id}>
-                        <td style={{ fontWeight: 'bold' }}>{o.id}</td>
-                        <td>{o.orderDate}</td>
-                        <td>{o.deliveryDate}</td>
-                        <td style={{ fontWeight: 600 }}>₹{o.amount.toLocaleString()}</td>
+                        <td style={{ fontWeight: 'bold' }}>{o.order_number}</td>
+                        <td>{new Date(o.created_at).toLocaleDateString()}</td>
+                        <td>{o.expected_delivery_date ? new Date(o.expected_delivery_date).toLocaleDateString() : 'N/A'}</td>
+                        <td style={{ fontWeight: 600 }}>₹{getOrderAmount(o).toLocaleString()}</td>
                         <td>
-                          <span className={`health-chip ${o.status === 'Delivered' ? 'health-chip--green' : 'health-chip--amber'}`}>
+                          <span className={`health-chip ${o.status === 'delivered' ? 'health-chip--green' : 'health-chip--amber'}`} style={{ textTransform: 'capitalize' }}>
                             {o.status}
                           </span>
                         </td>
@@ -110,15 +121,20 @@ export default function OwnerSales() {
                 <h3 className="purchase-panel-title">Finished Goods Stock & Demand</h3>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {catalog.map(prod => (
-                  <div key={prod.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{prod.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>{prod.code} | Avail: {prod.available} | Res: {prod.reserved}</div>
+                {catalog.map(prod => {
+                  const onHand = Number(prod.inventory?.on_hand_qty || 0);
+                  const reserved = Number(prod.inventory?.reserved_qty || 0);
+                  const available = Math.max(0, onHand - reserved);
+                  return (
+                    <div key={prod.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '13px' }}>{prod.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>{prod.sku || 'N/A'} | Avail: {available} | Res: {reserved}</div>
+                      </div>
+                      <div style={{ fontWeight: 700 }}>₹{Number(prod.sales_price).toLocaleString()}</div>
                     </div>
-                    <div style={{ fontWeight: 700 }}>₹{prod.price.toLocaleString()}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

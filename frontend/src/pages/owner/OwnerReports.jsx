@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { BarChart2, RefreshCw, Download, FileText, TrendingUp, Layers } from 'lucide-react';
+import { BarChart2, RefreshCw, Download } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -10,23 +9,40 @@ export default function OwnerReports() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({});
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const sales = salesApi.getOrders();
-      const purchases = purchaseApi.getPOs();
-      const materials = purchaseApi.getMaterials();
+    try {
+      const [ordRes, posRes, prodRes] = await Promise.all([
+        api.get('/sales-orders'),
+        api.get('/purchase-orders'),
+        api.get('/products')
+      ]);
+      const sales = ordRes.data || [];
+      const purchases = posRes.data || [];
+      const products = prodRes.data || [];
+      const materials = products.filter(p => p.type === 'RAW_MATERIAL');
+
+      const getOrderAmount = (o) => {
+        return o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+      };
+
+      const getPurchaseAmount = (p) => {
+        return p.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+      };
 
       setSummary({
         salesCount: sales.length,
-        salesTotal: sales.reduce((sum, s) => sum + s.amount, 0),
-        purchaseCount: purchases.length,
-        purchaseTotal: purchases.reduce((sum, p) => sum + p.totalValue, 0),
+        salesTotal: sales.reduce((sum, s) => sum + getOrderAmount(s), 0),
+        purchaseCount: purchases.filter(p => p.status !== 'draft').length,
+        purchaseTotal: purchases.reduce((sum, p) => sum + (p.status !== 'draft' ? getPurchaseAmount(p) : 0), 0),
         inventoryItems: materials.length,
-        inventoryValue: materials.reduce((sum, m) => sum + (m.currentStock * m.price), 0)
+        inventoryValue: materials.reduce((sum, m) => sum + (Number(m.inventory?.on_hand_qty || 0) * Number(m.cost_price || 0)), 0)
       });
+    } catch (err) {
+      console.error('Failed to load owner reports data', err);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {

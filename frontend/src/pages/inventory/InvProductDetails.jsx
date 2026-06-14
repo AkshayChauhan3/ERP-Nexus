@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Package, Search, Clock, ArrowRightLeft, TrendingUp } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvProductDetails() {
@@ -10,19 +10,49 @@ export default function InvProductDetails() {
   const [products, setProducts] = useState([]);
   const [selectedProd, setSelectedProd] = useState(null);
   const [ledger, setLedger] = useState([]);
+  const [allLedgerData, setAllLedgerData] = useState([]);
   const [timeFilter, setTimeFilter] = useState('30days'); // 30days, 90days, 12months
 
-  const loadData = () => {
-    const list = inventoryApi.getProducts();
-    setProducts(list);
-    
-    // Check if ID is in URL query parameters
-    const queryParams = new URLSearchParams(location.search);
-    const id = queryParams.get('id');
-    const target = list.find(p => p.id === id) || list[0];
-    
-    if (target) {
-      handleSelectProduct(target);
+  const loadData = async () => {
+    try {
+      const [invRes, ledgerRes] = await Promise.all([
+        api.get('/inventory'),
+        api.get('/inventory/ledger')
+      ]);
+      const invData = invRes.data || [];
+      const ledgerData = ledgerRes.data || [];
+      setAllLedgerData(ledgerData);
+
+      // De-duplicate products by productId
+      const uniqueProducts = [];
+      const seen = new Set();
+      for (const p of invData) {
+        if (!seen.has(p.productId)) {
+          seen.add(p.productId);
+          const productWarehouses = invData.filter(x => x.productId === p.productId);
+          const totalStock = productWarehouses.reduce((s, x) => s + x.currentStock, 0);
+          const totalReserved = productWarehouses.reduce((s, x) => s + x.reservedStock, 0);
+          
+          uniqueProducts.push({
+            ...p,
+            id: p.productId,
+            currentStock: totalStock,
+            reservedStock: totalReserved,
+          });
+        }
+      }
+      setProducts(uniqueProducts);
+
+      // Resolve query param product
+      const queryParams = new URLSearchParams(location.search);
+      const queryId = queryParams.get('id');
+      const target = uniqueProducts.find(p => p.id === queryId) || uniqueProducts[0];
+      
+      if (target) {
+        handleSelectProduct(target, ledgerData);
+      }
+    } catch (err) {
+      console.error('Failed to load product details:', err);
     }
   };
 
@@ -30,9 +60,9 @@ export default function InvProductDetails() {
     loadData();
   }, [location.search]);
 
-  const handleSelectProduct = (p) => {
+  const handleSelectProduct = (p, allLedger = allLedgerData) => {
     setSelectedProd(p);
-    const logs = inventoryApi.getLedger().filter(l => l.productId === p.id);
+    const logs = allLedger.filter(l => l.productId === p.id || l.productId === p.productId);
     setLedger(logs);
   };
 

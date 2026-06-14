@@ -15,21 +15,18 @@ export default function AuditLogs() {
     loadLogs();
   }, []);
 
-  const loadLogs = async () => {
+  const loadLogs = () => {
     setLoading(true);
-    try {
-      const data = await api.get('/audit-logs');
-      setLogs(data.logs || []);
-    } catch (err) {
-      console.error('Failed to load audit logs:', err);
-    } finally {
+    setTimeout(() => {
+      const allLogs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
+      setLogs(allLogs);
       setLoading(false);
-    }
+    }, 250);
   };
   const modules = ['All', ...new Set(logs.map(log => log.module))];
   const actions = ['All', ...new Set(logs.map(log => log.action))];
   const filteredLogs = logs.filter(log => {
-    const matchesUser = log.user.toLowerCase().includes(searchUser.toLowerCase());
+    const matchesUser = (log.user || '').toLowerCase().includes(searchUser.toLowerCase());
     const matchesModule = selectedModule === 'All' || log.module === selectedModule;
     const matchesAction = selectedAction === 'All' || log.action === selectedAction;
     return matchesUser && matchesModule && matchesAction;

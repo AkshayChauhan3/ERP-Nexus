@@ -8,6 +8,7 @@ async function getAllPurchaseOrders() {
     include: {
       vendor: { select: { id: true, name: true } },
       user: { select: { id: true, login_id: true } },
+      lines: { include: { product: { select: { id: true, name: true, sku: true } } } },
     },
   });
 }
@@ -16,7 +17,7 @@ async function getPurchaseOrderById(id) {
   return await prisma.purchaseOrder.findUniqueOrThrow({
     where: { id },
     include: {
-      vendor: { select: { id: true, name: true, vendor_code: true } },
+      vendor: { select: { id: true, name: true } },
       user: { select: { id: true, login_id: true } },
       lines: { include: { product: { select: { id: true, name: true, sku: true } } } },
       receipts: true,

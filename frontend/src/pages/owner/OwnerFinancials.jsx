@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, ArrowUpRight, ArrowDownRight, Award, RefreshCw, FileText, CheckCircle } from 'lucide-react';
+import { DollarSign, ArrowUpRight, ArrowDownRight, Award, RefreshCw, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -11,21 +10,32 @@ export default function OwnerFinancials() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setBills(purchaseApi.getBills());
-      setSales(salesApi.getOrders());
+    try {
+      const [salesRes, billsRes] = await Promise.all([
+        api.get('/sales-orders'),
+        api.get('/purchase/bills')
+      ]);
+      setSales(salesRes.data || []);
+      setBills(billsRes.data || []);
+    } catch (err) {
+      console.error('Failed to load owner financial metrics', err);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const totalRevenue = sales.reduce((sum, order) => sum + order.amount, 0);
-  const totalBillsAmount = bills.reduce((sum, b) => sum + b.amount, 0);
+  const getOrderAmount = (o) => {
+    return o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+  };
+
+  const totalRevenue = sales.reduce((sum, order) => sum + getOrderAmount(order), 0);
+  const totalBillsAmount = bills.reduce((sum, b) => sum + Number(b.total_amount), 0);
   
   // Expenses = paid bills + unpaid bills + general business overhead of 25,000
   const generalOverhead = 25000;
@@ -33,43 +43,17 @@ export default function OwnerFinancials() {
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '0.0';
 
-  const handlePayBill = (billId) => {
-    const updated = bills.map(b => {
-      if (b.id === billId) {
-        return { ...b, status: 'Paid' };
-      }
-      return b;
-    });
-    purchaseApi.saveBills(updated);
-    
-    // Log in audit log
-    const auditLogs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
-    const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
-    const userEmail = authData?.user?.email || 'owner@erp-nexus.local';
-    
-    auditLogs.unshift({
-      id: `log-${Math.random().toString(36).substring(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      user: userEmail,
-      module: 'Business Owner Operations',
-      action: 'Record Vendor Bill Payment',
-      old_value: `Bill: ${billId} (Status: Submitted)`,
-      new_value: `Status: Paid`
-    });
-    localStorage.setItem('audit_logs', JSON.stringify(auditLogs));
-    
-    // Sync the PO status too
-    const poList = purchaseApi.getPOs();
-    const targetBill = bills.find(b => b.id === billId);
-    if (targetBill) {
-      const idx = poList.findIndex(p => p.id === targetBill.poId);
-      if (idx !== -1) {
-        poList[idx].billStatus = 'Paid';
-        purchaseApi.savePOs(poList);
-      }
+  const handlePayBill = async (billId) => {
+    try {
+      const pmtRef = `PMT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      await api.post(`/purchase/bills/${billId}/pay`, {
+        payment_reference: pmtRef
+      });
+      alert(`Payment of ${pmtRef} recorded successfully!`);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to pay bill');
     }
-    
-    loadData();
   };
 
   return (
@@ -144,35 +128,48 @@ export default function OwnerFinancials() {
                       </tr>
                     </thead>
                     <tbody>
-                      {bills.map(b => (
-                        <tr key={b.id}>
-                          <td style={{ fontWeight: 'bold' }}>{b.id}</td>
-                          <td>{b.poId}</td>
-                          <td>{b.invoiceNo}</td>
-                          <td>{b.dueDate}</td>
-                          <td style={{ fontWeight: 600 }}>₹{b.amount.toLocaleString()}</td>
-                          <td>
-                            <span className={`health-chip ${b.status === 'Paid' ? 'health-chip--green' : 'health-chip--amber'}`}>
-                              {b.status}
-                            </span>
-                          </td>
-                          <td>
-                            {b.status !== 'Paid' ? (
-                              <button
-                                className="btn btn--primary"
-                                style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--color-success)', color: '#fff' }}
-                                onClick={() => handlePayBill(b.id)}
-                              >
-                                Record Payment
-                              </button>
-                            ) : (
-                              <span style={{ fontSize: '12px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <CheckCircle size={12} /> Settled
+                      {bills.map(b => {
+                        const billAmount = Number(b.total_amount);
+                        const dueDateString = new Date(b.due_date).toLocaleDateString();
+                        const poNum = b.purchase_order?.po_number || 'N/A';
+                        
+                        return (
+                          <tr key={b.id}>
+                            <td style={{ fontWeight: 'bold' }}>{b.bill_number}</td>
+                            <td>{poNum}</td>
+                            <td>{b.bill_number}</td>
+                            <td>{dueDateString}</td>
+                            <td style={{ fontWeight: 600 }}>₹{billAmount.toLocaleString()}</td>
+                            <td>
+                              <span className={`health-chip ${b.status === 'paid' ? 'health-chip--green' : 'health-chip--amber'}`}>
+                                {b.status === 'paid' ? 'Paid' : b.status === 'approved_for_payment' ? 'Approved' : 'Pending Payment'}
                               </span>
-                            )}
+                            </td>
+                            <td>
+                              {b.status !== 'paid' ? (
+                                <button
+                                  className="btn btn--primary"
+                                  style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--color-success)', color: '#fff' }}
+                                  onClick={() => handlePayBill(b.id)}
+                                >
+                                  Record Payment
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '12px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <CheckCircle size={12} /> Settled
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {bills.length === 0 && (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
+                            No invoices uploaded.
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>

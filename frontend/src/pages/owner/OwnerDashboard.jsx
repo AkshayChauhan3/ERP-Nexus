@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, ShoppingBag, Layers, Factory, Clock, AlertTriangle, Users, DollarSign,
-  TrendingDown, CheckCircle, ArrowRight, Activity, RefreshCw
+  TrendingDown, CheckCircle, ArrowRight, Activity, RefreshCw, Zap, X
 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { ownerApi } from '../../utils/ownerApi';
-import { salesApi } from '../../utils/salesApi';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -19,7 +17,7 @@ export default function OwnerDashboard() {
     todayPurchases: 0,
     monthlyPurchases: 0,
     invValue: 0,
-    moInProgress: 3,
+    moInProgress: 0,
     pendingApprovals: 0,
     revenue: 0,
     expenses: 0,
@@ -29,37 +27,43 @@ export default function OwnerDashboard() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [summaryText, setSummaryText] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   useEffect(() => {
-    const loadData = () => {
-      setLoading(true);
-      const sales = salesApi.getOrders();
-      const purchases = purchaseApi.getPOs();
-      const approvals = ownerApi.getApprovals();
-      const employees = ownerApi.getEmployees();
-
-      const todaySales = sales.filter(s => s.orderDate === '2026-06-13').reduce((sum, o) => sum + o.amount, 0);
-      const monthlySales = sales.reduce((sum, o) => sum + o.amount, 0);
-      const todayPurchases = purchases.filter(p => p.orderDate === '2026-06-13').reduce((sum, o) => sum + o.totalValue, 0);
-      const monthlyPurchases = purchases.reduce((sum, o) => sum + o.totalValue, 0);
-      
-      const pendingApprovals = approvals.filter(a => a.status === 'Pending').length;
-      const activeUsers = employees.filter(e => e.status === 'Online').length;
-
-      const revenue = monthlySales;
-      const expenses = monthlyPurchases + 25000; // purchases + mock production cost
-      const profit = revenue - expenses;
-
-      setStats({
-        todaySales, monthlySales, todayPurchases, monthlyPurchases,
-        invValue: 842500, moInProgress: 3, pendingApprovals,
-        revenue, expenses, profit, lowStock: 2, activeUsers
-      });
-      setLoading(false);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/intelligence/dashboard-stats');
+        if (res.data) {
+          setStats(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
   }, []);
+
+  const generateSummary = async () => {
+    setGeneratingSummary(true);
+    setShowSummaryModal(true);
+    try {
+      const res = await api.get('/intelligence/summary');
+      if (res.data) {
+        setSummaryText(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to generate summary:', err);
+      setSummaryText('Failed to generate the business summary. Please ensure the intelligence service is running and try again.');
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -72,9 +76,19 @@ export default function OwnerDashboard() {
             </h2>
             <p className="owner-sub">Real-time consolidated health dashboard for Business Owners.</p>
           </div>
-          <button className="btn btn--primary" style={{ gap: '6px' }} onClick={() => navigate('/owner/approvals')}>
-            <Clock size={14} /> Review approvals ({stats.pendingApprovals})
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              className="btn btn--secondary" 
+              style={{ gap: '6px', background: 'var(--color-primary)', color: 'white', border: 'none' }} 
+              onClick={generateSummary}
+            >
+              {generatingSummary ? <RefreshCw size={14} className="spin" /> : <Zap size={14} />}
+              Generate Business Summary
+            </button>
+            <button className="btn btn--primary" style={{ gap: '6px' }} onClick={() => navigate('/owner/approvals')}>
+              <Clock size={14} /> Review approvals ({stats.pendingApprovals})
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -84,6 +98,45 @@ export default function OwnerDashboard() {
           </div>
         ) : (
           <>
+            {showSummaryModal && (
+              <div style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '24px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                border: '1px solid #eee',
+                position: 'relative',
+                animation: 'slideDown 0.3s ease-out'
+              }}>
+                <button 
+                  onClick={() => setShowSummaryModal(false)}
+                  style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}
+                >
+                  <X size={20} />
+                </button>
+                <h3 style={{ margin: '0 0 16px 0', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Zap size={20} style={{ color: 'var(--color-primary)' }} />
+                  Executive Business Summary
+                </h3>
+                {generatingSummary ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#666', padding: '20px 0' }}>
+                    <RefreshCw size={18} className="spin" />
+                    <span>Analyzing ERP data and generating narrative...</span>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    color: '#333', 
+                    lineHeight: '1.7', 
+                    fontSize: '15px',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {summaryText}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Owner strategic cards */}
             <div className="owner-card-grid">
               <div className="owner-card">

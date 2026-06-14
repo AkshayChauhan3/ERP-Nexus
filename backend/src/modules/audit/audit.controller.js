@@ -13,7 +13,16 @@ const auditFilterSchema = z.object({
 async function getLogs(req, res) {
   const filters = auditFilterSchema.parse(req.query);
   const logs = await auditService.getAuditLogs(filters);
-  res.json({ success: true, data: logs });
+  const mappedLogs = logs.map(log => ({
+    id: log.id,
+    timestamp: log.created_at,
+    user: log.user ? log.user.login_id : log.user_id || 'System',
+    module: log.model_name,
+    action: log.action,
+    old_value: log.old_value ? JSON.stringify(log.old_value) : '-',
+    new_value: log.new_value ? JSON.stringify(log.new_value) : '-'
+  }));
+  res.json({ success: true, data: mappedLogs });
 }
 
 module.exports = {

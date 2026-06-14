@@ -234,6 +234,7 @@
   height: 100%;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -242,7 +243,9 @@
 }
 
 .purchase-modal {
-  background: var(--color-canvas);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--color-outline);
   border-radius: var(--radius-xl);
   width: 100%;
@@ -317,6 +320,21 @@
   border-color: var(--color-primary);
   background: var(--color-canvas);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+select.purchase-input {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234E616E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+select.purchase-input option {
+  background-color: var(--color-canvas, #ffffff);
+  color: var(--color-primary, #111827);
+  padding: 10px 14px;
 }
 
 /* ── Tabs ── */

@@ -24,7 +24,7 @@ router.use(authenticate);
  *       200:
  *         description: List of products
  */
-router.get('/', authorize('admin', 'inventory', 'owner'), productController.getAll);
+router.get('/', authorize('admin', 'inventory', 'owner', 'sales', 'purchase'), productController.getAll);
 
 /**
  * @swagger
@@ -70,7 +70,7 @@ router.post('/', authorize('admin', 'inventory', 'owner'), productController.cre
  *       404:
  *         description: Product not found
  */
-router.get('/:id', authorize('admin', 'inventory', 'owner'), productController.getById);
+router.get('/:id', authorize('admin', 'inventory', 'owner', 'sales', 'purchase'), productController.getById);
 
 /**
  * @swagger
@@ -98,7 +98,7 @@ router.get('/:id', authorize('admin', 'inventory', 'owner'), productController.g
  *       200:
  *         description: Product updated
  */
-router.patch('/:id', authorize('admin', 'inventory', 'owner'), productController.update);
+router.patch('/:id', authorize('admin', 'inventory', 'owner', 'purchase'), productController.update);
 
 /**
  * @swagger

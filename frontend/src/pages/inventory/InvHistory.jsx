@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, Search, Filter } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvHistory() {
@@ -16,12 +16,27 @@ export default function InvHistory() {
   const [search, setSearch] = useState('');
   const [selectedWH, setSelectedWH] = useState('All');
 
+  const loadData = async () => {
+    try {
+      const [ledgerRes, adjRes, trfRes, invRes, whRes] = await Promise.all([
+        api.get('/inventory/ledger'),
+        api.get('/inventory/adjustments'),
+        api.get('/inventory/transfers'),
+        api.get('/inventory'),
+        api.get('/inventory/warehouses')
+      ]);
+      setLedger(ledgerRes.data || []);
+      setAdjustments(adjRes.data || []);
+      setTransfers(trfRes.data || []);
+      setProducts(invRes.data || []);
+      setWarehouses(whRes.data || []);
+    } catch (err) {
+      console.error('Failed to load history data', err);
+    }
+  };
+
   useEffect(() => {
-    setLedger(inventoryApi.getLedger());
-    setAdjustments(inventoryApi.getAdjustments());
-    setTransfers(inventoryApi.getTransfers());
-    setProducts(inventoryApi.getProducts());
-    setWarehouses(inventoryApi.getWarehouses());
+    loadData();
   }, []);
 
   return (
@@ -64,7 +79,7 @@ export default function InvHistory() {
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-secondary)' }}>Warehouse:</span>
               <select className="purchase-input" style={{ width: '180px', padding: '6px 12px' }} value={selectedWH} onChange={e => setSelectedWH(e.target.value)}>
                 <option value="All">All Warehouses</option>
-                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                {warehouses.map(w => <option key={w.id} value={w.warehouse_code}>{w.name}</option>)}
               </select>
             </div>
           </div>
@@ -93,7 +108,7 @@ export default function InvHistory() {
                       <tr key={l.id}>
                         <td>{l.date}</td>
                         <td style={{ fontWeight: 600 }}>{products.find(p => p.id === l.productId)?.name}</td>
-                        <td>{warehouses.find(w => w.id === l.warehouseId)?.name || l.warehouseId}</td>
+                        <td>{warehouses.find(w => w.id === l.warehouseId || w.warehouse_code === l.warehouseId)?.name || l.warehouseId}</td>
                         <td>{l.type}</td>
                         <td style={{ fontWeight: 700, color: l.qty < 0 ? 'var(--color-error)' : 'var(--color-success)' }}>
                           {l.qty > 0 ? `+${l.qty}` : l.qty}
@@ -117,13 +132,13 @@ export default function InvHistory() {
                 </thead>
                 <tbody>
                   {warehouses
-                    .filter(w => selectedWH === 'All' || w.id === selectedWH)
+                    .filter(w => selectedWH === 'All' || w.warehouse_code === selectedWH)
                     .filter(w => w.name.toLowerCase().includes(search.toLowerCase()))
                     .map(w => (
                       <tr key={w.id}>
                         <td style={{ fontWeight: 600 }}>{w.name}</td>
                         <td>{w.location}</td>
-                        <td>{products.filter(p => p.warehouseId === w.id).length} items</td>
+                        <td>{products.filter(p => p.warehouseId === w.warehouse_code || p.warehouseUuid === w.id).length} items</td>
                         <td>
                           <span className="purchase-badge purchase-badge--success">{w.status}</span>
                         </td>
@@ -148,14 +163,14 @@ export default function InvHistory() {
                 <tbody>
                   {adjustments
                     .filter(a => selectedWH === 'All' || a.warehouseId === selectedWH)
-                    .filter(a => products.find(p => p.id === a.productId)?.name.toLowerCase().includes(search.toLowerCase()))
+                    .filter(a => products.find(p => p.id === a.productId || p.productId === a.productId)?.name.toLowerCase().includes(search.toLowerCase()))
                     .map(a => {
                       const diff = a.newQty - a.oldQty;
                       return (
                         <tr key={a.id}>
                           <td>{a.date}</td>
-                          <td style={{ fontWeight: 600 }}>{products.find(p => p.id === a.productId)?.name}</td>
-                          <td>{warehouses.find(w => w.id === a.warehouseId)?.name || a.warehouseId}</td>
+                          <td style={{ fontWeight: 600 }}>{products.find(p => p.id === a.productId || p.productId === a.productId)?.name}</td>
+                          <td>{warehouses.find(w => w.id === a.warehouseId || w.warehouse_code === a.warehouseId)?.name || a.warehouseId}</td>
                           <td style={{ fontWeight: 700, color: diff < 0 ? 'var(--color-error)' : 'var(--color-success)' }}>
                             {diff > 0 ? `+${diff}` : diff}
                           </td>
@@ -185,13 +200,13 @@ export default function InvHistory() {
                 <tbody>
                   {transfers
                     .filter(t => selectedWH === 'All' || t.source === selectedWH || t.destination === selectedWH)
-                    .filter(t => products.find(p => p.id === t.productId)?.name.toLowerCase().includes(search.toLowerCase()))
+                    .filter(t => products.find(p => p.id === t.productId || p.productId === t.productId)?.name.toLowerCase().includes(search.toLowerCase()))
                     .map(t => (
                       <tr key={t.id}>
                         <td>{t.date}</td>
-                        <td style={{ fontWeight: 600 }}>{products.find(p => p.id === t.productId)?.name}</td>
-                        <td>{warehouses.find(w => w.id === t.source)?.name || t.source}</td>
-                        <td>{warehouses.find(w => w.id === t.destination)?.name || t.destination}</td>
+                        <td style={{ fontWeight: 600 }}>{products.find(p => p.id === t.productId || p.productId === t.productId)?.name}</td>
+                        <td>{warehouses.find(w => w.id === t.source || w.warehouse_code === t.source)?.name || t.source}</td>
+                        <td>{warehouses.find(w => w.id === t.destination || w.warehouse_code === t.destination)?.name || t.destination}</td>
                         <td style={{ fontWeight: 700 }}>{t.qty} units</td>
                         <td>
                           <span className={`purchase-badge purchase-badge--${t.status === 'Completed' ? 'success' : 'warning'}`}>{t.status}</span>

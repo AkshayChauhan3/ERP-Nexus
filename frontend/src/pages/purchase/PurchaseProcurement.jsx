@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ClipboardList, AlertTriangle, Zap, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseProcurement() {
@@ -9,66 +9,109 @@ export default function PurchaseProcurement() {
   const [vendors, setVendors] = useState([]);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const loadData = () => {
-    const mats = purchaseApi.getMaterials();
-    const vends = purchaseApi.getVendors();
-    setVendors(vends);
+  const loadData = async () => {
+    try {
+      const [prodRes, vendRes, suggRes] = await Promise.all([
+        api.get('/products'),
+        api.get('/vendors'),
+        api.get('/purchase/suggestions')
+      ]);
+      const prodsList = prodRes.data || [];
+      const vendsList = vendRes.data || [];
+      const suggsList = suggRes.data || [];
+      setVendors(vendsList);
 
-    // Filter materials that are below reorder level
-    const lowStockMats = mats.filter(m => m.currentStock <= m.reorderLevel);
-    
-    // Map to procurement suggestions
-    const items = lowStockMats.map(m => {
-      const vend = vends.find(v => v.id === m.preferredVendor);
-      const deficit = m.reorderLevel - m.currentStock;
-      const recommendedQty = Math.max(deficit * 2, 10); // Standard replenish lot size
+      // 1. Dynamic suggestions: Raw materials below safety threshold (MTS)
+      const lowStockMats = prodsList.filter(
+        m => m.type === 'RAW_MATERIAL' && (m.inventory?.on_hand_qty || 0) <= (m.inventory?.reorder_level || 0)
+      );
+      
+      const mtsSuggestions = lowStockMats.map(m => {
+        const vend = vendsList.find(v => v.id === m.vendor_id);
+        const deficit = (m.inventory?.reorder_level || 0) - (m.inventory?.on_hand_qty || 0);
+        const recommendedQty = Math.max(deficit * 2, 10);
+        return {
+          type: 'MTS',
+          materialId: m.id,
+          name: m.name,
+          sku: m.sku || 'N/A',
+          current: m.inventory?.on_hand_qty || 0,
+          threshold: m.inventory?.reorder_level || 0,
+          unit: 'units',
+          preferredVendorId: m.vendor_id || (vendsList[0]?.id || ''),
+          preferredVendorName: vend ? vend.name : (vendsList[0]?.name || 'No Vendor Assigned'),
+          recommendedQty,
+          estimatedCost: recommendedQty * Number(m.cost_price),
+          costPrice: Number(m.cost_price)
+        };
+      });
 
-      return {
-        materialId: m.id,
-        name: m.name,
-        sku: m.sku,
-        current: m.currentStock,
-        threshold: m.reorderLevel,
-        unit: m.unit,
-        preferredVendorId: m.preferredVendor,
-        preferredVendorName: vend ? vend.name : 'Unknown Vendor',
-        recommendedQty,
-        estimatedCost: recommendedQty * m.price
-      };
-    });
+      // 2. Database MTO suggestions (status: PENDING, source: PURCHASE)
+      const mtoSuggestions = suggsList
+        .filter(s => s.status === 'PENDING' && s.procurement_source === 'PURCHASE')
+        .map(s => {
+          const prod = prodsList.find(p => p.id === s.product_id) || s.product;
+          const vend = prod ? vendsList.find(v => v.id === prod.vendor_id) : null;
+          return {
+            type: 'MTO',
+            suggestionId: s.id,
+            materialId: s.product_id,
+            name: prod ? prod.name : 'Unknown',
+            sku: prod ? prod.sku : 'N/A',
+            current: Number(s.current_stock),
+            threshold: prod?.inventory?.reorder_level || 0,
+            unit: 'units',
+            preferredVendorId: prod?.vendor_id || (vendsList[0]?.id || ''),
+            preferredVendorName: vend ? vend.name : (vendsList[0]?.name || 'No Vendor Assigned'),
+            recommendedQty: Number(s.shortage_qty),
+            estimatedCost: Number(s.shortage_qty) * Number(prod?.cost_price || 0),
+            costPrice: Number(prod?.cost_price || 0),
+            reason: s.reason
+          };
+        });
 
-    setSuggestions(items);
+      // Combine both suggestions lists
+      setSuggestions([...mtsSuggestions, ...mtoSuggestions]);
+    } catch (err) {
+      console.error('Failed to load procurement suggestions', err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleOneClickPO = (item) => {
-    const originalMaterial = purchaseApi.getMaterials().find(m => m.id === item.materialId);
-    
-    purchaseApi.createPO({
-      vendorId: item.preferredVendorId,
-      deliveryDate: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0], // 5 days delivery ETA
-      items: [{
-        materialId: item.materialId,
-        name: item.name,
-        qty: item.recommendedQty,
-        price: originalMaterial ? originalMaterial.price : 100
-      }],
-      totalValue: item.estimatedCost,
-      status: 'Confirmed'
-    });
+  const handleOneClickPO = async (item) => {
+    try {
+      // Create draft PO
+      const poRes = await api.post('/purchase-orders', {
+        vendor_id: item.preferredVendorId,
+        lines: [{
+          product_id: item.materialId,
+          ordered_qty: item.recommendedQty,
+          unit_price: item.costPrice
+        }]
+      });
 
-    setSuccessMsg(`Draft Purchase Order successfully generated for ${item.preferredVendorName}!`);
-    setTimeout(() => setSuccessMsg(''), 5000);
-    loadData();
+      // If database MTO suggestion, mark as PO created
+      if (item.type === 'MTO' && item.suggestionId) {
+        await api.patch(`/purchase/suggestions/${item.suggestionId}/status`, {
+          status: 'po_created'
+        });
+      }
+
+      setSuccessMsg(`Draft Purchase Order ${poRes.data?.po_number || ''} successfully generated for ${item.preferredVendorName}!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to generate PO');
+    }
   };
 
-  const handleOrderAll = () => {
+  const handleOrderAll = async () => {
     if (suggestions.length === 0) return;
 
-    // Group suggestions by vendor to create consolidated POs
+    // Group suggestions by preferred vendor
     const grouped = {};
     suggestions.forEach(item => {
       if (!grouped[item.preferredVendorId]) {
@@ -77,32 +120,37 @@ export default function PurchaseProcurement() {
       grouped[item.preferredVendorId].push(item);
     });
 
-    Object.keys(grouped).forEach(vendorId => {
-      const items = grouped[vendorId];
-      const poItems = items.map(item => {
-        const mat = purchaseApi.getMaterials().find(m => m.id === item.materialId);
-        return {
-          materialId: item.materialId,
-          name: item.name,
-          qty: item.recommendedQty,
-          price: mat ? mat.price : 100
-        };
-      });
+    try {
+      for (const vendorId of Object.keys(grouped)) {
+        const items = grouped[vendorId];
+        const lines = items.map(item => ({
+          product_id: item.materialId,
+          ordered_qty: item.recommendedQty,
+          unit_price: item.costPrice
+        }));
 
-      const totalValue = poItems.reduce((sum, i) => sum + (i.qty * i.price), 0);
+        // Create consolidated PO
+        const poRes = await api.post('/purchase-orders', {
+          vendor_id: vendorId,
+          lines
+        });
 
-      purchaseApi.createPO({
-        vendorId,
-        deliveryDate: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
-        items: poItems,
-        totalValue,
-        status: 'Confirmed'
-      });
-    });
+        // Update statuses for MTO entries
+        for (const item of items) {
+          if (item.type === 'MTO' && item.suggestionId) {
+            await api.patch(`/purchase/suggestions/${item.suggestionId}/status`, {
+              status: 'po_created'
+            });
+          }
+        }
+      }
 
-    setSuccessMsg(`Consolidated Purchase Orders created for all low stock items!`);
-    setTimeout(() => setSuccessMsg(''), 5000);
-    loadData();
+      setSuccessMsg(`Consolidated Purchase Orders created for all low stock items!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to generate consolidated POs');
+    }
   };
 
   return (
@@ -124,7 +172,7 @@ export default function PurchaseProcurement() {
         </div>
 
         {successMsg && (
-          <div style={{ padding: '16px', background: 'rgba(46, 125, 50, 0.08)', borderLeft: '4px solid var(--color-success)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ padding: '16px', background: 'rgba(46, 125, 50, 0.08)', borderLeft: '4px solid var(--color-success)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: 'var(--radius-lg)', marginBottom: '16px' }}>
             <CheckCircle size={16} />
             <span style={{ fontSize: '13px', fontWeight: 600 }}>{successMsg}</span>
           </div>
@@ -139,6 +187,7 @@ export default function PurchaseProcurement() {
             <table className="purchase-table">
               <thead>
                 <tr>
+                  <th>Type</th>
                   <th>Material Code</th>
                   <th>Material Description</th>
                   <th>Current Stock</th>
@@ -150,14 +199,19 @@ export default function PurchaseProcurement() {
                 </tr>
               </thead>
               <tbody>
-                {suggestions.map(s => (
-                  <tr key={s.materialId}>
+                {suggestions.map((s, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <span className={`purchase-badge purchase-badge--${s.type === 'MTO' ? 'warning' : 'outline'}`}>
+                        {s.type}
+                      </span>
+                    </td>
                     <td style={{ fontFamily: 'monospace' }}>{s.sku}</td>
                     <td style={{ fontWeight: 600 }}>{s.name}</td>
-                    <td style={{ color: 'var(--color-error)', fontWeight: 600 }}>{s.current} {s.unit}</td>
-                    <td>{s.threshold} {s.unit}</td>
+                    <td style={{ color: 'var(--color-error)', fontWeight: 600 }}>{s.current} units</td>
+                    <td>{s.threshold} units</td>
                     <td>{s.preferredVendorName}</td>
-                    <td style={{ fontWeight: 600 }}>{s.recommendedQty} {s.unit}</td>
+                    <td style={{ fontWeight: 600 }}>{s.recommendedQty} units</td>
                     <td style={{ fontWeight: 700 }}>₹{s.estimatedCost.toLocaleString()}</td>
                     <td>
                       <button className="btn btn--primary" style={{ padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleOneClickPO(s)}>
@@ -168,7 +222,7 @@ export default function PurchaseProcurement() {
                 ))}
                 {suggestions.length === 0 && (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
                       ✓ All inventory units are above their safety thresholds. No replenishment suggestions.
                     </td>
                   </tr>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { History, Search, Download, Filter } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseHistory() {
@@ -15,10 +15,19 @@ export default function PurchaseHistory() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const loadData = () => {
-    setReceipts(purchaseApi.getReceipts());
-    setVendors(purchaseApi.getVendors());
-    setMaterials(purchaseApi.getMaterials());
+  const loadData = async () => {
+    try {
+      const [recRes, vendRes, prodRes] = await Promise.all([
+        api.get('/purchase/receipts'),
+        api.get('/vendors'),
+        api.get('/products')
+      ]);
+      setReceipts(recRes.data || []);
+      setVendors(vendRes.data || []);
+      setMaterials((prodRes.data || []).filter(p => p.type === 'RAW_MATERIAL'));
+    } catch (err) {
+      console.error('Failed to load purchase history data', err);
+    }
   };
 
   useEffect(() => {
@@ -30,14 +39,15 @@ export default function PurchaseHistory() {
   };
 
   const filtered = receipts.filter(r => {
-    const matchVendor = vendorFilter === 'All' || r.vendorId === vendorFilter;
+    const matchVendor = vendorFilter === 'All' || r.purchase_order?.vendor_id === vendorFilter;
     
     // Check if receipt contains the selected material filter
-    const matchMaterial = materialFilter === 'All' || r.items.some(i => i.materialId === materialFilter);
+    const matchMaterial = materialFilter === 'All' || r.lines?.some(l => l.product_id === materialFilter);
     
     // Date filter
-    const matchDate = (!startDate || new Date(r.date) >= new Date(startDate)) &&
-                      (!endDate || new Date(r.date) <= new Date(endDate));
+    const receiptDate = new Date(r.created_at);
+    const matchDate = (!startDate || receiptDate >= new Date(startDate)) &&
+                      (!endDate || receiptDate <= new Date(endDate));
 
     return matchVendor && matchMaterial && matchDate;
   });
@@ -99,7 +109,7 @@ export default function PurchaseHistory() {
             <table className="purchase-table">
               <thead>
                 <tr>
-                  <th>GRN ID</th>
+                  <th>GRN Number</th>
                   <th>PO Reference</th>
                   <th>Vendor</th>
                   <th>Receipt Date</th>
@@ -110,27 +120,24 @@ export default function PurchaseHistory() {
               </thead>
               <tbody>
                 {filtered.map(r => {
-                  const vend = vendors.find(v => v.id === r.vendorId);
+                  const vend = vendors.find(v => v.id === r.purchase_order?.vendor_id);
                   return (
                     <tr key={r.id}>
-                      <td style={{ fontWeight: 700 }}>{r.id}</td>
-                      <td style={{ fontWeight: 600 }}>{r.poId}</td>
-                      <td>{vend ? vend.name : r.vendorId}</td>
-                      <td>{r.date}</td>
+                      <td style={{ fontWeight: 700 }}>{r.receipt_number}</td>
+                      <td style={{ fontWeight: 600 }}>{r.purchase_order?.po_number || 'N/A'}</td>
+                      <td>{vend ? vend.name : 'Unknown'}</td>
+                      <td>{new Date(r.created_at).toLocaleDateString()}</td>
                       <td>
-                        {r.items.map((item, idx) => {
-                          const matName = materials.find(m => m.id === item.materialId)?.name || 'Material';
-                          return (
-                            <div key={idx} style={{ fontSize: '12px' }}>
-                              • {matName}: Received <strong>{item.qtyReceived}</strong> (Rejected {item.qtyRejected})
-                            </div>
-                          );
-                        })}
+                        {r.lines?.map((item, idx) => (
+                          <div key={idx} style={{ fontSize: '12px' }}>
+                            • {item.product?.name || 'Product'}: Received <strong>{Number(item.qty_received)}</strong>
+                          </div>
+                        ))}
                       </td>
                       <td style={{ fontStyle: 'italic', color: 'var(--color-secondary)' }}>
-                        {r.note || 'None'}
+                        {r.delivery_note_ref || 'None'}
                       </td>
-                      <td>{r.receivedBy}</td>
+                      <td>{r.user?.login_id || 'System'}</td>
                     </tr>
                   );
                 })}

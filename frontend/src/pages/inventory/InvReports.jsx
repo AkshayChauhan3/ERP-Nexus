@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart2, Download, TrendingUp, Warehouse, AlertTriangle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvReports() {
@@ -10,10 +10,23 @@ export default function InvReports() {
   const [ledger, setLedger] = useState([]);
   const [activeReport, setActiveReport] = useState('valuation'); // valuation, movement, lowstock, warehouse
 
+  const loadData = async () => {
+    try {
+      const [invRes, whRes, ledgerRes] = await Promise.all([
+        api.get('/inventory'),
+        api.get('/inventory/warehouses'),
+        api.get('/inventory/ledger')
+      ]);
+      setProducts(invRes.data || []);
+      setWarehouses(whRes.data || []);
+      setLedger(ledgerRes.data || []);
+    } catch (err) {
+      console.error('Failed to load reports data', err);
+    }
+  };
+
   useEffect(() => {
-    setProducts(inventoryApi.getProducts());
-    setWarehouses(inventoryApi.getWarehouses());
-    setLedger(inventoryApi.getLedger());
+    loadData();
   }, []);
 
   const handleExport = () => {
@@ -101,7 +114,7 @@ export default function InvReports() {
                   </thead>
                   <tbody>
                     {products.map(p => {
-                      const logs = ledger.filter(l => l.productId === p.id);
+                      const logs = ledger.filter(l => l.productId === p.id || l.productId === p.productId);
                       const incoming = logs.filter(l => l.qty > 0).reduce((sum, l) => sum + l.qty, 0);
                       const outgoing = logs.filter(l => l.qty < 0).reduce((sum, l) => sum + Math.abs(l.qty), 0);
                       const net = incoming - outgoing;
@@ -175,12 +188,12 @@ export default function InvReports() {
                   </thead>
                   <tbody>
                     {warehouses.map(w => {
-                      const items = products.filter(p => p.warehouseId === w.id);
+                      const items = products.filter(p => p.warehouseId === w.warehouse_code || p.warehouseUuid === w.id);
                       const used = items.reduce((sum, item) => sum + item.currentStock, 0);
                       const pct = Math.min(Math.round((used / w.capacity) * 100), 100);
                       return (
                         <tr key={w.id}>
-                          <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{w.id}</td>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{w.warehouse_code}</td>
                           <td style={{ fontWeight: 600 }}>{w.name}</td>
                           <td>{w.capacity} units</td>
                           <td>{used} units</td>

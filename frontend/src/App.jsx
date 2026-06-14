@@ -75,6 +75,7 @@ import OwnerNotifications from './pages/owner/OwnerNotifications';
 import OwnerReports from './pages/owner/OwnerReports';
 import OwnerAuditLogs from './pages/owner/OwnerAuditLogs';
 import OwnerSettings from './pages/owner/OwnerSettings';
+import Advisor from './pages/Advisor';
 
 import './styles/tokens.css';
 import './styles/global.css';
@@ -157,6 +158,7 @@ function App() {
         <Route path="/procurement"     element={<ProtectedRoute allowedRoles={[]}><ProcurementMonitor /></ProtectedRoute>} />
         <Route path="/users"           element={<ProtectedRoute allowedRoles={[]}><UserManagement /></ProtectedRoute>} />
         <Route path="/audit-logs"      element={<ProtectedRoute allowedRoles={[]}><AuditLogs /></ProtectedRoute>} />
+        <Route path="/advisor"         element={<ProtectedRoute allowedRoles={[]}><Advisor /></ProtectedRoute>} />
         <Route path="/reports"         element={<ProtectedRoute allowedRoles={[]}><Reports /></ProtectedRoute>} />
 
         {/* Manufacturing Module */}

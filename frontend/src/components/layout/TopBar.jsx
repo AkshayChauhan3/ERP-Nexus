@@ -108,6 +108,7 @@ export default function TopBar() {
 
   return (
     <header className="topbar">
+      {successMsg && <div className="global-toast global-toast--success">{successMsg}</div>}
       {}
       <div className="topbar-left">
         <span className="topbar-breadcrumb">{meta.breadcrumb}</span>
@@ -116,10 +117,16 @@ export default function TopBar() {
 
       {}
       <div className="topbar-right">
-        <button className="topbar-icon-btn" aria-label="Search">
+        <button className="topbar-icon-btn" aria-label="Search" onClick={() => {
+          setSuccessMsg('Global search functionality coming soon.');
+          setTimeout(() => setSuccessMsg(''), 2000);
+        }}>
           <Search size={18} strokeWidth={1.75} />
         </button>
-        <button className="topbar-icon-btn topbar-notif-btn" aria-label="Notifications">
+        <button className="topbar-icon-btn topbar-notif-btn" aria-label="Notifications" onClick={() => {
+          setSuccessMsg('You have 0 new notifications.');
+          setTimeout(() => setSuccessMsg(''), 2000);
+        }}>
           <Bell size={18} strokeWidth={1.75} />
           <span className="topbar-notif-badge" />
         </button>
@@ -160,17 +167,37 @@ export default function TopBar() {
 
             <div className="profile-drawer-content">
               {}
-              <div className="profile-photo-wrapper">
-                <div className="profile-photo-container" onClick={handlePhotoClick}>
-                  {profileForm.photo ? (
-                    <img src={profileForm.photo} alt="Avatar" className="profile-avatar-img" />
-                  ) : (
-                    <span className="profile-photo-initials">{getInitials(profileForm.name)}</span>
-                  )}
+              <div className="profile-id-card-container">
+                <div className="profile-id-card-lanyard-hole" />
+                <div className="profile-id-card" onClick={handlePhotoClick}>
+                  <div className="profile-id-card-chip" />
+                  <div className="profile-id-card-photo-wrapper">
+                    {profileForm.photo ? (
+                      <img src={profileForm.photo} alt="Avatar" className="profile-id-card-img" />
+                    ) : (
+                      <span className="profile-id-card-initials">{getInitials(profileForm.name)}</span>
+                    )}
+                    <div className="profile-id-card-photo-overlay">
+                      <Camera size={14} style={{ color: '#fff' }} />
+                    </div>
+                  </div>
+                  <div className="profile-id-card-details">
+                    <h4 className="profile-id-card-name">{profileForm.name || user.name}</h4>
+                    <span className="profile-id-card-role">{ROLE_LABELS[user.role] || user.role}</span>
+                    <span className="profile-id-card-email">{user.email}</span>
+                  </div>
+                  <div className="profile-id-card-barcode">
+                    <div className="profile-id-card-barcode-line" style={{ width: '10%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '5%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '15%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '8%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '12%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '4%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '10%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '6%' }} />
+                    <div className="profile-id-card-barcode-line" style={{ width: '15%' }} />
+                  </div>
                 </div>
-                <button className="profile-photo-edit-btn" onClick={handlePhotoClick} aria-label="Upload photo">
-                  <Camera size={14} />
-                </button>
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -240,11 +267,6 @@ export default function TopBar() {
                     disabled
                   />
                 </div>
-
-                {}
-                {successMsg && (
-                  <div className="profile-drawer-success-msg">{successMsg}</div>
-                )}
 
                 {}
                 <div className="profile-drawer-actions">

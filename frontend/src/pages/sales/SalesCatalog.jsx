@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Package, Search, Filter } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesCatalog() {
@@ -10,15 +10,34 @@ export default function SalesCatalog() {
   const [categoryFilter, setCategoryFilter] = useState('All');
 
   useEffect(() => {
-    setCatalog(salesApi.getCatalog());
+    const loadData = async () => {
+      try {
+        const res = await api.get('/products');
+        setCatalog(res.data || []);
+      } catch (err) {
+        console.error('Failed to load catalog', err);
+      }
+    };
+    loadData();
   }, []);
 
   const categories = ['All', 'Finished Goods', 'Raw Materials', 'Consumables'];
 
   const filtered = catalog.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase());
-    const matchCat = categoryFilter === 'All' || p.category === categoryFilter;
-    return matchSearch && matchCat;
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase());
+    
+    let typeMatch = false;
+    if (categoryFilter === 'All') {
+      typeMatch = true;
+    } else if (categoryFilter === 'Finished Goods' && p.type === 'FINISHED_GOOD') {
+      typeMatch = true;
+    } else if (categoryFilter === 'Raw Materials' && p.type === 'RAW_MATERIAL') {
+      typeMatch = true;
+    } else if (categoryFilter === 'Consumables' && p.type === 'CONSUMABLE') {
+      typeMatch = true;
+    }
+    
+    return matchSearch && typeMatch;
   });
 
   return (
@@ -92,25 +111,30 @@ export default function SalesCatalog() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(p => (
-                  <tr key={p.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{p.code}</td>
-                    <td style={{ fontWeight: 600 }}>{p.name}</td>
-                    <td>{p.category}</td>
-                    <td style={{ fontWeight: 700 }}>₹{p.price.toLocaleString()}</td>
-                    <td>{p.available} units</td>
-                    <td style={{ color: 'var(--color-secondary)' }}>{p.reserved} units</td>
-                    <td>
-                      {p.available > 5 ? (
-                        <span className="purchase-badge purchase-badge--success">In Stock</span>
-                      ) : p.available > 0 ? (
-                        <span className="purchase-badge purchase-badge--warning">Low Stock</span>
-                      ) : (
-                        <span className="purchase-badge purchase-badge--error">Out of Stock</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(p => {
+                  const onHand = Number(p.inventory?.on_hand_qty || 0);
+                  const reserved = Number(p.inventory?.reserved_qty || 0);
+                  const available = Math.max(0, onHand - reserved);
+                  return (
+                    <tr key={p.id}>
+                      <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{p.sku || 'N/A'}</td>
+                      <td style={{ fontWeight: 600 }}>{p.name}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{p.type.replace('_', ' ').toLowerCase()}</td>
+                      <td style={{ fontWeight: 700 }}>₹{Number(p.sales_price).toLocaleString()}</td>
+                      <td>{available} units</td>
+                      <td style={{ color: 'var(--color-secondary)' }}>{reserved} units</td>
+                      <td>
+                        {available > 5 ? (
+                          <span className="purchase-badge purchase-badge--success">In Stock</span>
+                        ) : available > 0 ? (
+                          <span className="purchase-badge purchase-badge--warning">Low Stock</span>
+                        ) : (
+                          <span className="purchase-badge purchase-badge--error">Out of Stock</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

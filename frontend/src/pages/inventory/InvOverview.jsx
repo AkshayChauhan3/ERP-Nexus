@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Search, Filter, Download, Eye } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvOverview() {
@@ -17,8 +17,19 @@ export default function InvOverview() {
   const [sortBy, setSortBy] = useState('name');
 
   useEffect(() => {
-    setProducts(inventoryApi.getProducts());
-    setWarehouses(inventoryApi.getWarehouses());
+    const loadData = async () => {
+      try {
+        const [whRes, invRes] = await Promise.all([
+          api.get('/inventory/warehouses'),
+          api.get('/inventory')
+        ]);
+        setWarehouses(whRes.data);
+        setProducts(invRes.data);
+      } catch (err) {
+        console.error('Failed to fetch inventory:', err);
+      }
+    };
+    loadData();
   }, []);
 
   const handleExport = (type) => {

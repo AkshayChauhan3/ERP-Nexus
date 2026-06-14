@@ -4,13 +4,13 @@
   left: 0;
   width: var(--sidebar-width);
   height: 100vh;
-  background-color: var(--surface-low);
-  border-right: 1px solid var(--color-outline-variant);
+  background: rgba(245, 243, 244, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   display: flex;
   flex-direction: column;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-4);
   z-index: 100;
-  overflow-y: auto;
 }
 
 /* ── Logo ── */
@@ -18,7 +18,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) 0 var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
 .sidebar-logo-mark {
@@ -31,6 +31,7 @@
   justify-content: center;
   color: var(--color-on-primary);
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-logo-text {
@@ -59,8 +60,8 @@
 /* ── Divider ── */
 .sidebar-divider {
   height: 1px;
-  background-color: var(--color-outline-variant);
-  margin: var(--space-4) 0 var(--space-5);
+  background-color: rgba(0, 0, 0, 0.05);
+  margin: var(--space-3) var(--space-4) var(--space-5);
 }
 
 /* ── Section Label ── */
@@ -71,56 +72,77 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-secondary);
-  opacity: 0.7;
+  opacity: 0.6;
   margin-bottom: var(--space-3);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-4);
 }
 
 /* ── Nav ── */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 4px;
   flex: 1;
+  padding: 0 var(--space-2);
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-full);
+  padding: 10px 14px 10px 22px;
+  border-radius: 12px;
   font-size: var(--text-label-md-size);
   font-weight: 500;
   color: var(--color-secondary);
-  transition: background-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+  transition: background-color 0.2s ease, color 0.2s ease, font-weight 0.2s ease;
   text-decoration: none;
   position: relative;
 }
 
 .sidebar-link:hover {
-  background-color: var(--surface-high);
+  background-color: rgba(0, 0, 0, 0.03);
   color: var(--color-primary);
-  transform: translateX(2px);
 }
 
 .sidebar-link--active {
-  background-color: var(--color-secondary-container);
-  color: var(--color-on-secondary-container);
+  background-color: rgba(78, 97, 110, 0.08);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
+.sidebar-link--active::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background-color: var(--color-primary);
+  animation: scaleVertical 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes scaleVertical {
+  from { transform: translateY(-50%) scaleY(0.5); opacity: 0; }
+  to { transform: translateY(-50%) scaleY(1); opacity: 1; }
+}
+
 .sidebar-link--active:hover {
-  background-color: var(--color-secondary-container);
-  transform: none;
+  background-color: rgba(78, 97, 110, 0.08);
+  color: var(--color-primary);
 }
 
 .sidebar-link-icon {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-link:hover .sidebar-link-icon {
+  transform: scale(1.05);
 }
 
 .sidebar-link-label {
@@ -128,48 +150,63 @@
 }
 
 .sidebar-link-chevron {
-  opacity: 0.6;
+  opacity: 0.4;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-link:hover .sidebar-link-chevron {
+  transform: translateX(2px);
+  opacity: 0.7;
 }
 
 /* ── Footer ── */
 .sidebar-footer {
   margin-top: auto;
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--color-outline-variant);
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .sidebar-footer-card {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: linear-gradient(135deg, #000000 0%, #2c2c2c 100%);
-  border-radius: var(--radius-xl);
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sidebar-footer-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
 }
 
 .sidebar-footer-icon {
   width: 28px;
   height: 28px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
+  animation: pulse-glow 2s infinite;
 }
 
 .sidebar-footer-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .sidebar-footer-title {
@@ -180,5 +217,34 @@
 
 .sidebar-footer-sub {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Push Sidebar Backward when Modals/Drawers are open ── */
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 101;
+}
+
+body:has(.admin-modal-overlay) .sidebar::after,
+body:has(.profile-drawer-backdrop) .sidebar::after,
+body:has(.purchase-modal-backdrop) .sidebar::after {
+  opacity: 1;
+}
+
+body:has(.admin-modal-overlay) .sidebar,
+body:has(.profile-drawer-backdrop) .sidebar,
+body:has(.purchase-modal-backdrop) .sidebar {
+  pointer-events: none;
 }

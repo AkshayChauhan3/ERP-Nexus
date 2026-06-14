@@ -152,15 +152,17 @@ export default function Sidebar() {
 
       {}
       <div className="sidebar-footer">
-        <div className="sidebar-footer-card">
-          <div className="sidebar-footer-icon">
-            <Zap size={14} strokeWidth={2} />
+        <NavLink to="/advisor" style={{ textDecoration: 'none' }}>
+          <div className="sidebar-footer-card" style={{ cursor: 'pointer' }}>
+            <div className="sidebar-footer-icon">
+              <Zap size={14} strokeWidth={2} />
+            </div>
+            <div className="sidebar-footer-info">
+              <span className="sidebar-footer-title">EN Advisor</span>
+              <span className="sidebar-footer-sub">AI-powered insights</span>
+            </div>
           </div>
-          <div className="sidebar-footer-info">
-            <span className="sidebar-footer-title">EN Advisor</span>
-            <span className="sidebar-footer-sub">AI-powered insights</span>
-          </div>
-        </div>
+        </NavLink>
       </div>
     </aside>
   );
