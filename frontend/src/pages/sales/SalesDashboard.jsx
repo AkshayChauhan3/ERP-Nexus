@@ -119,7 +119,7 @@ export default function SalesDashboard() {
             <p className="sales-sub">Manage customer orders, issue quotations, and track order fulfillment statuses.</p>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn--primary" style={{ gap: '6px' }} onClick={() => navigate('/new-sales-order')}>
+            <button className="btn btn--primary" style={{ gap: '6px' }} onClick={() => navigate('/sales/orders')}>
               <Plus size={14} /> Create Sales Order
             </button>
             <button className="btn btn--secondary" style={{ gap: '6px' }} onClick={() => navigate('/sales/quotations')}>
