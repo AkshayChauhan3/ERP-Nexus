@@ -25,6 +25,7 @@ export default function InvDashboard() {
   const [distribution, setDistribution] = useState({
     raw: 0, finished: 0, consumables: 0, packaging: 0
   });
+  const [activityTrend, setActivityTrend] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +59,27 @@ export default function InvDashboard() {
           totalProds, totalRawMats, lowStock, outOfStock, reservedStock, incoming, outgoing, totalValue
         });
         setDistribution({ raw, finished, consumables, packaging });
+
+        // Calculate fulfillment activity trend dynamically from last 7 days
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const today = new Date();
+        const trendData = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - i);
+          d.setHours(0,0,0,0);
+          trendData.push({ day: dayNames[d.getDay()], qty: 0, dateTs: d.getTime() });
+        }
+
+        transfers.forEach(t => {
+          const d = new Date(t.created_at);
+          d.setHours(0,0,0,0);
+          const target = trendData.find(tr => tr.dateTs === d.getTime());
+          if (target) {
+            target.qty += Number(t.qty);
+          }
+        });
+        setActivityTrend(trendData);
       } catch (err) {
         console.error('Failed to load dashboard statistics', err);
       } finally {
@@ -193,13 +215,8 @@ export default function InvDashboard() {
                   <h3 className="inventory-panel-title">Fulfillment Activity Trend</h3>
                 </div>
                 <div className="inventory-chart-container">
-                  {[
-                    { day: 'Mon', qty: 120 }, { day: 'Tue', qty: 240 },
-                    { day: 'Wed', qty: 180 }, { day: 'Thu', qty: 320 },
-                    { day: 'Fri', qty: 290 }, { day: 'Sat', qty: 150 },
-                    { day: 'Sun', qty: 80 }
-                  ].map((d, i) => {
-                    const maxQty = 350;
+                  {activityTrend.map((d, i) => {
+                    const maxQty = Math.max(...activityTrend.map(t => t.qty), 10);
                     const pct = (d.qty / maxQty) * 100;
                     return (
                       <div key={i} className="inventory-chart-bar-group">

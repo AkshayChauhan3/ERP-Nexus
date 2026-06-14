@@ -180,34 +180,11 @@ export default function PurchaseMaterials() {
                 </div>
               </div>
 
-              {/* Stock History (Mock log) */}
+              {/* Stock Ledger Note */}
               <div>
                 <h4 style={{ margin: '16px 0 8px 0', fontSize: '14px' }}>Stock & Adjustment Logs</h4>
-                <div className="purchase-table-wrapper">
-                  <table className="purchase-table">
-                    <thead>
-                      <tr>
-                        <th>Timestamp</th>
-                        <th>Action</th>
-                        <th>Change</th>
-                        <th>User</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>2026-06-12 11:20 AM</td>
-                        <td>Goods Receipt (GRN-001)</td>
-                        <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>+18 units</td>
-                        <td>Inventory Manager</td>
-                      </tr>
-                      <tr>
-                        <td>2026-06-10 03:45 PM</td>
-                        <td>Manufacturing Draw</td>
-                        <td style={{ color: 'var(--color-error)', fontWeight: 600 }}>-4 units</td>
-                        <td>mfg@erp-nexus.local</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div style={{ padding: '16px', background: 'var(--surface-low)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--color-secondary)', textAlign: 'center' }}>
+                  View full stock movement history in the <strong>Inventory Ledger</strong> section for this product.
                 </div>
               </div>
             </div>

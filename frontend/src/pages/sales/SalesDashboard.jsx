@@ -23,6 +23,7 @@ export default function SalesDashboard() {
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
+  const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
@@ -66,6 +67,35 @@ export default function SalesDashboard() {
       });
       // Backend returns desc order, so slice first 4 items
       setRecentOrders(orders.slice(0, 4));
+
+      // Calculate monthly revenue trend dynamically from last 6 months
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      const trendData = [];
+      for (let i = 5; i >= 0; i--) {
+        let m = currentMonth - i;
+        let y = currentYear;
+        if (m < 0) {
+          m += 12;
+          y -= 1;
+        }
+        trendData.push({ month: monthNames[m], val: 0, rawMonth: m, rawYear: y });
+      }
+
+      orders.forEach(o => {
+        if (o.status !== 'cancelled') {
+          const d = new Date(o.created_at);
+          const m = d.getMonth();
+          const y = d.getFullYear();
+          const target = trendData.find(t => t.rawMonth === m && t.rawYear === y);
+          if (target) {
+            target.val += getOrderAmount(o);
+          }
+        }
+      });
+      setMonthlyTrend(trendData);
     } catch (err) {
       console.error('Failed to load dashboard statistics', err);
     } finally {
@@ -212,12 +242,8 @@ export default function SalesDashboard() {
                   <h3 className="purchase-panel-title">Monthly Revenue Performance</h3>
                 </div>
                 <div className="inventory-chart-container" style={{ height: '140px' }}>
-                  {[
-                    { month: 'Jan', val: 95000 }, { month: 'Feb', val: 125000 },
-                    { month: 'Mar', val: 185000 }, { month: 'Apr', val: 145000 },
-                    { month: 'May', val: 220000 }, { month: 'Jun', val: stats.revenue }
-                  ].map((m, idx) => {
-                    const maxVal = 300000;
+                  {monthlyTrend.map((m, idx) => {
+                    const maxVal = Math.max(...monthlyTrend.map(t => t.val), 10000);
                     const pct = (m.val / maxVal) * 100;
                     return (
                       <div key={idx} className="inventory-chart-bar-group" style={{ width: '15%' }}>

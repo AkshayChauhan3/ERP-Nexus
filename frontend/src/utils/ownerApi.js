@@ -1,14 +1,7 @@
 // Business Owner Module Mock API and State Management using localStorage
 const seedDefaultOwnerData = () => {
-  if (!localStorage.getItem('owner_approvals')) {
-    const defaultApprovals = [
-      { id: 'APP-001', module: 'Purchase', type: 'Purchase Order Approval', requestedBy: 'Sarah Executive', date: '2026-06-13', status: 'Pending', priority: 'High', details: 'PO-2026-002: Leather stock purchase worth ₹45,000' },
-      { id: 'APP-002', module: 'Financials', type: 'Vendor Bill Approval', requestedBy: 'Karan Malhotra', date: '2026-06-12', status: 'Pending', priority: 'Medium', details: 'BILL-001: Invoice INV-APX-889 worth ₹36,000 for Apex Wood' },
-      { id: 'APP-003', module: 'Manufacturing', type: 'Manufacturing Order Override', requestedBy: 'Rahul Kumar', date: '2026-06-13', status: 'Pending', priority: 'High', details: 'MO-041: Speed production of Comfort Cushion Sofa' },
-      { id: 'APP-004', module: 'Administration', type: 'User Role Modification', requestedBy: 'admin@erp-nexus.local', date: '2026-06-13', status: 'Pending', priority: 'Low', details: 'Grant "inventory" role to Sarah Executive' }
-    ];
-    localStorage.setItem('owner_approvals', JSON.stringify(defaultApprovals));
-  }
+  // Clear mock owner approvals to remove legacy fake purchase permission constraint
+  localStorage.removeItem('owner_approvals');
 
   if (!localStorage.getItem('owner_settings')) {
     const defaultSettings = {
