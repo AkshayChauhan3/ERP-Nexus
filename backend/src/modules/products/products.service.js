@@ -119,8 +119,62 @@ async function updateProduct(id, data) {
 }
 
 async function deleteProduct(id) {
-  return await prisma.product.delete({
-    where: { id },
+  return await prisma.$transaction(async (tx) => {
+    // Find associated BOM IDs
+    const productBoms = await tx.billOfMaterials.findMany({
+      where: { product_id: id },
+      select: { id: true }
+    });
+    const bomIds = productBoms.map(b => b.id);
+
+    // 1. Delete dependent transactional lines and relations
+    await tx.manufacturingOrder.deleteMany({
+      where: {
+        OR: [
+          { product_id: id },
+          { bom_id: { in: bomIds } }
+        ]
+      }
+    });
+
+    await tx.bOMLine.deleteMany({
+      where: {
+        OR: [
+          { component_product_id: id },
+          { bom_id: { in: bomIds } }
+        ]
+      }
+    });
+
+    await tx.billOfMaterials.deleteMany({ where: { product_id: id } });
+    await tx.goodsReceiptLine.deleteMany({ where: { product_id: id } });
+    await tx.purchaseOrderLine.deleteMany({ where: { product_id: id } });
+    await tx.salesDeliveryLine.deleteMany({ where: { product_id: id } });
+    await tx.salesOrderLine.deleteMany({ where: { product_id: id } });
+    await tx.salesQuotationLine.deleteMany({ where: { product_id: id } });
+    await tx.stockAdjustment.deleteMany({ where: { product_id: id } });
+    await tx.stockLedger.deleteMany({ where: { product_id: id } });
+    await tx.stockTransfer.deleteMany({ where: { product_id: id } });
+    await tx.stockReservation.deleteMany({ where: { product_id: id } });
+    await tx.procurementSuggestion.deleteMany({ where: { product_id: id } });
+    await tx.riskAlert.deleteMany({ where: { product_id: id } });
+    await tx.inventory.deleteMany({ where: { product_id: id } });
+
+    // 2. Clear default bom_id references from any other products pointing to a deleted BOM
+    await tx.product.updateMany({
+      where: {
+        OR: [
+          { bom_id: id },
+          { bom_id: { in: bomIds } }
+        ]
+      },
+      data: { bom_id: null }
+    });
+
+    // 3. Delete the product itself
+    return await tx.product.delete({
+      where: { id },
+    });
   });
 }
 

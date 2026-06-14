@@ -181,8 +181,8 @@ export default function Products() {
         procurement_type: form.procurement_type,
         procurement_method: form.procurement_method,
         procure_on_demand: !!form.procure_on_demand,
-        vendor_id: form.vendor_id ? form.vendor_id : null,
-        bom_id: form.bom_id ? form.bom_id : null,
+        vendor_id: form.procurement_method === 'PURCHASE' && form.vendor_id ? form.vendor_id : null,
+        bom_id: form.procurement_method === 'MANUFACTURING' && form.bom_id ? form.bom_id : null,
         image_url: form.image_url
       };
 
@@ -209,6 +209,7 @@ export default function Products() {
       const res = await api.delete(`/products/${productId}`);
       if (res.success) {
         showNotification('Product deleted successfully.');
+        setProducts(prev => prev.filter(p => p.id !== productId));
         loadProducts();
       }
     } catch (err) {
@@ -486,7 +487,31 @@ export default function Products() {
                     </select>
                   </div>
 
-                  <div className="register-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '24px' }}>
+                  {form.procurement_method === 'PURCHASE' ? (
+                    <div className="register-field" style={{ gridColumn: 'span 2' }}>
+                      <label className="register-label">Preferred Vendor</label>
+                      <select className="register-input register-select" value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })}>
+                        <option value="">-- Select Preferred Vendor --</option>
+                        {vendors.map(v => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="register-field" style={{ gridColumn: 'span 2' }}>
+                      <label className="register-label">Default Bill of Materials (BoM)</label>
+                      <select className="register-input register-select" value={form.bom_id} onChange={e => setForm({ ...form, bom_id: e.target.value })}>
+                        <option value="">-- Select Default BoM --</option>
+                        {boms.map(b => (
+                          <option key={b.id} value={b.id}>
+                            BoM for {b.product?.name || b.product_id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="register-field" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                     <input 
                       type="checkbox" 
                       id="procure_on_demand"
@@ -494,29 +519,7 @@ export default function Products() {
                       onChange={e => setForm({ ...form, procure_on_demand: e.target.checked })} 
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    <label className="register-label" htmlFor="procure_on_demand" style={{ margin: 0, cursor: 'pointer' }}>Procure on Demand (Auto-Replenish)</label>
-                  </div>
-
-                  <div className="register-field">
-                    <label className="register-label">Preferred Vendor</label>
-                    <select className="register-input register-select" value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })}>
-                      <option value="">-- Select Preferred Vendor --</option>
-                      {vendors.map(v => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="register-field">
-                    <label className="register-label">Default Bill of Materials (BoM)</label>
-                    <select className="register-input register-select" value={form.bom_id} onChange={e => setForm({ ...form, bom_id: e.target.value })}>
-                      <option value="">-- Select Default BoM --</option>
-                      {boms.map(b => (
-                        <option key={b.id} value={b.id}>
-                          BoM for {b.product?.name || b.product_id}
-                        </option>
-                      ))}
-                    </select>
+                    <label className="register-label" htmlFor="procure_on_demand" style={{ margin: 0, cursor: 'pointer', userSelect: 'none' }}>Procure on Demand (Auto-Replenish)</label>
                   </div>
                 </div>
 
