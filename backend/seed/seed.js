@@ -27,6 +27,8 @@ async function main() {
   await prisma.salesQuotation.deleteMany({});
   await prisma.salesOrderLine.deleteMany({});
   await prisma.salesOrder.deleteMany({});
+  await prisma.workOrder.deleteMany({});
+  await prisma.manufacturingOrder.deleteMany({});
   await prisma.bOMLine.deleteMany({});
   await prisma.billOfMaterials.deleteMany({});
   await prisma.product.deleteMany({});
