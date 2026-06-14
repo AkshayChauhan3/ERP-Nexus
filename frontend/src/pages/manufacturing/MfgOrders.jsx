@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Factory, Plus, X, Eye } from 'lucide-react';
+import { Factory, Plus, X, Eye, RefreshCw } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
 import { api } from '../../utils/api';
 import '../../styles/AdminPages.css';
@@ -23,8 +23,12 @@ export default function MfgOrders() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [viewOrder, setViewOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadData = async () => {
+    setLoading(true);
+    setError('');
     try {
       const [moRes, prodRes, bomRes] = await Promise.all([
         api.get('/manufacturing-orders'),
@@ -36,6 +40,9 @@ export default function MfgOrders() {
       setBoms(bomRes.data || []);
     } catch (err) {
       console.error(err);
+      setError('Failed to load data. Please refresh.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,7 +83,11 @@ export default function MfgOrders() {
     }
   };
 
-  const availableBOMProducts = products.filter(p => boms.some(b => b.product_id === p.id));
+  // Products that have a BOM — use bom_id field directly from product OR cross-check boms list
+  const availableBOMProducts = products.filter(p =>
+    p.bom_id ||
+    boms.some(b => b.product_id === p.id || b.product?.id === p.id)
+  );
 
   return (
     <AppShell>
@@ -89,7 +100,16 @@ export default function MfgOrders() {
           <button id="btn-new-mo" className="btn btn--primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', fontSize: '13px' }} onClick={() => setShowModal(true)}>
             <Plus size={14} /> New MO
           </button>
+          <button className="btn btn--secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', fontSize: '13px' }} onClick={loadData}>
+            <RefreshCw size={14} /> Refresh
+          </button>
         </div>
+
+        {error && (
+          <div style={{ padding: '12px 16px', background: 'rgba(var(--color-error-rgb), 0.1)', borderRadius: 'var(--radius-md)', color: 'var(--color-error)', fontSize: '13px', marginBottom: '8px' }}>
+            {error}
+          </div>
+        )}
 
         <div className="admin-panel" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', padding: '14px 18px', flexWrap: 'wrap' }}>
           <input id="mo-search" className="mfg-search-input" style={{ maxWidth: '260px', flex: 1 }}
@@ -148,9 +168,12 @@ export default function MfgOrders() {
                   <div>
                     <label className="mfg-form-label">Product (Must have BOM) *</label>
                     <select id="mo-product" className="mfg-form-input" required value={form.product_id} onChange={e => setForm({ ...form, product_id: e.target.value })}>
-                      <option value="">Select a Product</option>
+                      <option value="">{loading ? 'Loading products...' : availableBOMProducts.length === 0 ? 'No products with BOM found' : 'Select a Product'}</option>
                       {availableBOMProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
+                    {!loading && availableBOMProducts.length === 0 && (
+                      <p style={{ fontSize: '11px', color: 'var(--color-amber)', marginTop: '4px' }}>Create a Bill of Materials first before creating an MO.</p>
+                    )}
                   </div>
                   <div>
                     <label className="mfg-form-label">Quantity *</label>

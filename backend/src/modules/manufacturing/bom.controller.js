@@ -7,7 +7,7 @@ const bomSchema = z.object({
     z.object({
       component_product_id: z.string().uuid('Invalid component ID'),
       qty_per_unit: z.number().positive('Quantity must be positive'),
-      operation: z.enum(['assembly', 'painting', 'packing']),
+      operation: z.string().min(1, 'Operation is required'),
     })
   ).min(1, 'BOM must have at least one component'),
 });
@@ -17,7 +17,7 @@ const bomUpdateSchema = z.object({
     z.object({
       component_product_id: z.string().uuid('Invalid component ID'),
       qty_per_unit: z.number().positive('Quantity must be positive'),
-      operation: z.enum(['assembly', 'painting', 'packing']),
+      operation: z.string().min(1, 'Operation is required'),
     })
   ).min(1, 'BOM must have at least one component'),
 });

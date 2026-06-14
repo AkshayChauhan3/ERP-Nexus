@@ -35,7 +35,7 @@ export default function MfgBOM() {
   }, []);
 
   const finishedGoods = products.filter(p => p.type === 'FINISHED_GOOD');
-  const rawMaterials = products.filter(p => p.type === 'RAW_MATERIAL');
+  const rawMaterials = products.filter(p => p.type === 'RAW_MATERIAL' || p.type === 'CONSUMABLE' || p.type === 'SEMI_FINISHED');
 
   const filtered = boms.filter(b => {
     const pName = b.product?.name || '';
@@ -164,7 +164,7 @@ export default function MfgBOM() {
                             <td><input className="mfg-form-input" style={{ margin: 0, width: '80px' }} type="number" placeholder="0" value={c.qty_per_unit} onChange={e => setForm(f => ({ ...f, components: f.components.map(x => x.id === c.id ? { ...x, qty_per_unit: e.target.value } : x) }))} /></td>
                             <td>
                               <select className="mfg-form-input" style={{ margin: 0 }} value={c.operation} onChange={e => setForm(f => ({ ...f, components: f.components.map(x => x.id === c.id ? { ...x, operation: e.target.value } : x) }))}>
-                                {['assembly', 'painting', 'packing'].map(u => <option key={u} value={u}>{u}</option>)}
+                                {['assembly', 'painting', 'packing', 'cutting', 'welding', 'framing', 'upholstery', 'finishing', 'quality_check'].map(u => <option key={u} value={u}>{u.replace('_', ' ')}</option>)}
                               </select>
                             </td>
                             <td><button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-error)' }} onClick={() => removeComponent(c.id)}><Trash2 size={14}/></button></td>
