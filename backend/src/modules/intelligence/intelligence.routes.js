@@ -27,4 +27,17 @@ router.use(authenticate);
  */
 router.get('/dashboard-stats', authorize('owner', 'admin'), intelligenceController.getDashboardStats);
 
+/**
+ * @swagger
+ * /intelligence/advisor:
+ *   get:
+ *     summary: Get AI Advisor Recommendations
+ *     description: Retrieve prioritized AI-generated recommendations based on real-time operational data.
+ *     tags: [Intelligence]
+ *     responses:
+ *       200:
+ *         description: AI recommendations successfully retrieved
+ */
+router.get('/advisor', authorize('owner', 'admin'), intelligenceController.getAdvisorRecommendations);
+
 module.exports = router;
