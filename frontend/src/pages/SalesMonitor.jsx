@@ -124,7 +124,7 @@ export default function SalesMonitor() {
                   <tr key={i}>
                     <td style={{ fontWeight: 600 }}>{prod.name}</td>
                     <td>{prod.qty} units</td>
-                    <td style={{ fontWeight: 600, color: 'var(--color-success)' }}>{prod.revenue}</td>
+                    <td style={{ fontWeight: 600, color: String(prod.revenue).includes('-') ? 'var(--color-error)' : 'var(--color-success)' }}>{prod.revenue}</td>
                   </tr>
                 ))}
               </tbody>

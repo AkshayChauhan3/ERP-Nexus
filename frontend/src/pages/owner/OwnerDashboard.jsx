@@ -167,9 +167,11 @@ export default function OwnerDashboard() {
                 <span className="purchase-kpi-label">Pending Approvals</span>
                 <h3 className="purchase-kpi-val" style={{ color: stats.pendingApprovals > 0 ? 'var(--color-amber)' : '' }}>{stats.pendingApprovals} requests</h3>
               </div>
-              <div className="owner-card" style={{ background: stats.profit > 0 ? 'rgba(46, 125, 50, 0.08)' : '' }}>
+              <div className="owner-card" style={{ background: stats.profit >= 0 ? 'var(--color-success-container)' : 'var(--color-error-container)' }}>
                 <span className="purchase-kpi-label">Estimated Profit</span>
-                <h3 className="purchase-kpi-val" style={{ color: 'var(--color-success)' }}>₹{stats.profit.toLocaleString()}</h3>
+                <h3 className="purchase-kpi-val" style={{ color: stats.profit >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                  {stats.profit < 0 ? '-' : ''}₹{Math.abs(stats.profit).toLocaleString()}
+                </h3>
               </div>
             </div>
 
@@ -183,7 +185,9 @@ export default function OwnerDashboard() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span>Gross Profit Margin:</span>
-                    <strong style={{ color: 'var(--color-success)' }}>{Math.round((stats.profit / (stats.revenue || 1)) * 100)}%</strong>
+                    <strong style={{ color: (stats.profit / (stats.revenue || 1)) >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                      {Math.round((stats.profit / (stats.revenue || 1)) * 100)}%
+                    </strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span>Inventory Turnover Ratio:</span>

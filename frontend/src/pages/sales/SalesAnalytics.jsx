@@ -134,7 +134,9 @@ export default function SalesAnalytics() {
                     <tr key={c.id}>
                       <td style={{ fontWeight: 600 }}>{c.name}</td>
                       <td>{custOrders.length} contracts</td>
-                      <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>₹{contributed.toLocaleString()}</td>
+                      <td style={{ fontWeight: 700, color: contributed >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                        {contributed < 0 ? '-' : ''}₹{Math.abs(contributed).toLocaleString()}
+                      </td>
                     </tr>
                   );
                 })}

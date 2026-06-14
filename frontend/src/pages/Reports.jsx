@@ -91,7 +91,7 @@ export default function Reports() {
                     <div style={{ display: 'flex', width: '100%', gap: '4px', height: '100%', alignItems: 'flex-end', justifyContent: 'center' }}>
                       <div className="chart-bar" data-value={`₹${d.revenue}k`} style={{ height: `${revPct}%`, background: 'var(--color-primary)', width: '14px' }} />
                       <div className="chart-bar" data-value={`₹${d.cost}k`} style={{ height: `${costPct}%`, background: 'var(--color-error)', width: '14px' }} />
-                      <div className="chart-bar" data-value={`₹${d.profit}k`} style={{ height: `${profitPct}%`, background: 'var(--color-success)', width: '14px' }} />
+                      <div className="chart-bar" data-value={`₹${d.profit}k`} style={{ height: `${Math.abs(profitPct)}%`, background: d.profit >= 0 ? 'var(--color-success)' : 'var(--color-error)', width: '14px' }} />
                     </div>
                     <span className="chart-label" style={{ fontWeight: 700, fontSize: '11px', marginTop: '8px' }}>{d.month}</span>
                   </div>
@@ -163,9 +163,9 @@ export default function Reports() {
                   {MOST_PROFITABLE.map((p, i) => (
                     <tr key={i}>
                       <td style={{ fontWeight: 600 }}>{p.name}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--color-success)' }}>{p.profit}</td>
+                      <td style={{ fontWeight: 700, color: String(p.profit).includes('-') ? 'var(--color-error)' : 'var(--color-success)' }}>{p.profit}</td>
                       <td>
-                        <span className="admin-badge admin-badge--success" style={{ fontWeight: 700 }}>
+                        <span className={String(p.margin).includes('-') ? "admin-badge admin-badge--error" : "admin-badge admin-badge--success"} style={{ fontWeight: 700 }}>
                           {p.margin}
                         </span>
                       </td>

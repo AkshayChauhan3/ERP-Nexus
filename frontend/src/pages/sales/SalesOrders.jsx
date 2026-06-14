@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Search, Plus, Eye, Truck, CheckCircle } from 'lucide-react';
+import { ShoppingBag, Search, Plus, Eye, Truck, CheckCircle, Download } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
 import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
@@ -21,6 +21,9 @@ export default function SalesOrders() {
   const [formAddress, setFormAddress] = useState('');
   const [formItems, setFormItems] = useState([{ productId: '', qty: 1, discount: 0, tax: 18 }]);
   const [remarks, setRemarks] = useState('');
+
+  const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+  const isOwner = authData?.user?.role === 'owner' || authData?.user?.is_admin === true;
 
   const loadData = async () => {
     try {
@@ -121,6 +124,24 @@ export default function SalesOrders() {
   );
 
   const steps = ['draft', 'confirmed', 'processing', 'delivered', 'cancelled'];
+
+  const handleDownloadInvoice = () => {
+    if (!selectedOrder) return;
+    const total = selectedOrder.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0;
+    const invoiceText = `=================================\nNEXUS ERP - COMMERCIAL INVOICE\n=================================\nInvoice No: INV-${selectedOrder.id.substring(0,8).toUpperCase()}\nDate: ${new Date().toLocaleDateString()}\n\nBilled To:\nCustomer: ${selectedOrder.customer?.name || 'N/A'}\nAddress: ${selectedOrder.customer_address || 'N/A'}\n\nOrder Details:\nDate: ${new Date(selectedOrder.created_at).toLocaleDateString()}\nStatus: ${selectedOrder.status.toUpperCase()}\n\nLine Items:\n` + 
+      (selectedOrder.lines || []).map(l => `- ${l.product?.name || 'Item'} (Qty: ${l.ordered_qty}) @ ₹${Number(l.unit_price).toLocaleString()} = ₹${(l.ordered_qty * l.unit_price).toLocaleString()}`).join('\n') +
+      `\n\n---------------------------------\nTotal Amount: ₹${total.toLocaleString()}\n=================================\nThank you for your business!`;
+      
+    const blob = new Blob([invoiceText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice_${selectedOrder.id.substring(0,8).toUpperCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <AppShell>
@@ -318,6 +339,18 @@ export default function SalesOrders() {
                           loadData();
                         } catch (err) { alert(err.message || 'Failed to confirm'); }
                       }}>Confirm Order</button>
+                    </div>
+                  )}
+
+                  {isOwner && (
+                    <div style={{ marginTop: '16px' }}>
+                      <button 
+                        className="btn" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface-high)', color: 'var(--color-primary)' }} 
+                        onClick={handleDownloadInvoice}
+                      >
+                        <Download size={16} /> Download Invoice
+                      </button>
                     </div>
                   )}
                 </div>
