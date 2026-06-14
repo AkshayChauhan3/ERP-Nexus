@@ -1,19 +1,104 @@
-const { z } = require('zod');
 const inventoryService = require('./inventory.service');
 
-const filterSchema = z.object({
-  product_id: z.string().uuid().optional(),
-  movement_type: z.enum(['sale_out', 'purchase_in', 'mfg_consume', 'mfg_produce', 'adjustment']).optional(),
-  start_date: z.string().datetime().optional(),
-  end_date: z.string().datetime().optional(),
-});
+async function getWarehouses(req, res) {
+  try {
+    const data = await inventoryService.getWarehouses();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function createWarehouse(req, res) {
+  try {
+    const data = await inventoryService.createWarehouse(req.body);
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function getInventory(req, res) {
+  try {
+    const data = await inventoryService.getInventory(req.query);
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function getTransfers(req, res) {
+  try {
+    const data = await inventoryService.getTransfers();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function createTransfer(req, res) {
+  try {
+    const data = await inventoryService.createTransfer(req.body, req.user.id);
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function completeTransfer(req, res) {
+  try {
+    const data = await inventoryService.completeTransfer(req.params.id, req.user.id);
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+async function getAdjustments(req, res) {
+  try {
+    const data = await inventoryService.getAdjustments();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function createAdjustment(req, res) {
+  try {
+    const data = await inventoryService.createAdjustment(req.body, req.user.id);
+    res.status(201).json({ success: true, data });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
 
 async function getLedger(req, res) {
-  const filters = filterSchema.parse(req.query);
-  const ledger = await inventoryService.getStockLedger(filters);
-  res.json({ success: true, data: ledger });
+  try {
+    const data = await inventoryService.getStockLedger(req.query);
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function getReserved(req, res) {
+  try {
+    const data = await inventoryService.getReservedStock();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 }
 
 module.exports = {
+  getWarehouses,
+  createWarehouse,
+  getInventory,
+  getTransfers,
+  createTransfer,
+  completeTransfer,
+  getAdjustments,
+  createAdjustment,
   getLedger,
+  getReserved,
 };

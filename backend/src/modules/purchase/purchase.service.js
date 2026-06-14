@@ -8,6 +8,7 @@ async function getAllPurchaseOrders() {
     include: {
       vendor: { select: { id: true, name: true } },
       user: { select: { id: true, login_id: true } },
+      lines: { include: { product: { select: { id: true, name: true, sku: true } } } },
     },
   });
 }

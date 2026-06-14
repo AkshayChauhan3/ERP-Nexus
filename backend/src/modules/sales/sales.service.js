@@ -11,6 +11,22 @@ async function getAllSalesOrders() {
     include: {
       customer: { select: { id: true, name: true } },
       user: { select: { id: true, login_id: true } },
+      lines: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              inventory: {
+                select: {
+                  on_hand_qty: true,
+                  reserved_qty: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -120,6 +136,25 @@ async function confirmSalesOrder(id, userId) {
         await reserveStock(tx, line.product_id, qtyToReserve, 'SALES_ORDER', id, `Reserved for SO ${id}`);
       }
     }
+
+    // Create a corresponding SalesDelivery record automatically
+    const deliveryNum = `DLV-2026-${Date.now().toString().slice(-4)}`;
+    await tx.salesDelivery.create({
+      data: {
+        delivery_number: deliveryNum,
+        so_id: id,
+        customer_id: so.customer_id,
+        delivery_date: updatedSo.expected_delivery_date || new Date(),
+        status: 'Pending',
+        shipping_address: updatedSo.customer_address || 'Customer Registered Address',
+        lines: {
+          create: updatedSo.lines.map(l => ({
+            product_id: l.product_id,
+            qty: l.ordered_qty,
+          })),
+        },
+      },
+    });
 
     return updatedSo;
   });

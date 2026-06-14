@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layers, Search, Edit2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseMaterials() {
@@ -12,13 +12,21 @@ export default function PurchaseMaterials() {
   const [showEdit, setShowEdit] = useState(false);
   const [form, setForm] = useState({ reorderLevel: 0, preferredVendor: '', price: 0 });
 
-  const loadData = () => {
-    const mats = purchaseApi.getMaterials();
-    const vends = purchaseApi.getVendors();
-    setMaterials(mats);
-    setVendors(vends);
-    if (mats.length > 0 && !selectedMat) {
-      setSelectedMat(mats[0]);
+  const loadData = async () => {
+    try {
+      const [prodRes, vendRes] = await Promise.all([
+        api.get('/products'),
+        api.get('/vendors')
+      ]);
+      const list = (prodRes.data || []).filter(p => p.type === 'RAW_MATERIAL');
+      setMaterials(list);
+      setVendors(vendRes.data || []);
+      if (list.length > 0) {
+        const current = selectedMat ? list.find(m => m.id === selectedMat.id) || list[0] : list[0];
+        setSelectedMat(current);
+      }
+    } catch (err) {
+      console.error('Failed to load raw materials data', err);
     }
   };
 
@@ -27,28 +35,32 @@ export default function PurchaseMaterials() {
   }, []);
 
   const handleOpenEdit = (m) => {
-    setForm({ reorderLevel: m.reorderLevel, preferredVendor: m.preferredVendor, price: m.price });
+    setForm({ 
+      reorderLevel: m.inventory?.reorder_level || 0, 
+      preferredVendor: m.vendor_id || '', 
+      price: m.cost_price || 0 
+    });
     setShowEdit(true);
   };
 
-  const handleEdit = (e) => {
+  const handleEdit = async (e) => {
     e.preventDefault();
-    purchaseApi.updateMaterial(selectedMat.id, {
-      reorderLevel: Number(form.reorderLevel),
-      preferredVendor: form.preferredVendor,
-      price: Number(form.price)
-    });
-    setShowEdit(false);
-    loadData();
-    // Refresh selected details
-    const list = purchaseApi.getMaterials();
-    const updated = list.find(m => m.id === selectedMat.id);
-    if (updated) setSelectedMat(updated);
+    try {
+      await api.patch(`/products/${selectedMat.id}`, {
+        reorder_level: Number(form.reorderLevel),
+        vendor_id: form.preferredVendor || null,
+        cost_price: Number(form.price)
+      });
+      setShowEdit(false);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to update material settings');
+    }
   };
 
   const filtered = materials.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.sku.toLowerCase().includes(search.toLowerCase()) ||
+    (m.sku || '').toLowerCase().includes(search.toLowerCase()) ||
     m.id.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -84,7 +96,7 @@ export default function PurchaseMaterials() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto' }}>
               {filtered.map(m => {
-                const isLow = m.currentStock <= m.reorderLevel;
+                const isLow = (m.inventory?.on_hand_qty || 0) <= (m.inventory?.reorder_level || 0);
                 return (
                   <div
                     key={m.id}
@@ -100,15 +112,15 @@ export default function PurchaseMaterials() {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-secondary)' }}>{m.sku}</span>
+                      <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--color-secondary)' }}>{m.sku || 'SKU N/A'}</span>
                       <span className={`purchase-badge purchase-badge--${isLow ? 'error' : 'success'}`} style={{ fontSize: '10px' }}>
                         {isLow ? 'Low Stock' : 'Stable'}
                       </span>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>{m.name}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--color-secondary)', marginTop: '6px' }}>
-                      <span>Stock: <strong>{m.currentStock} {m.unit}</strong></span>
-                      <span>Min: {m.reorderLevel} {m.unit}</span>
+                      <span>Stock: <strong>{m.inventory?.on_hand_qty || 0} units</strong></span>
+                      <span>Min: {m.inventory?.reorder_level || 0} units</span>
                     </div>
                   </div>
                 );
@@ -125,7 +137,7 @@ export default function PurchaseMaterials() {
               <div className="purchase-panel-header" style={{ justifyContent: 'space-between' }}>
                 <div>
                   <h3 className="purchase-panel-title">{selectedMat.name}</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>{selectedMat.sku} • Stock & Configuration</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-secondary)' }}>{selectedMat.sku || 'SKU N/A'} • Stock & Configuration</span>
                 </div>
                 <button className="btn btn--secondary" style={{ gap: '4px', padding: '6px 12px', fontSize: '12px' }} onClick={() => handleOpenEdit(selectedMat)}>
                   <Edit2 size={12} /> Maintenance
@@ -136,16 +148,16 @@ export default function PurchaseMaterials() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                 <div style={{ padding: '12px', background: 'var(--surface-low)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                   <div style={{ fontSize: '11px', color: 'var(--color-secondary)', fontWeight: 600 }}>CURRENT STOCK</div>
-                  <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>{selectedMat.currentStock} {selectedMat.unit}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>{selectedMat.inventory?.on_hand_qty || 0} units</div>
                 </div>
                 <div style={{ padding: '12px', background: 'var(--surface-low)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                   <div style={{ fontSize: '11px', color: 'var(--color-secondary)', fontWeight: 600 }}>RESERVED</div>
-                  <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>{selectedMat.reservedStock} {selectedMat.unit}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>{selectedMat.inventory?.reserved_qty || 0} units</div>
                 </div>
                 <div style={{ padding: '12px', background: 'var(--surface-low)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
                   <div style={{ fontSize: '11px', color: 'var(--color-secondary)', fontWeight: 600 }}>AVAILABLE</div>
                   <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px', color: 'var(--color-success)' }}>
-                    {selectedMat.currentStock - selectedMat.reservedStock} {selectedMat.unit}
+                    {selectedMat.free_qty || 0} units
                   </div>
                 </div>
               </div>
@@ -154,17 +166,17 @@ export default function PurchaseMaterials() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid var(--color-outline-variant)', padding: '16px', borderRadius: 'var(--radius-lg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Reorder Threshold Level:</span>
-                  <span style={{ fontWeight: 700 }}>{selectedMat.reorderLevel} {selectedMat.unit}</span>
+                  <span style={{ fontWeight: 700 }}>{selectedMat.inventory?.reorder_level || 0} units</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Preferred Vendor:</span>
                   <span style={{ fontWeight: 700 }}>
-                    {vendors.find(v => v.id === selectedMat.preferredVendor)?.name || selectedMat.preferredVendor}
+                    {vendors.find(v => v.id === selectedMat.vendor_id)?.name || 'Not Assigned'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Standard Cost per Unit:</span>
-                  <span style={{ fontWeight: 700 }}>₹{selectedMat.price}</span>
+                  <span style={{ fontWeight: 700 }}>₹{Number(selectedMat.cost_price).toLocaleString()}</span>
                 </div>
               </div>
 
@@ -185,13 +197,13 @@ export default function PurchaseMaterials() {
                       <tr>
                         <td>2026-06-12 11:20 AM</td>
                         <td>Goods Receipt (GRN-001)</td>
-                        <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>+18 {selectedMat.unit}</td>
+                        <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>+18 units</td>
                         <td>Inventory Manager</td>
                       </tr>
                       <tr>
                         <td>2026-06-10 03:45 PM</td>
                         <td>Manufacturing Draw</td>
-                        <td style={{ color: 'var(--color-error)', fontWeight: 600 }}>-4 {selectedMat.unit}</td>
+                        <td style={{ color: 'var(--color-error)', fontWeight: 600 }}>-4 units</td>
                         <td>mfg@erp-nexus.local</td>
                       </tr>
                     </tbody>
@@ -212,7 +224,7 @@ export default function PurchaseMaterials() {
               </div>
               <form onSubmit={handleEdit}>
                 <div className="purchase-form-group">
-                  <label className="purchase-label">Reorder Level ({selectedMat?.unit})</label>
+                  <label className="purchase-label">Reorder Level (units)</label>
                   <input
                     type="number"
                     className="purchase-input"

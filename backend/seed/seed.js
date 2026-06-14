@@ -121,7 +121,7 @@ async function main() {
 
   // 4. Seed Customers
   console.log('Seed: Seeding Customers...');
-  await prisma.customer.upsert({
+  const custSterling = await prisma.customer.upsert({
     where: { email: 'procure@sterlingoffices.com' },
     update: {},
     create: {
@@ -134,7 +134,7 @@ async function main() {
     },
   });
 
-  await prisma.customer.upsert({
+  const custDeco = await prisma.customer.upsert({
     where: { email: 'design@decospace.in' },
     update: {},
     create: {
@@ -360,6 +360,177 @@ async function main() {
       data: { bom_id: chairBom.id },
     });
   }
+
+  // 7. Seed Sales Quotations
+  console.log('Seed: Seeding Sales Quotations...');
+  const qtn1 = await prisma.salesQuotation.upsert({
+    where: { quotation_number: 'QTN-2026-001' },
+    update: {},
+    create: {
+      quotation_number: 'QTN-2026-001',
+      customer_id: custSterling.id,
+      date: new Date('2026-06-01'),
+      expiry_date: new Date('2026-06-30'),
+      amount: 85275,
+      status: 'Approved',
+      remarks: 'Corporate discount applied.',
+      lines: {
+        create: [
+          {
+            product_id: officeChair.id,
+            qty: 10,
+            price: 8500,
+            discount: 5,
+            tax: 18,
+            total: 85275,
+          }
+        ]
+      }
+    }
+  });
+
+  const qtn2 = await prisma.salesQuotation.upsert({
+    where: { quotation_number: 'QTN-2026-002' },
+    update: {},
+    create: {
+      quotation_number: 'QTN-2026-002',
+      customer_id: custDeco.id,
+      date: new Date('2026-06-05'),
+      expiry_date: new Date('2026-06-20'),
+      amount: 49560,
+      status: 'Draft',
+      remarks: 'Awaiting customer response.',
+      lines: {
+        create: [
+          {
+            product_id: diningTable.id,
+            qty: 1,
+            price: 42000,
+            discount: 0,
+            tax: 18,
+            total: 49560,
+          }
+        ]
+      }
+    }
+  });
+
+  // 8. Seed Sales Orders & Deliveries
+  console.log('Seed: Seeding Sales Orders & Deliveries...');
+  const so1 = await prisma.salesOrder.upsert({
+    where: { order_number: 'SO-2026-001' },
+    update: {},
+    create: {
+      order_number: 'SO-2026-001',
+      customer_id: custSterling.id,
+      order_date: new Date('2026-06-02'),
+      expected_delivery_date: new Date('2026-06-15'),
+      status: 'confirmed',
+      remarks: 'Deliver before 5 PM.',
+      customer_address: '101 Corporate tower, Bandra Complex, Mumbai',
+      created_by: adminUser.id,
+      lines: {
+        create: [
+          {
+            product_id: officeChair.id,
+            ordered_qty: 10,
+            unit_price: 8075,
+          }
+        ]
+      }
+    }
+  });
+
+  // Update inventory reserved quantity for SO1
+  await prisma.inventory.update({
+    where: { product_id: officeChair.id },
+    data: {
+      reserved_qty: {
+        increment: 10
+      }
+    }
+  });
+
+  // Create StockReservation
+  await prisma.stockReservation.create({
+    data: {
+      product_id: officeChair.id,
+      source_type: 'SALES_ORDER',
+      source_id: so1.id,
+      reserved_qty: 10,
+      status: 'ACTIVE'
+    }
+  });
+
+  // Create a pending delivery for SO1
+  await prisma.salesDelivery.upsert({
+    where: { delivery_number: 'DLV-001' },
+    update: {},
+    create: {
+      delivery_number: 'DLV-001',
+      so_id: so1.id,
+      customer_id: custSterling.id,
+      delivery_date: new Date('2026-06-15'),
+      status: 'Pending',
+      shipping_address: '101 Corporate tower, Bandra Complex, Mumbai',
+      lines: {
+        create: [
+          {
+            product_id: officeChair.id,
+            qty: 10
+          }
+        ]
+      }
+    }
+  });
+
+  const so2 = await prisma.salesOrder.upsert({
+    where: { order_number: 'SO-2026-002' },
+    update: {},
+    create: {
+      order_number: 'SO-2026-002',
+      customer_id: custDeco.id,
+      order_date: new Date('2026-06-10'),
+      expected_delivery_date: new Date('2026-06-20'),
+      status: 'delivered',
+      remarks: 'Fragile handling needed.',
+      customer_address: '44 Residency Road, Bangalore',
+      created_by: adminUser.id,
+      lines: {
+        create: [
+          {
+            product_id: officeChair.id,
+            ordered_qty: 5,
+            unit_price: 8500,
+            delivered_qty: 5
+          }
+        ]
+      }
+    }
+  });
+
+  // Create delivered delivery for SO2
+  await prisma.salesDelivery.upsert({
+    where: { delivery_number: 'DLV-002' },
+    update: {},
+    create: {
+      delivery_number: 'DLV-002',
+      so_id: so2.id,
+      customer_id: custDeco.id,
+      delivery_date: new Date('2026-06-20'),
+      status: 'Delivered',
+      shipping_address: '44 Residency Road, Bangalore',
+      dispatch_date: new Date('2026-06-11'),
+      lines: {
+        create: [
+          {
+            product_id: officeChair.id,
+            qty: 5
+          }
+        ]
+      }
+    }
+  });
 
   console.log('Seed: Database seeding complete!');
 }

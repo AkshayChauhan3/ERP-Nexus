@@ -1,50 +1,54 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Bell, Zap, Eye, CheckCircle } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvLowStockAlerts() {
   const [alerts, setAlerts] = useState([]);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const loadData = () => {
-    const prods = inventoryApi.getProducts();
-    // Filter low stock
-    const items = prods.filter(p => p.currentStock <= p.reorderLevel).map(p => {
-      const shortage = p.reorderLevel - p.currentStock;
-      const suggested = Math.max(shortage * 2, 10);
-      
-      // priority logic
-      let priority = 'Medium';
-      let cls = 'warning';
-      if (p.currentStock === 0) {
-        priority = 'Critical';
-        cls = 'error';
-      } else if (p.currentStock < p.reorderLevel * 0.3) {
-        priority = 'High';
-        cls = 'error';
-      } else if (p.currentStock > p.reorderLevel * 0.8) {
-        priority = 'Low';
-        cls = 'outline';
-      }
+  const loadData = async () => {
+    try {
+      const res = await api.get('/inventory');
+      const prods = res.data || [];
+      const items = prods.filter(p => p.currentStock <= p.reorderLevel).map(p => {
+        const shortage = p.reorderLevel - p.currentStock;
+        const suggested = Math.max(shortage * 2, 10);
+        
+        // priority logic
+        let priority = 'Medium';
+        let cls = 'warning';
+        if (p.currentStock === 0) {
+          priority = 'Critical';
+          cls = 'error';
+        } else if (p.currentStock < p.reorderLevel * 0.3) {
+          priority = 'High';
+          cls = 'error';
+        } else if (p.currentStock > p.reorderLevel * 0.8) {
+          priority = 'Low';
+          cls = 'outline';
+        }
 
-      return {
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        currentStock: p.currentStock,
-        reorderLevel: p.reorderLevel,
-        unit: p.unit,
-        shortage,
-        suggested,
-        priority,
-        cls,
-        preferredVendor: 'VEND-001' // Mock vendor
-      };
-    });
+        return {
+          id: `${p.productId}-${p.warehouseId}`,
+          code: p.code,
+          name: `${p.name} (${p.warehouseId})`,
+          currentStock: p.currentStock,
+          reorderLevel: p.reorderLevel,
+          unit: p.unit,
+          shortage,
+          suggested,
+          priority,
+          cls,
+          preferredVendor: 'VEND-001'
+        };
+      });
 
-    setAlerts(items);
+      setAlerts(items);
+    } catch (err) {
+      console.error('Failed to load low stock alerts:', err);
+    }
   };
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Warehouse, Search, AlertTriangle, Filter } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseInventory() {
@@ -9,8 +9,14 @@ export default function PurchaseInventory() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All'); // All, Low, Normal
 
-  const loadData = () => {
-    setMaterials(purchaseApi.getMaterials());
+  const loadData = async () => {
+    try {
+      const res = await api.get('/products');
+      const list = (res.data || []).filter(p => p.type === 'RAW_MATERIAL');
+      setMaterials(list);
+    } catch (err) {
+      console.error('Failed to load inventory stock data', err);
+    }
   };
 
   useEffect(() => {
@@ -18,8 +24,9 @@ export default function PurchaseInventory() {
   }, []);
 
   const filtered = materials.filter(m => {
-    const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase());
-    const isLow = m.currentStock <= m.reorderLevel;
+    const matchesSearch = (m.name || '').toLowerCase().includes(search.toLowerCase()) || 
+                          (m.sku || '').toLowerCase().includes(search.toLowerCase());
+    const isLow = (m.inventory?.on_hand_qty || 0) <= (m.inventory?.reorder_level || 0);
     if (filterType === 'Low') {
       return matchesSearch && isLow;
     }
@@ -101,18 +108,21 @@ export default function PurchaseInventory() {
               </thead>
               <tbody>
                 {filtered.map(m => {
-                  const free = m.currentStock - m.reservedStock;
-                  const isLow = m.currentStock <= m.reorderLevel;
+                  const onHand = m.inventory?.on_hand_qty || 0;
+                  const reserved = m.inventory?.reserved_qty || 0;
+                  const free = m.free_qty || 0;
+                  const reorderLevel = m.inventory?.reorder_level || 0;
+                  const isLow = onHand <= reorderLevel;
                   return (
                     <tr key={m.id}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{m.sku}</td>
+                      <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{m.sku || 'SKU N/A'}</td>
                       <td style={{ fontWeight: 600 }}>{m.name}</td>
-                      <td>{m.currentStock} {m.unit}</td>
-                      <td>{m.reservedStock} {m.unit}</td>
+                      <td>{onHand} units</td>
+                      <td>{reserved} units</td>
                       <td style={{ fontWeight: 700, color: free < 0 ? 'var(--color-error)' : 'inherit' }}>
-                        {free} {m.unit}
+                        {free} units
                       </td>
-                      <td>{m.reorderLevel} {m.unit}</td>
+                      <td>{reorderLevel} units</td>
                       <td>
                         {isLow ? (
                           <span className="purchase-badge purchase-badge--error" style={{ gap: '4px' }}>

@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, ShoppingBag, Clock, CheckCircle, AlertTriangle, TrendingUp, DollarSign,
-  Plus, ArrowRight, Activity, Zap, RefreshCw
+  Plus, ArrowRight, Activity, RefreshCw
 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Sales.css';
 import '../../styles/Purchase.css';
 
@@ -25,27 +25,55 @@ export default function SalesDashboard() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = () => {
-      setLoading(true);
-      const orders = salesApi.getOrders();
-      const custs = salesApi.getCustomers();
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [orderRes, custRes] = await Promise.all([
+        api.get('/sales-orders'),
+        api.get('/customers')
+      ]);
+      const orders = orderRes.data || [];
+      const custs = custRes.data || [];
+
+      const getOrderAmount = (o) => {
+        return o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+      };
 
       const totalCusts = custs.length;
-      const todaysOrders = orders.filter(o => o.orderDate === new Date().toISOString().split('T')[0]).length;
-      const pending = orders.filter(o => o.status === 'Confirmed' || o.status === 'Processing').length;
-      const delivered = orders.filter(o => o.status === 'Delivered').length;
-      const cancelled = orders.filter(o => o.status === 'Cancelled').length;
-      const revenue = orders.filter(o => o.status !== 'Cancelled').reduce((sum, o) => sum + o.amount, 0);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todaysOrders = orders.filter(o => new Date(o.created_at).toISOString().split('T')[0] === todayStr).length;
+      
+      const pending = orders.filter(o => 
+        o.status === 'confirmed' || 
+        o.status === 'dispatched' || 
+        o.status === 'in_production' || 
+        o.status === 'ready_to_dispatch'
+      ).length;
+      
+      const delivered = orders.filter(o => o.status === 'delivered').length;
+      const cancelled = orders.filter(o => o.status === 'cancelled').length;
+      const revenue = orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + getOrderAmount(o), 0);
 
       setStats({
-        totalCusts, todaysOrders, pending, delivered, cancelled,
-        monthlySales: orders.length, topProducts: 3, revenue
+        totalCusts,
+        todaysOrders,
+        pending,
+        delivered,
+        cancelled,
+        monthlySales: orders.length,
+        topProducts: 3,
+        revenue
       });
-      setRecentOrders(orders.slice(-4).reverse());
+      // Backend returns desc order, so slice first 4 items
+      setRecentOrders(orders.slice(0, 4));
+    } catch (err) {
+      console.error('Failed to load dashboard statistics', err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -61,7 +89,7 @@ export default function SalesDashboard() {
             <p className="sales-sub">Manage customer orders, issue quotations, and track order fulfillment statuses.</p>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn--primary" style={{ gap: '6px' }} onClick={() => navigate('/sales/orders')}>
+            <button className="btn btn--primary" style={{ gap: '6px' }} onClick={() => navigate('/new-sales-order')}>
               <Plus size={14} /> Create Sales Order
             </button>
             <button className="btn btn--secondary" style={{ gap: '6px' }} onClick={() => navigate('/sales/quotations')}>
@@ -155,21 +183,24 @@ export default function SalesDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentOrders.map(o => (
-                        <tr key={o.id}>
-                          <td style={{ fontWeight: 700 }}>{o.id}</td>
-                          <td>{o.orderDate}</td>
-                          <td style={{ fontWeight: 600 }}>₹{o.amount.toLocaleString()}</td>
-                          <td>
-                            <span className={`purchase-badge purchase-badge--${
-                              o.status === 'Delivered' ? 'success' :
-                              o.status === 'Confirmed' || o.status === 'Processing' ? 'warning' : 'outline'
-                            }`}>
-                              {o.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {recentOrders.map(o => {
+                        const amount = o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+                        return (
+                          <tr key={o.id}>
+                            <td style={{ fontWeight: 700 }}>{o.order_number}</td>
+                            <td>{new Date(o.created_at).toLocaleDateString()}</td>
+                            <td style={{ fontWeight: 600 }}>₹{amount.toLocaleString()}</td>
+                            <td>
+                              <span className={`purchase-badge purchase-badge--${
+                                o.status === 'delivered' ? 'success' :
+                                o.status === 'cancelled' ? 'error' : 'warning'
+                              }`} style={{ textTransform: 'capitalize' }}>
+                                {o.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

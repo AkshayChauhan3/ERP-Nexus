@@ -1,31 +1,50 @@
 import { useState, useEffect } from 'react';
-import { BarChart2, Download, TrendingUp, Users, Package, Truck } from 'lucide-react';
+import { BarChart2, Download } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesReports() {
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [catalog, setCatalog] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
   const [activeReport, setActiveReport] = useState('summary'); // summary, customer, product, delivery
 
   useEffect(() => {
-    setOrders(salesApi.getOrders());
-    setCustomers(salesApi.getCustomers());
-    setCatalog(salesApi.getCatalog());
+    const loadData = async () => {
+      try {
+        const [ordRes, custRes, catRes, dlvRes] = await Promise.all([
+          api.get('/sales-orders'),
+          api.get('/customers'),
+          api.get('/products'),
+          api.get('/sales-deliveries')
+        ]);
+        setOrders(ordRes.data || []);
+        setCustomers(custRes.data || []);
+        setCatalog(catRes.data || []);
+        setDeliveries(dlvRes.data || []);
+      } catch (err) {
+        console.error('Failed to load reports data', err);
+      }
+    };
+    loadData();
   }, []);
 
   const handleExport = () => {
     alert(`Exporting Sales Analytical ${activeReport.toUpperCase()} report as PDF document...\nExport Successful.`);
   };
 
+  const getOrderAmount = (order) => {
+    return order.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+  };
+
   // Summary Metrics
-  const activeOrders = orders.filter(o => o.status !== 'Cancelled');
-  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.amount, 0);
+  const activeOrders = orders.filter(o => o.status !== 'cancelled');
+  const totalRevenue = activeOrders.reduce((sum, o) => sum + getOrderAmount(o), 0);
   const totalOrders = orders.length;
-  const deliveredCount = orders.filter(o => o.status === 'Delivered').length;
-  const cancelledCount = orders.filter(o => o.status === 'Cancelled').length;
+  const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+  const cancelledCount = orders.filter(o => o.status === 'cancelled').length;
 
   return (
     <AppShell>
@@ -97,11 +116,11 @@ export default function SalesReports() {
                   </thead>
                   <tbody>
                     {customers.map(c => {
-                      const custOrders = orders.filter(o => o.customerId === c.id && o.status !== 'Cancelled');
-                      const revenue = custOrders.reduce((sum, o) => sum + o.amount, 0);
+                      const custOrders = orders.filter(o => o.customer_id === c.id && o.status !== 'cancelled');
+                      const revenue = custOrders.reduce((sum, o) => sum + getOrderAmount(o), 0);
                       return (
                         <tr key={c.id}>
-                          <td style={{ fontFamily: 'monospace' }}>{c.id}</td>
+                          <td style={{ fontFamily: 'monospace' }}>{c.customer_code || 'CUSTOMER'}</td>
                           <td style={{ fontWeight: 600 }}>{c.name}</td>
                           <td>{custOrders.length} orders</td>
                           <td style={{ fontWeight: 700 }}>₹{revenue.toLocaleString()}</td>
@@ -132,19 +151,19 @@ export default function SalesReports() {
                   <tbody>
                     {catalog.map(p => {
                       let qtySold = 0;
-                      orders.filter(o => o.status !== 'Cancelled').forEach(o => {
-                        o.items.forEach(item => {
-                          if (item.productId === p.id) {
-                            qtySold += item.qty;
+                      orders.filter(o => o.status !== 'cancelled').forEach(o => {
+                        o.lines?.forEach(item => {
+                          if (item.product_id === p.id) {
+                            qtySold += Number(item.ordered_qty);
                           }
                         });
                       });
                       return (
                         <tr key={p.id}>
                           <td style={{ fontWeight: 600 }}>{p.name}</td>
-                          <td style={{ fontFamily: 'monospace' }}>{p.code}</td>
+                          <td style={{ fontFamily: 'monospace' }}>{p.sku || 'N/A'}</td>
                           <td>{qtySold} units</td>
-                          <td style={{ fontWeight: 700 }}>₹{(qtySold * p.price).toLocaleString()}</td>
+                          <td style={{ fontWeight: 700 }}>₹{(qtySold * Number(p.sales_price)).toLocaleString()}</td>
                         </tr>
                       );
                     })}
@@ -170,7 +189,7 @@ export default function SalesReports() {
                 </div>
                 <div style={{ padding: '16px', background: 'var(--surface-low)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
                   <div style={{ fontSize: '11px', color: 'var(--color-secondary)', fontWeight: 700 }}>PENDING DISPATCHES</div>
-                  <h3 style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: 800 }}>1</h3>
+                  <h3 style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: 800 }}>{deliveries.filter(d => d.status !== 'Delivered').length}</h3>
                 </div>
               </div>
             </>

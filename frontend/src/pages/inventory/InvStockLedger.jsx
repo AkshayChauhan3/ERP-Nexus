@@ -20,7 +20,7 @@ export default function InvStockLedger() {
   const loadData = async () => {
     try {
       const [ledgerRes, prodRes] = await Promise.all([
-        api.get('/stock-ledger/ledger'),
+        api.get('/inventory/ledger'),
         api.get('/products')
       ]);
       setLedger(ledgerRes.data || []);
@@ -35,14 +35,12 @@ export default function InvStockLedger() {
   }, []);
 
   const filtered = ledger.filter(l => {
-    const matchProd = productFilter === 'All' || l.product_id === productFilter;
-    const matchType = typeFilter === 'All' || l.movement_type === typeFilter;
+    const matchProd = productFilter === 'All' || l.productId === productFilter;
+    const matchType = typeFilter === 'All' || l.type.toLowerCase().includes(typeFilter.toLowerCase()) || (typeFilter === 'adjustment' && l.type.toLowerCase().includes('adjustment'));
     
-    // date matching: l.created_at is ISO
     let matchDate = true;
     if (dateFilter) {
-      const lDate = new Date(l.created_at).toISOString().split('T')[0];
-      if (lDate !== dateFilter) matchDate = false;
+      if (l.date !== dateFilter) matchDate = false;
     }
     return matchProd && matchType && matchDate;
   });
@@ -74,7 +72,12 @@ export default function InvStockLedger() {
             <div className="purchase-form-group" style={{ marginBottom: 0 }}>
               <label className="purchase-label">Transaction Type</label>
               <select className="purchase-input" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-                {transactionTypes.map(t => <option key={t} value={t}>{t === 'All' ? 'All Types' : t}</option>)}
+                <option value="All">All Types</option>
+                <option value="RECEIPT">Purchase Receipt</option>
+                <option value="DELIVERY">Sales Delivery</option>
+                <option value="TRANSFER">Warehouse Transfer</option>
+                <option value="ADJUSTMENT">Stock Adjustment</option>
+                <option value="RESERVE">Soft Reservation</option>
               </select>
             </div>
 
@@ -93,38 +96,43 @@ export default function InvStockLedger() {
                 <tr>
                   <th>Date</th>
                   <th>Product</th>
+                  <th>Warehouse</th>
                   <th>Movement Type</th>
                   <th>Quantity</th>
                   <th>Previous Stock</th>
                   <th>New Stock</th>
-                  <th>Reference</th>
+                  <th>Reference ID</th>
                   <th>Created By</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(l => (
-                  <tr key={l.id}>
-                    <td>{new Date(l.created_at).toLocaleString()}</td>
-                    <td style={{ fontWeight: 600 }}>{l.product?.name || l.product_id}</td>
-                    <td>
-                      <span className={`purchase-badge purchase-badge--${
-                        l.direction === 'in' ? 'success' : 'warning'
-                      }`}>
-                        {l.movement_type}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 700, color: l.direction === 'in' ? 'var(--color-success)' : 'var(--color-error)' }}>
-                      {l.direction === 'in' ? `+${Number(l.quantity)}` : `-${Number(l.quantity)}`}
-                    </td>
-                    <td>{Number(l.stock_before)}</td>
-                    <td>{Number(l.stock_after)}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{l.reference_type} / {l.reference_id ? l.reference_id.slice(0,8) : '-'}</td>
-                    <td>{l.user?.login_id || l.created_by || 'System'}</td>
-                  </tr>
-                ))}
+                {filtered.map(l => {
+                  const isIncoming = l.qty > 0;
+                  return (
+                    <tr key={l.id}>
+                      <td>{l.date}</td>
+                      <td style={{ fontWeight: 600 }}>{l.productName} ({l.productCode})</td>
+                      <td style={{ fontWeight: 600 }}>{l.warehouseId}</td>
+                      <td>
+                        <span className={`purchase-badge purchase-badge--${
+                          isIncoming ? 'success' : 'outline'
+                        }`}>
+                          {l.type}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 700, color: isIncoming ? 'var(--color-success)' : 'var(--color-error)' }}>
+                        {isIncoming ? `+${l.qty}` : l.qty}
+                      </td>
+                      <td>{l.prevStock}</td>
+                      <td>{l.newStock}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{l.refNo ? l.refNo.slice(0, 8) : 'N/A'}</td>
+                      <td>{l.createdBy}</td>
+                    </tr>
+                  );
+                })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--color-secondary)' }}>
                       No stock ledger entries found.
                     </td>
                   </tr>

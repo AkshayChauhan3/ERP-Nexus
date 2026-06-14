@@ -1,11 +1,23 @@
 const { z } = require('zod');
 const customerService = require('./customers.service');
 
+const cleanString = z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable());
+const cleanEmail = z.preprocess((val) => (val === '' ? null : val), z.string().email('Invalid email format').optional().nullable());
+const cleanNumber = z.preprocess((val) => {
+  if (val === '' || val === null || val === undefined) return null;
+  const num = Number(val);
+  return isNaN(num) ? undefined : num;
+}, z.number().optional().nullable());
+
 const customerSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Invalid email format').optional().nullable(),
-  phone: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
+  email: cleanEmail,
+  phone: cleanString,
+  address: cleanString,
+  customer_code: cleanString,
+  gst_no: cleanString,
+  credit_limit: cleanNumber,
+  contact_person: cleanString,
 });
 
 async function getAll(req, res) {

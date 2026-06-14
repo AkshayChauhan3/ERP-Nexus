@@ -23,23 +23,21 @@ const passwordSchema = z.object({
 });
 
 function mapUserForFrontend(user) {
-  let role = 'user';
-  if (user.login_id === 'owner') role = 'owner';
-  else if (user.is_admin) role = 'admin';
-  else if (user.requested_modules && user.requested_modules.length > 0) {
-    // Look for a standard role matching their requested modules
-    const matchingRoles = ['sales', 'purchase', 'manufacturing', 'inventory'];
-    const matchingModuleIds = { sales: 1, purchase: 2, manufacturing: 3, inventory: 4 };
-    const firstMatch = matchingRoles.find(r => user.requested_modules.includes(matchingModuleIds[r]));
-    if (firstMatch) role = firstMatch;
-  }
+  const KNOWN_ROLES = ['admin', 'owner', 'sales', 'purchase', 'manufacturing', 'inventory'];
 
-  // Fallback to position in profile if present and matches role names
-  if (role === 'user' && user.profile?.position) {
+  // Primary: read role from profile.position (set when admin creates user)
+  let role = 'user';
+  if (user.profile?.position) {
     const pos = user.profile.position.toLowerCase();
-    if (['admin', 'owner', 'sales', 'purchase', 'manufacturing', 'inventory'].includes(pos)) {
+    if (KNOWN_ROLES.includes(pos)) {
       role = pos;
     }
+  }
+
+  // Fallback: derive from flags when profile.position is not a known role
+  if (role === 'user') {
+    if (user.login_id === 'owner') role = 'owner';
+    else if (user.is_admin) role = 'admin';
   }
 
   return {
@@ -54,6 +52,7 @@ function mapUserForFrontend(user) {
     last_login: user.last_login_at || null,
   };
 }
+
 
 async function getPendingRegistrations(req, res) {
   const users = await adminService.getPendingRegistrations();

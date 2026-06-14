@@ -6,7 +6,7 @@ import {
   Plus, Eye, TrendingUp, RefreshCw
 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvDashboard() {
@@ -29,31 +29,40 @@ export default function InvDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       setLoading(true);
-      const prods = inventoryApi.getProducts();
-      const transfers = inventoryApi.getTransfers();
+      try {
+        const [invRes, trfRes] = await Promise.all([
+          api.get('/inventory'),
+          api.get('/inventory/transfers')
+        ]);
+        const prods = invRes.data || [];
+        const transfers = trfRes.data || [];
 
-      const totalProds = prods.length;
-      const totalRawMats = prods.filter(p => p.category === 'Raw Materials').length;
-      const lowStock = prods.filter(p => p.currentStock <= p.reorderLevel && p.currentStock > 0).length;
-      const outOfStock = prods.filter(p => p.currentStock === 0).length;
-      const reservedStock = prods.reduce((sum, p) => sum + p.reservedStock, 0);
-      const incoming = transfers.filter(t => t.status === 'Pending').reduce((sum, t) => sum + t.qty, 0);
-      const outgoing = transfers.filter(t => t.status === 'Pending').reduce((sum, t) => sum + t.qty, 0); // Mock
-      const totalValue = prods.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0);
+        const totalProds = prods.length;
+        const totalRawMats = prods.filter(p => p.category === 'Raw Materials').length;
+        const lowStock = prods.filter(p => p.currentStock <= p.reorderLevel && p.currentStock > 0).length;
+        const outOfStock = prods.filter(p => p.currentStock === 0).length;
+        const reservedStock = prods.reduce((sum, p) => sum + p.reservedStock, 0);
+        const incoming = transfers.filter(t => t.status === 'Pending').reduce((sum, t) => sum + t.qty, 0);
+        const outgoing = transfers.filter(t => t.status === 'Pending').reduce((sum, t) => sum + t.qty, 0); // Mock
+        const totalValue = prods.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0);
 
-      // Distribution
-      const raw = prods.filter(p => p.category === 'Raw Materials').reduce((sum, p) => sum + p.currentStock, 0);
-      const finished = prods.filter(p => p.category === 'Finished Goods').reduce((sum, p) => sum + p.currentStock, 0);
-      const consumables = prods.filter(p => p.category === 'Consumables').reduce((sum, p) => sum + p.currentStock, 0);
-      const packaging = prods.filter(p => p.category === 'Packaging Materials').reduce((sum, p) => sum + p.currentStock, 0);
+        // Distribution
+        const raw = prods.filter(p => p.category === 'Raw Materials').reduce((sum, p) => sum + p.currentStock, 0);
+        const finished = prods.filter(p => p.category === 'Finished Goods').reduce((sum, p) => sum + p.currentStock, 0);
+        const consumables = prods.filter(p => p.category === 'Consumables').reduce((sum, p) => sum + p.currentStock, 0);
+        const packaging = prods.filter(p => p.category === 'Packaging Materials').reduce((sum, p) => sum + p.currentStock, 0);
 
-      setStats({
-        totalProds, totalRawMats, lowStock, outOfStock, reservedStock, incoming, outgoing, totalValue
-      });
-      setDistribution({ raw, finished, consumables, packaging });
-      setLoading(false);
+        setStats({
+          totalProds, totalRawMats, lowStock, outOfStock, reservedStock, incoming, outgoing, totalValue
+        });
+        setDistribution({ raw, finished, consumables, packaging });
+      } catch (err) {
+        console.error('Failed to load dashboard statistics', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();

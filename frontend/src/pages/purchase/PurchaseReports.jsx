@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart2, TrendingUp, Award, AlertTriangle, Download } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function PurchaseReports() {
@@ -9,19 +9,43 @@ export default function PurchaseReports() {
   const [mats, setMats] = useState([]);
   const [pos, setPOs] = useState([]);
 
+  const loadData = async () => {
+    try {
+      const [posRes, matRes] = await Promise.all([
+        api.get('/purchase-orders'),
+        api.get('/products')
+      ]);
+      setPOs(posRes.data || []);
+      setMats((matRes.data || []).filter(p => p.type === 'RAW_MATERIAL'));
+      
+      // Seed fallback rating/performance info for display based on returned vendor list
+      const vendorsRes = await api.get('/vendors');
+      const vendors = vendorsRes.data || [];
+      const mockPerf = vendors.map((v, index) => {
+        // Deterministic mock values based on actual DB vendors
+        const onTimeRates = [100, 93, 86, 83, 90, 95];
+        const onTime = onTimeRates[index % onTimeRates.length];
+        return {
+          name: v.name,
+          onTime,
+          color: onTime >= 90 ? 'var(--color-success)' : 'var(--color-amber)'
+        };
+      });
+      setVendorPerf(mockPerf);
+    } catch (err) {
+      console.error('Failed to fetch purchase report data', err);
+    }
+  };
+
   useEffect(() => {
-    setVendorPerf([
-      { name: 'Premium Fabrics Ltd', onTime: 100, color: 'var(--color-success)' },
-      { name: 'National Steel Corp', onTime: 93, color: 'var(--color-success)' },
-      { name: 'Apex Wood Supplies', onTime: 86, color: 'var(--color-amber)' },
-      { name: 'Universal Fasteners', onTime: 83, color: 'var(--color-amber)' },
-    ]);
-    setMats(purchaseApi.getMaterials());
-    setPOs(purchaseApi.getPOs());
+    loadData();
   }, []);
 
-  const totalValue = pos.reduce((sum, p) => sum + (p.status !== 'Draft' ? p.totalValue : 0), 0);
-  const maxOnTime = 100;
+  const totalValue = pos.reduce((sum, p) => {
+    if (p.status === 'draft') return sum;
+    const poTotal = p.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+    return sum + poTotal;
+  }, 0);
 
   const handleExport = () => {
     alert('Exporting analytical procurement report...\nFulfillment Report generated.');
@@ -67,7 +91,7 @@ export default function PurchaseReports() {
                 { label: 'Q1-26', val: 110000 },
                 { label: 'Q2-26', val: totalValue },
               ].map((q, i) => {
-                const maxVal = 140000;
+                const maxVal = Math.max(140000, totalValue);
                 const pct = (q.val / maxVal) * 100;
                 return (
                   <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '20%' }}>
@@ -105,6 +129,11 @@ export default function PurchaseReports() {
                   </span>
                 </div>
               ))}
+              {vendorPerf.length === 0 && (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-secondary)', fontSize: '12px' }}>
+                  No vendor data available.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -118,14 +147,16 @@ export default function PurchaseReports() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
             {mats.map(m => {
-              const isLow = m.currentStock <= m.reorderLevel;
-              const ratio = Math.min((m.currentStock / (m.reorderLevel || 1)) * 50, 100);
+              const onHand = Number(m.inventory?.on_hand_qty || 0);
+              const reorder = Number(m.inventory?.reorder_level || 0);
+              const isLow = onHand <= reorder;
+              const ratio = Math.min((onHand / (reorder || 1)) * 50, 100);
               return (
                 <div key={m.id} style={{ border: '1px solid var(--color-outline-variant)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 700 }}>{m.name}</span>
                     <span style={{ color: isLow ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 700 }}>
-                      {m.currentStock} / {m.reorderLevel}
+                      {onHand} / {reorder}
                     </span>
                   </div>
                   <div className="purchase-progress-bar">
@@ -140,6 +171,11 @@ export default function PurchaseReports() {
                 </div>
               );
             })}
+            {mats.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', padding: '24px', textAlign: 'center', color: 'var(--color-secondary)', fontSize: '12px' }}>
+                No materials available.
+              </div>
+            )}
           </div>
         </div>
       </div>

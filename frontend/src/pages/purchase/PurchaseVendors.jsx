@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Search, Plus, Edit2, Phone, Mail, MapPin, Award, Trash2 } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { purchaseApi } from '../../utils/purchaseApi';
 import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
@@ -12,34 +11,54 @@ export default function PurchaseVendors() {
   const [history, setHistory] = useState([]);
   const [materials, setMaterials] = useState([]);
 
+  // Store all records locally to filter
+  const [allPOs, setAllPOs] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+
   // Modals
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [form, setForm] = useState({ name: '', contact: '', email: '', phone: '', address: '' });
 
-  const loadVendors = async () => {
+  const loadData = async () => {
     try {
-      const res = await api.get('/vendors');
-      const list = res.data || [];
-      setVendors(list);
-      if (list.length > 0 && !selectedVend) {
-        handleSelectVendor(list[0]);
+      const [vendRes, poRes, prodRes] = await Promise.all([
+        api.get('/vendors'),
+        api.get('/purchase-orders'),
+        api.get('/products'),
+      ]);
+      const vendsList = vendRes.data || [];
+      const posList = poRes.data || [];
+      const prodsList = prodRes.data || [];
+
+      setVendors(vendsList);
+      setAllPOs(posList);
+      setAllProducts(prodsList);
+
+      if (vendsList.length > 0) {
+        const current = selectedVend ? vendsList.find(v => v.id === selectedVend.id) || vendsList[0] : vendsList[0];
+        setSelectedVend(current);
+        filterVendorDetails(current.id, posList, prodsList);
       }
     } catch (err) {
-      console.error('Failed to load vendors', err);
+      console.error('Failed to load vendors data', err);
     }
   };
 
   useEffect(() => {
-    loadVendors();
+    loadData();
   }, []);
+
+  const filterVendorDetails = (vendorId, pos, prods) => {
+    const posFiltered = pos.filter(p => p.vendor_id === vendorId);
+    setHistory(posFiltered);
+    const matsFiltered = prods.filter(m => m.vendor_id === vendorId);
+    setMaterials(matsFiltered);
+  };
 
   const handleSelectVendor = (v) => {
     setSelectedVend(v);
-    const pos = purchaseApi.getPOs().filter(p => p.vendorId === v.id);
-    setHistory(pos);
-    const mats = purchaseApi.getMaterials().filter(m => m.preferredVendor === v.id);
-    setMaterials(mats);
+    filterVendorDetails(v.id, allPOs, allProducts);
   };
 
   const handleOpenAdd = () => {
@@ -53,19 +72,20 @@ export default function PurchaseVendors() {
     try {
       await api.post('/vendors', {
         name: form.name,
+        contact_person: form.contact,
         email: form.email,
         phone: form.phone,
         address: form.address,
       });
       setShowAdd(false);
-      loadVendors();
+      loadData();
     } catch (err) {
       alert(err.message || 'Failed to add vendor');
     }
   };
 
   const handleOpenEdit = (v) => {
-    setForm({ name: v.name, contact: v.contact, email: v.email, phone: v.phone, address: v.address });
+    setForm({ name: v.name, contact: v.contact_person || '', email: v.email, phone: v.phone || '', address: v.address || '' });
     setShowEdit(true);
   };
 
@@ -75,12 +95,13 @@ export default function PurchaseVendors() {
     try {
       await api.put(`/vendors/${selectedVend.id}`, {
         name: form.name,
+        contact_person: form.contact,
         email: form.email,
         phone: form.phone,
         address: form.address,
       });
       setShowEdit(false);
-      loadVendors();
+      loadData();
     } catch (err) {
       alert(err.message || 'Failed to edit vendor');
     }
@@ -88,7 +109,7 @@ export default function PurchaseVendors() {
 
   const filtered = vendors.filter(v => 
     v.name.toLowerCase().includes(search.toLowerCase()) ||
-    v.contact.toLowerCase().includes(search.toLowerCase()) ||
+    (v.contact_person || '').toLowerCase().includes(search.toLowerCase()) ||
     v.id.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -141,11 +162,11 @@ export default function PurchaseVendors() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{v.id}</span>
-                    <span className="purchase-badge purchase-badge--success" style={{ fontSize: '10px' }}>★ {v.rating}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-secondary)' }}>{v.id.slice(0, 8).toUpperCase()}</span>
+                    <span className="purchase-badge purchase-badge--success" style={{ fontSize: '10px' }}>★ {v.rating || '4.8'}</span>
                   </div>
                   <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>{v.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--color-secondary)', marginTop: '2px' }}>Contact: {v.contact}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-secondary)', marginTop: '2px' }}>Contact: {v.contact_person || 'N/A'}</div>
                 </div>
               ))}
               {filtered.length === 0 && (
@@ -176,13 +197,13 @@ export default function PurchaseVendors() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                     <Mail size={14} style={{ color: 'var(--color-secondary)' }} />
-                    <span>{selectedVend.email}</span>
+                    <span>{selectedVend.email || 'N/A'}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px' }}>
                     <MapPin size={14} style={{ color: 'var(--color-secondary)', marginTop: '2px' }} />
-                    <span>{selectedVend.address}</span>
+                    <span>{selectedVend.address || 'No Address'}</span>
                   </div>
                 </div>
               </div>
@@ -197,16 +218,16 @@ export default function PurchaseVendors() {
                         <th>Material</th>
                         <th>SKU</th>
                         <th>Stock Level</th>
-                        <th>Base Price</th>
+                        <th>Cost Price</th>
                       </tr>
                     </thead>
                     <tbody>
                       {materials.map(m => (
                         <tr key={m.id}>
                           <td style={{ fontWeight: 600 }}>{m.name}</td>
-                          <td style={{ fontFamily: 'monospace' }}>{m.sku}</td>
-                          <td>{m.currentStock} {m.unit}</td>
-                          <td>₹{m.price}</td>
+                          <td style={{ fontFamily: 'monospace' }}>{m.sku || 'N/A'}</td>
+                          <td>{m.inventory?.on_hand_qty || 0} units</td>
+                          <td>₹{Number(m.cost_price).toLocaleString()}</td>
                         </tr>
                       ))}
                       {materials.length === 0 && (
@@ -226,25 +247,28 @@ export default function PurchaseVendors() {
                   <table className="purchase-table">
                     <thead>
                       <tr>
-                        <th>PO ID</th>
+                        <th>PO Number</th>
                         <th>Date</th>
-                        <th>Fulfillment</th>
+                        <th>Status</th>
                         <th>Total Value</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map(h => (
-                        <tr key={h.id}>
-                          <td style={{ fontWeight: 600 }}>{h.id}</td>
-                          <td>{h.orderDate}</td>
-                          <td>
-                            <span className={`purchase-badge purchase-badge--${h.receiptStatus === 'Fully Received' ? 'success' : 'warning'}`}>
-                              {h.receiptStatus}
-                            </span>
-                          </td>
-                          <td style={{ fontWeight: 600 }}>₹{h.totalValue.toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {history.map(h => {
+                        const totalValue = h.lines?.reduce((sum, line) => sum + (Number(line.ordered_qty) * Number(line.unit_price)), 0) || 0;
+                        return (
+                          <tr key={h.id}>
+                            <td style={{ fontWeight: 600 }}>{h.po_number}</td>
+                            <td>{new Date(h.created_at).toLocaleDateString()}</td>
+                            <td>
+                              <span className={`purchase-badge purchase-badge--${h.status === 'received' ? 'success' : 'warning'}`} style={{ textTransform: 'capitalize' }}>
+                                {h.status}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: 600 }}>₹{totalValue.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                       {history.length === 0 && (
                         <tr>
                           <td colSpan="4" style={{ textAlign: 'center', color: 'var(--color-secondary)' }}>No purchase orders for this vendor yet.</td>

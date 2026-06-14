@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Layers, Eye, Search } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvReservedStock() {
   const [reserved, setReserved] = useState([]);
-  const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    setReserved(inventoryApi.getReserved());
-    setProducts(inventoryApi.getProducts());
+    const loadData = async () => {
+      try {
+        const res = await api.get('/inventory/reserved');
+        setReserved(res.data || []);
+      } catch (err) {
+        console.error('Failed to load reservations:', err);
+      }
+    };
+    loadData();
   }, []);
 
   const handleViewOrder = (item) => {
@@ -19,8 +25,7 @@ export default function InvReservedStock() {
   };
 
   const filtered = reserved.filter(r => {
-    const prodName = products.find(p => p.id === r.productId)?.name || '';
-    return prodName.toLowerCase().includes(search.toLowerCase()) || r.refNo.toLowerCase().includes(search.toLowerCase());
+    return (r.productName || '').toLowerCase().includes(search.toLowerCase()) || (r.refNo || '').toLowerCase().includes(search.toLowerCase());
   });
 
   return (
@@ -58,6 +63,7 @@ export default function InvReservedStock() {
               <thead>
                 <tr>
                   <th>Product Name</th>
+                  <th>Warehouse</th>
                   <th>Current Stock</th>
                   <th>Reserved Stock Qty</th>
                   <th>Net Available</th>
@@ -68,12 +74,11 @@ export default function InvReservedStock() {
               </thead>
               <tbody>
                 {filtered.map(r => {
-                  const pObj = products.find(p => p.id === r.productId);
-                  const name = pObj ? pObj.name : r.productId;
-                  const unit = pObj ? pObj.unit : 'units';
+                  const unit = 'pcs';
                   return (
                     <tr key={r.id}>
-                      <td style={{ fontWeight: 600 }}>{name}</td>
+                      <td style={{ fontWeight: 600 }}>{r.productName} ({r.productCode})</td>
+                      <td style={{ fontWeight: 600 }}>{r.warehouse}</td>
                       <td>{r.currentStock} {unit}</td>
                       <td style={{ fontWeight: 700, color: 'var(--color-amber)' }}>{r.reservedStock} {unit}</td>
                       <td style={{ fontWeight: 700 }}>{r.availableStock} {unit}</td>

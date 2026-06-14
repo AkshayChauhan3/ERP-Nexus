@@ -5,8 +5,9 @@ async function getAllReceipts() {
   return await prisma.goodsReceipt.findMany({
     orderBy: { created_at: 'desc' },
     include: {
-      purchase_order: { select: { id: true } },
+      purchase_order: { select: { id: true, po_number: true, vendor_id: true } },
       user: { select: { id: true, login_id: true } },
+      lines: { include: { product: true } }
     },
   });
 }

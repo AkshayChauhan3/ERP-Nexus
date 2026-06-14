@@ -1,11 +1,15 @@
 const { z } = require('zod');
 const vendorService = require('./vendors.service');
 
+const cleanString = z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable());
+const cleanEmail = z.preprocess((val) => (val === '' ? null : val), z.string().email('Invalid email format').optional().nullable());
+
 const vendorSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Invalid email format').optional().nullable(),
-  phone: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
+  email: cleanEmail,
+  phone: cleanString,
+  address: cleanString,
+  contact_person: cleanString,
 });
 
 async function getAll(req, res) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Settings, Plus, Check, RefreshCw } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { inventoryApi } from '../../utils/inventoryApi';
+import { api } from '../../utils/api';
 import '../../styles/Inventory.css';
 
 export default function InvStockAdjustments() {
@@ -18,17 +18,31 @@ export default function InvStockAdjustments() {
   const [currentQty, setCurrentQty] = useState(0);
   const [adjustedQty, setAdjustedQty] = useState(0);
   const [reason, setReason] = useState('Physical Count Correction');
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
 
   const reasons = ['Damage', 'Expired', 'Lost', 'Physical Count Correction', 'System Error'];
 
-  const loadData = () => {
-    setAdjustments(inventoryApi.getAdjustments());
-    const prods = inventoryApi.getProducts();
-    const whs = inventoryApi.getWarehouses();
-    setProducts(prods);
-    setWarehouses(whs);
-    if (prods.length > 0) {
-      handleProductSelect(prods[0].id, prods);
+  const loadData = async () => {
+    try {
+      const [adjRes, invRes, whsRes] = await Promise.all([
+        api.get('/inventory/adjustments'),
+        api.get('/inventory'),
+        api.get('/inventory/warehouses')
+      ]);
+      setAdjustments(adjRes.data);
+      const invProducts = invRes.data || [];
+      setProducts(invProducts);
+      setWarehouses(whsRes.data);
+      
+      if (invProducts.length > 0) {
+        setSelectedProductIndex(0);
+        setProductId(invProducts[0].productId);
+        setWarehouseId(invProducts[0].warehouseId);
+        setCurrentQty(invProducts[0].currentStock);
+        setAdjustedQty(invProducts[0].currentStock);
+      }
+    } catch (err) {
+      console.error('Failed to load adjustments:', err);
     }
   };
 
@@ -36,27 +50,32 @@ export default function InvStockAdjustments() {
     loadData();
   }, []);
 
-  const handleProductSelect = (id, allProds = products) => {
-    setProductId(id);
-    const target = allProds.find(p => p.id === id);
+  const handleProductIndexSelect = (index) => {
+    setSelectedProductIndex(index);
+    const target = products[index];
     if (target) {
+      setProductId(target.productId);
       setWarehouseId(target.warehouseId);
       setCurrentQty(target.currentStock);
       setAdjustedQty(target.currentStock);
     }
   };
 
-  const handleAdjustmentSubmit = (e) => {
+  const handleAdjustmentSubmit = async (e) => {
     e.preventDefault();
-    inventoryApi.createAdjustment({
-      productId,
-      warehouseId,
-      adjustedQuantity: Number(adjustedQty),
-      reason
-    });
+    try {
+      await api.post('/inventory/adjustments', {
+        productId,
+        warehouseId,
+        adjustedQuantity: Number(adjustedQty),
+        reason
+      });
 
-    setShowForm(false);
-    loadData();
+      setShowForm(false);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to log adjustment.');
+    }
   };
 
   return (
@@ -134,9 +153,13 @@ export default function InvStockAdjustments() {
               </div>
               <form onSubmit={handleAdjustmentSubmit}>
                 <div className="purchase-form-group">
-                  <label className="purchase-label">Select Product</label>
-                  <select className="purchase-input" value={productId} onChange={e => handleProductSelect(e.target.value)}>
-                    {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+                  <label className="purchase-label">Select Product & Warehouse</label>
+                  <select className="purchase-input" value={selectedProductIndex} onChange={e => handleProductIndexSelect(Number(e.target.value))}>
+                    {products.map((p, idx) => (
+                      <option key={idx} value={idx}>
+                        {p.name} - {p.warehouseId} ({p.code})
+                      </option>
+                    ))}
                   </select>
                 </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { BarChart2, TrendingUp, Users, Package, Award } from 'lucide-react';
+import { BarChart2, Package, Award, Users } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { salesApi } from '../../utils/salesApi';
+import { api } from '../../utils/api';
 import '../../styles/Purchase.css';
 
 export default function SalesAnalytics() {
@@ -10,10 +10,26 @@ export default function SalesAnalytics() {
   const [catalog, setCatalog] = useState([]);
 
   useEffect(() => {
-    setOrders(salesApi.getOrders());
-    setCustomers(salesApi.getCustomers());
-    setCatalog(salesApi.getCatalog());
+    const loadData = async () => {
+      try {
+        const [ordRes, custRes, catRes] = await Promise.all([
+          api.get('/sales-orders'),
+          api.get('/customers'),
+          api.get('/products')
+        ]);
+        setOrders(ordRes.data || []);
+        setCustomers(custRes.data || []);
+        setCatalog(catRes.data || []);
+      } catch (err) {
+        console.error('Failed to load analytics data', err);
+      }
+    };
+    loadData();
   }, []);
+
+  const getOrderAmount = (o) => {
+    return o.lines?.reduce((s, l) => s + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+  };
 
   return (
     <AppShell>
@@ -41,10 +57,10 @@ export default function SalesAnalytics() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'center', flex: 1 }}>
               {catalog.map((p, idx) => {
                 let qtySold = 0;
-                orders.filter(o => o.status !== 'Cancelled').forEach(o => {
-                  o.items.forEach(item => {
-                    if (item.productId === p.id) {
-                      qtySold += item.qty;
+                orders.filter(o => o.status !== 'cancelled').forEach(o => {
+                  o.lines?.forEach(item => {
+                    if (item.product_id === p.id) {
+                      qtySold += Number(item.ordered_qty);
                     }
                   });
                 });
@@ -76,7 +92,9 @@ export default function SalesAnalytics() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-outline-variant)', paddingBottom: '8px', fontSize: '13px' }}>
                 <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Average Order Invoice Value:</span>
-                <strong style={{ color: 'var(--color-primary)' }}>₹1,35,400</strong>
+                <strong style={{ color: 'var(--color-primary)' }}>
+                  ₹{orders.length ? Math.round(orders.reduce((s, o) => s + getOrderAmount(o), 0) / orders.length).toLocaleString() : '0'}
+                </strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-outline-variant)', paddingBottom: '8px', fontSize: '13px' }}>
                 <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Average Delivery Turnaround Time:</span>
@@ -84,7 +102,9 @@ export default function SalesAnalytics() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-outline-variant)', paddingBottom: '8px', fontSize: '13px' }}>
                 <span style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>Order Completion Ratio:</span>
-                <strong style={{ color: 'var(--color-success)' }}>100%</strong>
+                <strong style={{ color: 'var(--color-success)' }}>
+                  {orders.length ? Math.round((orders.filter(o => o.status === 'delivered').length / orders.length) * 100) : '100'}%
+                </strong>
               </div>
             </div>
           </div>
@@ -108,8 +128,8 @@ export default function SalesAnalytics() {
               </thead>
               <tbody>
                 {customers.map(c => {
-                  const custOrders = orders.filter(o => o.customerId === c.id && o.status !== 'Cancelled');
-                  const contributed = custOrders.reduce((sum, o) => sum + o.amount, 0);
+                  const custOrders = orders.filter(o => o.customer_id === c.id && o.status !== 'cancelled');
+                  const contributed = custOrders.reduce((sum, o) => sum + getOrderAmount(o), 0);
                   return (
                     <tr key={c.id}>
                       <td style={{ fontWeight: 600 }}>{c.name}</td>
