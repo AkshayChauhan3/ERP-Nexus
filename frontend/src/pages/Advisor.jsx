@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Zap, AlertCircle, TrendingUp, Clock, ChevronRight } from 'lucide-react';
 import AppShell from '../components/layout/AppShell';
 import { api } from '../utils/api';
@@ -6,6 +7,7 @@ import '../styles/Owner.css';
 import '../styles/Purchase.css';
 
 export default function Advisor() {
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,6 +28,21 @@ export default function Advisor() {
       setError('Could not connect to the advisor service. Is the backend running?');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleActionClick = (actionLabel) => {
+    const label = actionLabel.toLowerCase();
+    if (label.includes('po') || label.includes('vendor')) {
+      navigate('/purchase');
+    } else if (label.includes('inventory')) {
+      navigate('/inventory');
+    } else if (label.includes('mo') || label.includes('work order')) {
+      navigate('/manufacturing');
+    } else if (label.includes('order') || label.includes('analytic')) {
+      navigate('/sales');
+    } else {
+      navigate('/');
     }
   };
 
@@ -85,18 +102,21 @@ export default function Advisor() {
                     <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: '#555', lineHeight: '1.5' }}>
                       {rec.description}
                     </p>
-                    <button className="btn btn--secondary btn-interactive" style={{ 
-                      background: '#fff', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '24px', 
-                      padding: '8px 16px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: '#1a1a1a',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
+                    <button 
+                      className="btn btn--secondary btn-interactive" 
+                      onClick={() => handleActionClick(rec.action_label)}
+                      style={{ 
+                        background: '#fff', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '24px', 
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#1a1a1a',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
                       {rec.action_label.replace('>', '').trim()} <ChevronRight size={14} />
                     </button>
                   </div>

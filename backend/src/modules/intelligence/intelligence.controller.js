@@ -20,7 +20,18 @@ async function getAdvisorRecommendations(req, res) {
   }
 }
 
+async function getBusinessSummary(req, res) {
+  try {
+    const summary = await intelligenceService.getBusinessSummary();
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('Error fetching business summary:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate summary' });
+  }
+}
+
 module.exports = {
   getDashboardStats,
-  getAdvisorRecommendations
+  getAdvisorRecommendations,
+  getBusinessSummary
 };

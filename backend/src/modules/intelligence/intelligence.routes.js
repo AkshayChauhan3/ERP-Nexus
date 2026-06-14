@@ -40,4 +40,17 @@ router.get('/dashboard-stats', authorize('owner', 'admin'), intelligenceControll
  */
 router.get('/advisor', authorize('owner', 'admin'), intelligenceController.getAdvisorRecommendations);
 
+/**
+ * @swagger
+ * /intelligence/summary:
+ *   get:
+ *     summary: Get Executive Business Summary
+ *     description: Retrieve AI-generated or dynamic template-based executive summary.
+ *     tags: [Intelligence]
+ *     responses:
+ *       200:
+ *         description: Summary successfully retrieved
+ */
+router.get('/summary', authorize('owner', 'admin'), intelligenceController.getBusinessSummary);
+
 module.exports = router;

@@ -56,7 +56,7 @@ async function getDashboardStats() {
 
   // Active Users
   const activeUsers = await prisma.user.count({
-    where: { is_active: true }
+    where: { status: 'APPROVED' }
   });
 
   const pendingApprovals = 0;
@@ -195,7 +195,78 @@ Return ONLY a valid JSON array (no markdown, no explanation) with exactly 3 obje
   return recommendations;
 }
 
+async function getBusinessSummary() {
+  const stats = await getDashboardStats();
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  const hasValidKey = apiKey && apiKey.trim().length > 10 && !apiKey.includes('your-') && !apiKey.includes('dummy') && !apiKey.includes('AIza...');
+
+  if (hasValidKey) {
+    try {
+      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKey.trim());
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const prompt = `You are a Chief Financial Officer reporting to the CEO. Write a 2-paragraph executive summary based on the following ERP system metrics.
+      Focus on strategic insights, bottlenecks (if any), and overall health.
+      
+      Today's Sales: ₹${stats.todaySales}
+      Monthly Sales: ₹${stats.monthlySales}
+      Today's Purchases: ₹${stats.todayPurchases}
+      Monthly Purchases: ₹${stats.monthlyPurchases}
+      Inventory Value: ₹${stats.invValue}
+      MOs In Progress: ${stats.moInProgress}
+      Pending Approvals: ${stats.pendingApprovals}
+      Low Stock Items: ${stats.lowStock}
+      Active Users: ${stats.activeUsers}
+
+      Make it read like a professional business narrative, without markdown bullets. Include positive reinforcement for good numbers, and constructive warnings for bottlenecks like low stock or pending approvals.`;
+
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (err) {
+      console.warn('⚠️ EN Advisor: Gemini summary failed, using template fallback. Error:', err.message);
+    }
+  }
+
+  // Template Fallback
+  const isHealthy = (stats.todaySales > stats.todayPurchases) && (stats.lowStock < 5) && (stats.pendingApprovals < 10);
+  const healthDeclaration = isHealthy 
+    ? "Overall Business Health: EXCELLENT 🟢\nYour business is performing exceptionally well today. " 
+    : "Overall Business Health: NEEDS ATTENTION 🟠\nThere are a few areas requiring your immediate attention. ";
+
+  let summary = `${healthDeclaration}\n\nFinancial Overview:\nYour current monthly revenue stands at ₹${stats.monthlySales.toLocaleString()}, with today bringing in ₹${stats.todaySales.toLocaleString()}. In terms of expenses, your monthly procurement outlay is ₹${stats.monthlyPurchases.toLocaleString()}, and today's expenses are ₹${stats.todayPurchases.toLocaleString()}. `;
+  
+  if (stats.todaySales > stats.todayPurchases) {
+    summary += `You are maintaining a strong, positive daily cash flow, which is great for the company's financial stability. `;
+  } else {
+    summary += `Currently, today's procurement costs are outpacing today's sales. It's recommended to monitor cash reserves. `;
+  }
+
+  summary += `\n\nOperational Status:\nYour total inventory valuation is sitting at ₹${stats.invValue.toLocaleString()}. `;
+
+  let bottlenecks = [];
+  if (stats.pendingApprovals > 5) bottlenecks.push(`there is a backlog of ${stats.pendingApprovals} pending approvals slowing down operations`);
+  else if (stats.pendingApprovals > 0) bottlenecks.push(`you have ${stats.pendingApprovals} quick approvals awaiting your review`);
+
+  if (stats.lowStock > 0) bottlenecks.push(`there are ${stats.lowStock} items critically low on stock that need reordering`);
+  
+  if (bottlenecks.length > 0) {
+    summary += `Please note that ${bottlenecks.join(' and ')}. `;
+    if (stats.moInProgress > 0) {
+      summary += `On the bright side, the factory floor is busy with ${stats.moInProgress} active manufacturing orders in progress.`;
+    } else {
+      summary += `Also, production is currently paused with no manufacturing orders running.`;
+    }
+  } else {
+    summary += `Operations are running flawlessly with no major bottlenecks. You have ${stats.moInProgress} active manufacturing orders, and your supply chain is stable. Keep up the great work!`;
+  }
+
+  return summary;
+}
+
 module.exports = {
   getDashboardStats,
-  getAdvisorRecommendations
+  getAdvisorRecommendations,
+  getBusinessSummary
 };
