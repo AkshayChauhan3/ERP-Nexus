@@ -38,7 +38,7 @@ export default function SalesOrders() {
       ]);
       setOrders(ordRes.data || []);
       const custs = custRes.data || [];
-      const cat = catRes.data || [];
+      const cat = (catRes.data || []).filter(p => p.type === 'FINISHED_GOOD');
       setCustomers(custs);
       setCatalog(cat);
 
@@ -68,7 +68,10 @@ export default function SalesOrders() {
   };
 
   const handleAddItemRow = () => {
-    setFormItems([...formItems, { productId: catalog[0]?.id || '', qty: 1, discount: 0, tax: 18 }]);
+    // Pick a product not already selected, or fallback to first
+    const usedIds = formItems.map(i => i.productId);
+    const nextProd = catalog.find(p => !usedIds.includes(p.id)) || catalog[0];
+    setFormItems([...formItems, { productId: nextProd?.id || '', qty: 1, discount: 0, tax: 18 }]);
   };
 
   const handleRemoveItemRow = (idx) => {
@@ -283,7 +286,10 @@ export default function SalesOrders() {
                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <div style={{ flex: 2 }}>
                             <select className="purchase-input" value={item.productId} onChange={e => handleFieldChange(idx, 'productId', e.target.value)}>
-                              {catalog.map(c => <option key={c.id} value={c.id}>{c.name} (Avail: {c.available})</option>)}
+                              {catalog.map(c => {
+                                const freeQty = c.free_qty ?? Math.max(0, parseFloat(c.inventory?.on_hand_qty || 0) - parseFloat(c.inventory?.reserved_qty || 0));
+                                return <option key={c.id} value={c.id}>{c.name} (Stock: {freeQty})</option>;
+                              })}
                             </select>
                           </div>
                           <div style={{ flex: 1 }}>
