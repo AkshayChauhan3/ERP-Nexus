@@ -111,25 +111,22 @@ async function confirmSalesOrder(id, userId) {
 
       if (orderedQty > available) {
         shortage = orderedQty - available;
-        qtyToReserve = available;
+        qtyToReserve = available; // Reserve only what is available
       }
 
       if (shortage > 0) {
-        const canProcure = product.procure_on_demand || product.procurement_type === 'MTO';
-        if (!canProcure) {
-          const error = new Error(`Insufficient stock for product "${product.name}" and auto-replenishment is disabled.`);
-          error.name = 'BusinessLogicError';
-          throw error;
-        }
-
-        // Update sales order line with shortage_qty
+        // Record the shortage on the order line regardless of procurement type
         await tx.salesOrderLine.update({
           where: { id: line.id },
           data: { shortage_qty: shortage }
         });
 
-        // Trigger automatic procurement
-        await autoProcure(tx, product, shortage, so.created_by || userId, so.id);
+        // Only trigger auto-procurement for MTO or procure-on-demand products
+        const canProcure = product.procure_on_demand || product.procurement_type === 'MTO';
+        if (canProcure) {
+          await autoProcure(tx, product, shortage, so.created_by || userId, so.id);
+        }
+        // MTS products with shortage: order confirms with backorder note (no hard block)
       }
 
       if (qtyToReserve > 0) {
