@@ -1,4 +1,34 @@
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const sanitizeApiUrl = (rawUrl) => {
+  if (!rawUrl) return '';
+  let cleaned = rawUrl.trim().replace(/\/+$/, '');
+  if (!cleaned.endsWith('/api')) {
+    cleaned += '/api';
+  }
+  return cleaned;
+};
+
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return sanitizeApiUrl(import.meta.env.VITE_API_URL);
+  }
+  if (typeof window !== 'undefined') {
+    // In local development or local network access (e.g. phones/tablets over Wi-Fi),
+    // relative '/api' utilizes Vite's dev server proxy to seamlessly route to the backend
+    // on both localhost and phone without CORS or hardcoded IP address issues.
+    if (import.meta.env.DEV) {
+      return '/api';
+    }
+    // If deployed on Azure Static Web Apps and no custom API URL is set
+    if (window.location.hostname.includes('azurestaticapps.net')) {
+      return 'https://erp-nexus-api.azurewebsites.net/api';
+    }
+    // Fallback: direct to port 3000 on current host
+    return `${window.location.protocol}//${window.location.hostname}:3000/api`;
+  }
+  return 'http://localhost:3000/api';
+};
+
+export const BASE_URL = getBaseUrl();
 
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
@@ -49,6 +79,9 @@ async function request(endpoint, options = {}) {
     return result;
   } catch (error) {
     console.error('API Request Failed:', error);
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+      throw new Error('Unable to connect to the backend server. Please verify that the backend is running and that your phone is on the same Wi-Fi network.');
+    }
     throw error;
   }
 }

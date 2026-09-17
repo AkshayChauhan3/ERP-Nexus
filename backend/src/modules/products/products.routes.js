@@ -145,7 +145,7 @@ router.post('/upload-image', authorize('admin', 'inventory', 'owner'), async (re
 
     fs.writeFileSync(filepath, dataBuffer);
 
-    const imageUrl = `http://localhost:3000/uploads/${filename}`;
+    const imageUrl = `/uploads/${filename}`;
     res.json({ success: true, imageUrl });
   } catch (error) {
     console.error('Image Upload Error:', error);

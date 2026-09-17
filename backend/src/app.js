@@ -43,19 +43,34 @@ if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
+// Regex to match local network IP origins (192.168.x.x, 10.x.x.x, 172.16-31.x.x, localhost, 127.0.0.1)
+const isLocalOrLanOrigin = (origin) => {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin);
+};
+
 app.use(cors({
   origin: (origin, callback) => {
+    // 1. Allow non-browser requests (mobile native apps, curl, postman)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // 2. In development mode, allow any local network device (e.g. phones/tablets on Wi-Fi)
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+
+    // 3. In production, check allowed origins, local network, and Azure domains
     if (
-      !origin ||
       allowedOrigins.includes(origin) ||
-      /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+      isLocalOrLanOrigin(origin) ||
       /\.azurestaticapps\.net$/.test(origin) ||
       /\.azurewebsites\.net$/.test(origin)
     ) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+      return callback(null, true);
     }
+
+    callback(new Error(`CORS policy: Origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

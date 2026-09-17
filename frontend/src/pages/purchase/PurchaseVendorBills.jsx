@@ -75,7 +75,7 @@ export default function PurchaseVendorBills() {
         due_date: dueDate,
         subtotal: Number(amount),
         tax: 0,
-        attachment_url: 'http://localhost:3000/uploads/mock_bill.pdf'
+        attachment_url: '/uploads/mock_bill.pdf'
       });
 
       setShowUpload(false);
