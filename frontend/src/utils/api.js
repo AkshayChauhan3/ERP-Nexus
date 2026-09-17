@@ -20,7 +20,7 @@ const getBaseUrl = () => {
     }
     // If deployed on Azure Static Web Apps and no custom API URL is set
     if (window.location.hostname.includes('azurestaticapps.net')) {
-      return 'https://erp-nexus-api.azurewebsites.net/api';
+      return 'https://erp-nexus-api-dca5fpawh5hhcwa0.eastasia-01.azurewebsites.net/api';
     }
     // Fallback: direct to port 3000 on current host
     return `${window.location.protocol}//${window.location.hostname}:3000/api`;
