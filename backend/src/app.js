@@ -39,10 +39,19 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3000',
 ];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+      /\.azurestaticapps\.net$/.test(origin) ||
+      /\.azurewebsites\.net$/.test(origin)
+    ) {
       callback(null, true);
     } else {
       callback(new Error(`CORS policy: Origin ${origin} not allowed`));

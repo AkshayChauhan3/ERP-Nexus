@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, RefreshCw, Eye, Download, X } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
-import { api } from '../../utils/api';
+import { api, BASE_URL } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -55,7 +55,7 @@ export default function OwnerSales() {
     if (!selectedOrder) return;
     try {
       const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
-      const res = await fetch(`http://localhost:3000/api/sales-orders/${selectedOrder.id}/invoice`, {
+      const res = await fetch(`${BASE_URL}/sales-orders/${selectedOrder.id}/invoice`, {
         method: 'GET',
         headers: { Authorization: `Bearer ${authData?.accessToken}` }
       });
