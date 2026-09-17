@@ -85,7 +85,20 @@ async function login(login_id, password) {
       include: { module: true }
     });
     if (access && access.module) {
-      mappedRole = access.module.module_name;
+      mappedRole = access.module.module_name.toLowerCase();
+    } else if (user.profile?.position) {
+      const p = user.profile.position.toLowerCase();
+      if (p.includes('owner') || p.includes('ceo')) mappedRole = 'owner';
+      else if (p.includes('pur') || p.includes('procure')) mappedRole = 'purchase';
+      else if (p.includes('sal')) mappedRole = 'sales';
+      else if (p.includes('mfg') || p.includes('produc')) mappedRole = 'manufacturing';
+      else if (p.includes('inv') || p.includes('ware') || p.includes('stock')) mappedRole = 'inventory';
+    } else if (user.login_id) {
+      const lid = user.login_id.toLowerCase();
+      if (lid.includes('pur')) mappedRole = 'purchase';
+      else if (lid.includes('sal')) mappedRole = 'sales';
+      else if (lid.includes('mfg')) mappedRole = 'manufacturing';
+      else if (lid.includes('inv')) mappedRole = 'inventory';
     }
   }
 
@@ -115,9 +128,83 @@ async function login(login_id, password) {
     user: {
       ...userWithoutPassword,
       name: profile?.full_name || user.login_id,
-      role: mappedRole
+      role: mappedRole,
+      position: profile?.position || mappedRole,
+      address: profile?.address || '',
+      mobile: profile?.mobile_no || '',
+      profile_photo: profile?.profile_photo || '',
     },
   };
+}
+
+async function getProfile(userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { profile: true }
+  });
+  if (!user) throw new Error('User not found');
+  
+  let mappedRole = 'user';
+  if (user.login_id === 'owner') mappedRole = 'owner';
+  else if (user.profile?.position && (user.profile.position.toLowerCase().includes('owner') || user.profile.position.toLowerCase().includes('ceo'))) mappedRole = 'owner';
+  else if (user.is_admin) mappedRole = 'admin';
+  else {
+    const access = await prisma.userModuleAccess.findFirst({
+      where: { user_id: user.id },
+      include: { module: true }
+    });
+    if (access && access.module) {
+      mappedRole = access.module.module_name.toLowerCase();
+    } else if (user.profile?.position) {
+      const p = user.profile.position.toLowerCase();
+      if (p.includes('pur') || p.includes('procure')) mappedRole = 'purchase';
+      else if (p.includes('sal')) mappedRole = 'sales';
+      else if (p.includes('mfg') || p.includes('produc')) mappedRole = 'manufacturing';
+      else if (p.includes('inv') || p.includes('ware') || p.includes('stock')) mappedRole = 'inventory';
+    } else if (user.login_id) {
+      const lid = user.login_id.toLowerCase();
+      if (lid.includes('pur')) mappedRole = 'purchase';
+      else if (lid.includes('sal')) mappedRole = 'sales';
+      else if (lid.includes('mfg')) mappedRole = 'manufacturing';
+      else if (lid.includes('inv')) mappedRole = 'inventory';
+    }
+  }
+
+  return {
+    id: user.id,
+    login_id: user.login_id,
+    email: user.email,
+    is_admin: user.is_admin,
+    role: mappedRole,
+    name: user.profile?.full_name || user.login_id,
+    position: user.profile?.position || mappedRole,
+    address: user.profile?.address || '',
+    mobile: user.profile?.mobile_no || '',
+    profile_photo: user.profile?.profile_photo || '',
+  };
+}
+
+async function updateProfile(userId, data) {
+  const { name, address, mobile, profile_photo } = data;
+  const updated = await prisma.userProfile.upsert({
+    where: { user_id: userId },
+    create: {
+      user_id: userId,
+      full_name: name || 'User',
+      position: 'Staff',
+      email_display: '',
+      address: address || '',
+      mobile_no: mobile || '',
+      profile_photo: profile_photo || null,
+    },
+    update: {
+      full_name: name !== undefined ? name : undefined,
+      address: address !== undefined ? address : undefined,
+      mobile_no: mobile !== undefined ? mobile : undefined,
+      profile_photo: profile_photo !== undefined ? profile_photo : undefined,
+    }
+  });
+  return updated;
 }
 
 async function refreshAccessToken(token) {
@@ -187,5 +274,7 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
-  verifyResetToken
+  verifyResetToken,
+  getProfile,
+  updateProfile
 };

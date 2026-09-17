@@ -2,30 +2,68 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, Warehouse,
-  Truck, Settings, Zap, ChevronRight, Factory,
+  Truck, Settings, Zap, ChevronRight, ChevronLeft, Factory,
   ClipboardList, Users, ShieldAlert, BarChart2, ShoppingBag,
   FileText, Wrench, Cpu, Activity, History, Layers, ArrowRightLeft,
   CheckCircle, AlertTriangle, DollarSign, Bell
 } from 'lucide-react';
 import './Sidebar.css';
 
-export default function Sidebar() {
+export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propToggle }) {
   const location = useLocation();
-  const [user, setUser] = useState({ role: 'sales' });
+  const [localCollapsed, setLocalCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('nexus_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const isCollapsed = propCollapsed !== undefined ? propCollapsed : localCollapsed;
+  const onToggle = propToggle || (() => {
+    setLocalCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('nexus_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  });
+
+  const [user, setUser] = useState(() => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+      return authData?.user || { role: 'sales' };
+    } catch {
+      return { role: 'sales' };
+    }
+  });
+
+  const syncUser = () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
+      if (authData?.user) {
+        setUser(authData.user);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
-    const authData = JSON.parse(localStorage.getItem('auth_data') || 'null');
-    if (authData?.user) {
-      setUser(authData.user);
-    }
-  }, []);
+    syncUser();
+    window.addEventListener('storage', syncUser);
+    window.addEventListener('auth_data_updated', syncUser);
+    return () => {
+      window.removeEventListener('storage', syncUser);
+      window.removeEventListener('auth_data_updated', syncUser);
+    };
+  }, [location.pathname]);
 
-  const isOwner           = user.role === 'owner';
-  const isAdmin           = user.role === 'admin';
-  const isManufacturing   = user.role === 'manufacturing';
-  const isInventory       = user.role === 'inventory';
-  const isPurchase        = user.role === 'purchase';
-  const isSales           = user.role === 'sales';
+  const isOwner           = user.role === 'owner' || user.login_id === 'owner' || (user.position && user.position.toLowerCase().includes('owner'));
+  const isAdmin           = !isOwner && user.role === 'admin';
+  const isManufacturing   = !isOwner && !isAdmin && user.role === 'manufacturing';
+  const isInventory       = !isOwner && !isAdmin && user.role === 'inventory';
+  const isPurchase        = !isOwner && !isAdmin && user.role === 'purchase';
+  const isSales           = !isOwner && !isAdmin && user.role === 'sales';
 
   const navItems = isOwner ? [
     { path: '/owner/dashboard',     label: 'Dashboard',               icon: LayoutDashboard },
@@ -43,16 +81,17 @@ export default function Sidebar() {
     { path: '/owner/audit-logs',    label: 'Audit Logs',              icon: ShieldAlert },
     { path: '/owner/settings',      label: 'Settings',                icon: Settings },
   ] : isAdmin ? [
-    { path: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
-    { path: '/products',      label: 'Products',      icon: Package },
-    { path: '/sales',         label: 'Sales',         icon: ShoppingCart },
-    { path: '/purchase',      label: 'Purchase',      icon: ShoppingBag },
-    { path: '/manufacturing', label: 'Manufacturing', icon: Factory },
-    { path: '/inventory',     label: 'Inventory',     icon: Warehouse },
-    { path: '/procurement',   label: 'Procurement',   icon: ClipboardList },
-    { path: '/users',         label: 'Users',         icon: Users },
-    { path: '/audit-logs',    label: 'Audit Logs',    icon: ShieldAlert },
-    { path: '/reports',       label: 'Reports',       icon: BarChart2 },
+    { path: '/dashboard',           label: 'Dashboard',               icon: LayoutDashboard },
+    { path: '/owner/dashboard',     label: 'Owner Cockpit',           icon: Activity },
+    { path: '/products',            label: 'Products',                icon: Package },
+    { path: '/sales',               label: 'Sales',                   icon: ShoppingCart },
+    { path: '/purchase',            label: 'Purchase',                icon: ShoppingBag },
+    { path: '/manufacturing',       label: 'Manufacturing',           icon: Factory },
+    { path: '/inventory',           label: 'Inventory',               icon: Warehouse },
+    { path: '/procurement',         label: 'Procurement',             icon: ClipboardList },
+    { path: '/users',               label: 'Users',                   icon: Users },
+    { path: '/audit-logs',          label: 'Audit Logs',              icon: ShieldAlert },
+    { path: '/reports',             label: 'Reports',                 icon: BarChart2 },
   ] : isManufacturing ? [
     { path: '/manufacturing/dashboard', label: 'Dashboard',            icon: LayoutDashboard },
     { path: '/manufacturing/bom',      label: 'Bills of Materials',   icon: FileText },
@@ -107,27 +146,43 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="sidebar">
-      {/* Logo */}
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-mark">
-          <Zap size={18} strokeWidth={2.5} />
+    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
+      {/* Header with Logo & Toggle Button */}
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-mark" title="Nexus ERP">
+            <Zap size={18} strokeWidth={2.5} />
+          </div>
+          {!isCollapsed && (
+            <div className="sidebar-logo-text">
+              <span className="sidebar-brand">Nexus</span>
+              <span className="sidebar-brand-sub">ERP</span>
+            </div>
+          )}
         </div>
-        <div className="sidebar-logo-text">
-          <span className="sidebar-brand">Nexus</span>
-          <span className="sidebar-brand-sub">ERP</span>
-        </div>
+
+        <button 
+          type="button" 
+          className="sidebar-collapse-toggle"
+          onClick={onToggle}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
       </div>
 
       {/* Divider */}
       <div className="sidebar-divider" />
 
       {/* Section Label */}
-      <span className="sidebar-section-label">
-        {isOwner ? 'Owner Cockpit' : isAdmin ? 'Admin Panel' : isManufacturing ? 'Manufacturing' : isPurchase ? 'Procurement' : isInventory ? 'Inventory Control' : isSales ? 'Sales Panel' : 'Navigation'}
-      </span>
+      {!isCollapsed && (
+        <span className="sidebar-section-label">
+          {isOwner ? 'Owner Cockpit' : isAdmin ? 'Admin Panel' : isManufacturing ? 'Manufacturing' : isPurchase ? 'Procurement' : isInventory ? 'Inventory Control' : isSales ? 'Sales Panel' : 'Navigation'}
+        </span>
+      )}
 
-      {}
+      {/* Nav items */}
       <nav className="sidebar-nav" style={{ overflowY: 'auto', flex: 1 }}>
         {navItems.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path ||
@@ -137,12 +192,13 @@ export default function Sidebar() {
               key={path}
               to={path}
               className={`sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}
+              title={label}
             >
               <span className="sidebar-link-icon">
                 <Icon size={18} strokeWidth={1.75} />
               </span>
-              <span className="sidebar-link-label">{label}</span>
-              {isActive && (
+              {!isCollapsed && <span className="sidebar-link-label">{label}</span>}
+              {!isCollapsed && isActive && (
                 <ChevronRight size={14} className="sidebar-link-chevron" />
               )}
             </NavLink>
@@ -150,17 +206,19 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {}
+      {/* Footer Advisor */}
       <div className="sidebar-footer">
-        <NavLink to="/advisor" style={{ textDecoration: 'none' }}>
+        <NavLink to="/advisor" style={{ textDecoration: 'none' }} title="EN Advisor: AI-powered insights">
           <div className="sidebar-footer-card" style={{ cursor: 'pointer' }}>
             <div className="sidebar-footer-icon">
               <Zap size={14} strokeWidth={2} />
             </div>
-            <div className="sidebar-footer-info">
-              <span className="sidebar-footer-title">EN Advisor</span>
-              <span className="sidebar-footer-sub">AI-powered insights</span>
-            </div>
+            {!isCollapsed && (
+              <div className="sidebar-footer-info">
+                <span className="sidebar-footer-title">EN Advisor</span>
+                <span className="sidebar-footer-sub">AI-powered insights</span>
+              </div>
+            )}
           </div>
         </NavLink>
       </div>

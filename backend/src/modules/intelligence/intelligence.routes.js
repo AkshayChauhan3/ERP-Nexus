@@ -5,52 +5,22 @@ const authorize = require('../../middleware/authorize');
 
 const router = express.Router();
 
-/**
- * @swagger
- * tags:
- *   name: Intelligence
- *   description: Dashboards and Business Analytics
- */
-
 router.use(authenticate);
 
-/**
- * @swagger
- * /intelligence/dashboard-stats:
- *   get:
- *     summary: Get Owner Dashboard Stats
- *     description: Retrieve real-time aggregated metrics across sales, purchases, inventory, manufacturing, etc.
- *     tags: [Intelligence]
- *     responses:
- *       200:
- *         description: Dashboard stats successfully retrieved
- */
+// Dashboard Stats & Executive Summary
 router.get('/dashboard-stats', authorize('owner', 'admin'), intelligenceController.getDashboardStats);
-
-/**
- * @swagger
- * /intelligence/advisor:
- *   get:
- *     summary: Get AI Advisor Recommendations
- *     description: Retrieve prioritized AI-generated recommendations based on real-time operational data.
- *     tags: [Intelligence]
- *     responses:
- *       200:
- *         description: AI recommendations successfully retrieved
- */
-router.get('/advisor', authorize('owner', 'admin'), intelligenceController.getAdvisorRecommendations);
-
-/**
- * @swagger
- * /intelligence/summary:
- *   get:
- *     summary: Get Executive Business Summary
- *     description: Retrieve AI-generated or dynamic template-based executive summary.
- *     tags: [Intelligence]
- *     responses:
- *       200:
- *         description: Summary successfully retrieved
- */
 router.get('/summary', authorize('owner', 'admin'), intelligenceController.getBusinessSummary);
+
+// EN Advisor
+router.get('/advisor', intelligenceController.getAdvisorRecommendations);
+router.post('/advisor/resolve', intelligenceController.resolveAdvisorRecommendation);
+
+// Notifications & 48-Hour History
+router.get('/notifications', intelligenceController.getRoleNotifications);
+router.get('/notifications/history', intelligenceController.getNotificationHistory);
+router.patch('/notifications/:id/read', intelligenceController.markNotificationRead);
+router.post('/notifications/mark-all-read', intelligenceController.markAllNotificationsRead);
+router.patch('/notifications/:id/dismiss', intelligenceController.dismissNotification);
+router.patch('/notifications/:id/complete', intelligenceController.completeNotification);
 
 module.exports = router;

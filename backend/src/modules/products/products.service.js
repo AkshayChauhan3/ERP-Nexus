@@ -3,8 +3,14 @@ const { getFreeQty } = require('../../utils/stockMutations');
 
 function attachFreeQty(product) {
   if (!product) return product;
+  const primaryInventory = Array.isArray(product.inventory)
+    ? (product.inventory[0] || { on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 })
+    : (product.inventory || { on_hand_qty: 0, reserved_qty: 0, reorder_level: 0 });
+
   return {
     ...product,
+    inventory: primaryInventory,
+    inventory_items: Array.isArray(product.inventory) ? product.inventory : [primaryInventory],
     free_qty: getFreeQty(product),
   };
 }

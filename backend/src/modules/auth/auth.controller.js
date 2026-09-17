@@ -75,6 +75,25 @@ async function verifyResetToken(req, res) {
   res.json({ success: true, valid: true });
 }
 
+async function getProfile(req, res) {
+  try {
+    const profile = await authService.getProfile(req.user.id);
+    res.json({ success: true, profile });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+async function updateProfile(req, res) {
+  try {
+    const updated = await authService.updateProfile(req.user.id, req.body);
+    const profile = await authService.getProfile(req.user.id);
+    res.json({ success: true, message: 'Profile updated successfully', profile });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
 module.exports = {
   login,
   refresh,
@@ -82,5 +101,7 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
-  verifyResetToken
+  verifyResetToken,
+  getProfile,
+  updateProfile
 };

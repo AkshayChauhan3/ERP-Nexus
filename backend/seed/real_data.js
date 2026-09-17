@@ -197,7 +197,7 @@ async function main() {
   const vendorList = [];
   for (let i = 0; i < 25; i++) {
     const name = vendorNames[i];
-    const vendoadd atlest 20-30 real data in each tabler = await prisma.vendor.create({
+    const vendor = await prisma.vendor.create({
       data: {
         name,
         email: `sales@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.co.in`,

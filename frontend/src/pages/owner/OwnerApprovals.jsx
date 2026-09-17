@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Clock, AlertTriangle, RefreshCw, Layers } from 'lucide-react';
 import AppShell from '../../components/layout/AppShell';
 import { ownerApi } from '../../utils/ownerApi';
+import { api } from '../../utils/api';
 import '../../styles/Owner.css';
 import '../../styles/Purchase.css';
 
@@ -10,26 +11,86 @@ export default function OwnerApprovals() {
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
 
-  const loadApprovals = () => {
+  const loadApprovals = async () => {
     setLoading(true);
-    // Introduce a tiny mock delay for realistic premium feel
-    setTimeout(() => {
+    try {
+      // 1. Fetch real POs from database
+      let realPoApprovals = [];
+      try {
+        const posRes = await api.get('/purchase-orders');
+        const allPOs = posRes.data || [];
+        realPoApprovals = allPOs.map(po => {
+          const total = po.lines?.reduce((sum, l) => sum + (Number(l.ordered_qty) * Number(l.unit_price)), 0) || 0;
+          const isDraft = po.status === 'draft';
+          const isConfirmed = po.status === 'confirmed' || po.status === 'received';
+          const isCancelled = po.status === 'cancelled';
+          return {
+            id: po.id,
+            po_number: po.po_number,
+            isRealPO: true,
+            module: 'Purchase',
+            type: 'Purchase Order Authorization',
+            priority: total > 20000 ? 'High' : (total > 5000 ? 'Medium' : 'Low'),
+            details: `PO ${po.po_number} for ${po.vendor?.name || 'Vendor'} — Total: ₹${total.toLocaleString()} (${po.lines?.length || 0} line items)`,
+            requestedBy: po.user?.login_id || 'akshaypur',
+            date: new Date(po.created_at).toLocaleDateString(),
+            status: isDraft ? 'Pending' : (isConfirmed ? 'Approved' : isCancelled ? 'Rejected' : po.status)
+          };
+        });
+      } catch (e) {
+        console.warn('Could not fetch purchase orders for approvals:', e);
+      }
+
+      // 2. Combine with local storage mock approvals
+      const mockApprovals = ownerApi.getApprovals();
+      setApprovals([...realPoApprovals, ...mockApprovals]);
+    } catch (err) {
+      console.error('Failed to load approvals:', err);
       setApprovals(ownerApi.getApprovals());
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
     loadApprovals();
   }, []);
 
-  const handleApprove = (id) => {
-    ownerApi.approveRequest(id);
+  const handleApprove = async (req) => {
+    if (req.isRealPO) {
+      try {
+        await api.post(`/purchase-orders/${req.id}/confirm`);
+        // Add audit log
+        const logs = JSON.parse(localStorage.getItem('audit_logs') || '[]');
+        logs.unshift({
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          user: 'owner@erp-nexus.local',
+          module: 'Owner Approvals',
+          action: 'PO Authorized',
+          old_value: 'Status: draft',
+          new_value: `Status: confirmed (${req.po_number})`
+        });
+        localStorage.setItem('audit_logs', JSON.stringify(logs));
+      } catch (err) {
+        alert(err.message || 'Failed to approve purchase order');
+      }
+    } else {
+      ownerApi.approveRequest(req.id);
+    }
     loadApprovals();
   };
 
-  const handleReject = (id) => {
-    ownerApi.rejectRequest(id);
+  const handleReject = async (req) => {
+    if (req.isRealPO) {
+      try {
+        await api.patch(`/purchase-orders/${req.id}`, { status: 'cancelled' }).catch(() => {});
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      ownerApi.rejectRequest(req.id);
+    }
     loadApprovals();
   };
 
@@ -53,7 +114,7 @@ export default function OwnerApprovals() {
             <p className="owner-sub">Authorise critical purchase orders, financial bills, inventory overrides, and role changes.</p>
           </div>
           <button className="btn btn--secondary" style={{ gap: '6px' }} onClick={loadApprovals}>
-            <RefreshCw size={14} /> Refresh Requests
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh Requests
           </button>
         </div>
 
@@ -123,10 +184,10 @@ export default function OwnerApprovals() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {req.status === 'Pending' ? (
                         <>
-                          <button className="btn btn--secondary" style={{ gap: '6px', borderColor: 'var(--color-error)' }} onClick={() => handleReject(req.id)}>
+                          <button className="btn btn--secondary" style={{ gap: '6px', borderColor: 'var(--color-error)' }} onClick={() => handleReject(req)}>
                             <X size={14} style={{ color: 'var(--color-error)' }} /> Reject
                           </button>
-                          <button className="btn btn--primary" style={{ gap: '6px', background: 'var(--color-success)', color: '#fff' }} onClick={() => handleApprove(req.id)}>
+                          <button className="btn btn--primary" style={{ gap: '6px', background: 'var(--color-success)', color: '#fff' }} onClick={() => handleApprove(req)}>
                             <Check size={14} /> Approve
                           </button>
                         </>

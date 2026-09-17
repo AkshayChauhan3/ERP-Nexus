@@ -32,7 +32,7 @@ async function createPurchaseOrder(data, userId) {
     const poCount = await tx.purchaseOrder.count();
     const poNumber = `PO-${new Date().getFullYear()}-${String(poCount + 1).padStart(3, '0')}-${Date.now().toString().slice(-4)}`;
 
-    const po = await tx.purchaseOrder.create({
+    const createdPo = await tx.purchaseOrder.create({
       data: {
         po_number: poNumber,
         vendor_id: data.vendor_id,
@@ -50,7 +50,20 @@ async function createPurchaseOrder(data, userId) {
       },
       include: { lines: true },
     });
-    return po;
+
+    // Automatically resolve corresponding low stock notifications and advisor recommendations
+    try {
+      const notificationStore = require('../intelligence/notification.store');
+      for (const line of data.lines) {
+        notificationStore.resolveByEntity('inventory', line.product_id).catch(() => {});
+        notificationStore.resolveAdvisorRecommendation(`rec-pur-low-${line.product_id}`, 'purchase', { id: userId }, 'PO_CREATED').catch(() => {});
+        notificationStore.resolveAdvisorRecommendation(`rec-own-low-${line.product_id}`, 'owner', { id: userId }, 'PO_CREATED').catch(() => {});
+      }
+    } catch (e) {
+      // Non-blocking notification sync
+    }
+
+    return createdPo;
   });
 }
 

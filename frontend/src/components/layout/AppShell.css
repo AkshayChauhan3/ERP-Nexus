@@ -11,10 +11,16 @@
   padding-top: var(--topbar-height);
   min-height: 100vh;
   background-color: var(--color-canvas-muted);
+  transition: margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .page-content {
   padding: var(--space-8) var(--space-12);
+}
+
+/* Collapsed sidebar layout adjustment */
+.app-shell.sidebar-collapsed {
+  --sidebar-width: 76px;
 }
 
 .app-shell.sidebar-hidden .app-main {

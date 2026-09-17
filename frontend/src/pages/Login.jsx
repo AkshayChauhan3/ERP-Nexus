@@ -48,7 +48,21 @@ export default function Login() {
 
       setSubmitState('granted');
       await new Promise(r => setTimeout(r, 800));
-      navigate('/dashboard');
+
+      const role = result.user?.role || '';
+      let targetPath = '/dashboard';
+      if (role === 'owner' || result.user?.login_id === 'owner') {
+        targetPath = '/owner/dashboard';
+      } else if (role === 'purchase') {
+        targetPath = '/purchase/dashboard';
+      } else if (role === 'manufacturing') {
+        targetPath = '/manufacturing/dashboard';
+      } else if (role === 'sales') {
+        targetPath = '/sales/dashboard';
+      } else if (role === 'inventory') {
+        targetPath = '/inventory/dashboard';
+      }
+      navigate(targetPath);
     } catch (err) {
       setSubmitState('error');
       setErrorMsg(err.message || 'Invalid Login ID or password.');

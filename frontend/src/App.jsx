@@ -76,6 +76,7 @@ import OwnerReports from './pages/owner/OwnerReports';
 import OwnerAuditLogs from './pages/owner/OwnerAuditLogs';
 import OwnerSettings from './pages/owner/OwnerSettings';
 import Advisor from './pages/Advisor';
+import NotificationHistory from './pages/NotificationHistory';
 
 import './styles/tokens.css';
 import './styles/global.css';
@@ -89,10 +90,11 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />;
   }
   const role = authData.user?.role || '';
+  const isOwnerUser = role === 'owner' || authData.user?.login_id === 'owner' || (authData.user?.position && authData.user.position.toLowerCase().includes('owner'));
 
-  // Owner role must only have access to /owner/*
-  if (role === 'owner') {
-    if (location.pathname.startsWith('/owner')) {
+  // Owner role must only have access to /owner/*, /advisor, and /notifications/history
+  if (isOwnerUser) {
+    if (location.pathname.startsWith('/owner') || location.pathname === '/advisor' || location.pathname === '/notifications/history') {
       return children;
     } else {
       return <Navigate to="/owner/dashboard" replace />;
@@ -158,7 +160,8 @@ function App() {
         <Route path="/procurement"     element={<ProtectedRoute allowedRoles={[]}><ProcurementMonitor /></ProtectedRoute>} />
         <Route path="/users"           element={<ProtectedRoute allowedRoles={[]}><UserManagement /></ProtectedRoute>} />
         <Route path="/audit-logs"      element={<ProtectedRoute allowedRoles={[]}><AuditLogs /></ProtectedRoute>} />
-        <Route path="/advisor"         element={<ProtectedRoute allowedRoles={[]}><Advisor /></ProtectedRoute>} />
+        <Route path="/advisor"         element={<ProtectedRoute allowedRoles={['admin', 'owner', 'purchase', 'inventory', 'sales', 'manufacturing']}><Advisor /></ProtectedRoute>} />
+        <Route path="/notifications/history" element={<ProtectedRoute allowedRoles={['admin', 'owner', 'purchase', 'inventory', 'sales', 'manufacturing']}><NotificationHistory /></ProtectedRoute>} />
         <Route path="/reports"         element={<ProtectedRoute allowedRoles={[]}><Reports /></ProtectedRoute>} />
 
         {/* Manufacturing Module */}

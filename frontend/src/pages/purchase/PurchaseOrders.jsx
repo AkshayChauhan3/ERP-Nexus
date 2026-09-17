@@ -155,6 +155,7 @@ export default function PurchaseOrders() {
                   <th>Order Date</th>
                   <th>Delivery Date</th>
                   <th>Value</th>
+                  <th>PO Status</th>
                   <th>Receipt Status</th>
                   <th>Bill Status</th>
                   <th>Actions</th>
@@ -164,8 +165,12 @@ export default function PurchaseOrders() {
                 {filtered.map(po => {
                   const vendName = po.vendor?.name || 'Unknown';
                   const totalValue = po.lines?.reduce((s, l) => s + (l.ordered_qty * l.unit_price), 0) || 0;
-                  const receiptStatus = po.status === 'received' ? 'Fully Received' : 'Pending';
+                  const receiptStatus = po.status === 'received' ? 'Fully Received' : (po.status === 'confirmed' ? 'Awaiting Receipt' : 'Pending');
                   const billStatus = po.status === 'draft' ? 'Draft' : 'Submitted';
+                  const isDraft = po.status === 'draft';
+                  const isConfirmed = po.status === 'confirmed';
+                  const isReceived = po.status === 'received';
+
                   return (
                     <tr key={po.id}>
                       <td style={{ fontWeight: 700 }}>{po.po_number}</td>
@@ -175,8 +180,17 @@ export default function PurchaseOrders() {
                       <td style={{ fontWeight: 700 }}>₹{totalValue.toLocaleString()}</td>
                       <td>
                         <span className={`purchase-badge purchase-badge--${
+                          isReceived ? 'success' :
+                          isConfirmed ? 'primary' :
+                          isDraft ? 'warning' : 'outline'
+                        }`}>
+                          {po.status ? po.status.toUpperCase() : 'DRAFT'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`purchase-badge purchase-badge--${
                           receiptStatus === 'Fully Received' ? 'success' :
-                          receiptStatus === 'Partial' ? 'warning' : 'outline'
+                          receiptStatus === 'Awaiting Receipt' ? 'primary' : 'outline'
                         }`}>
                           {receiptStatus}
                         </span>
@@ -190,7 +204,24 @@ export default function PurchaseOrders() {
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {isDraft && (
+                            <button 
+                              className="btn btn--primary" 
+                              style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-success)', color: '#fff' }} 
+                              title="Confirm / Authorize this PO"
+                              onClick={async () => {
+                                try {
+                                  await api.post(`/purchase-orders/${po.id}/confirm`);
+                                  loadData();
+                                } catch (e) {
+                                  alert(e.message || 'Failed to confirm PO');
+                                }
+                              }}
+                            >
+                              <CheckCircle size={12} /> Confirm
+                            </button>
+                          )}
                           <button className="btn btn--secondary" style={{ padding: '6px', borderRadius: '50%' }} title="View Details" onClick={() => handleViewDetails(po)}>
                             <Eye size={14} />
                           </button>

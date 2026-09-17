@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, Clock, Factory, AlertTriangle,
   ChevronRight, Package, Armchair, Sofa, Layers,
   CheckCircle, AlertCircle, Circle, Zap, RefreshCw,
-  ShoppingBag, Warehouse, ClipboardList, Users, Info
+  ShoppingBag, Warehouse, ClipboardList, Users, Info,
+  ArrowRight, ExternalLink, CheckCircle2, X
 } from 'lucide-react';
 import AppShell from '../components/layout/AppShell';
 import { api } from '../utils/api';
@@ -270,14 +272,130 @@ export default function Dashboard() {
   const [user, setUser] = useState({ name: 'Alexander Sterling', role: 'admin' });
 
   const [alerts, setAlerts] = useState([
-    { id: 1, type: 'error', category: 'Critical', text: 'Low Stock: Oak Wood Sheets falls below safety threshold (12 units remaining).', time: '10 mins ago' },
-    { id: 2, type: 'error', category: 'Critical', text: 'Delayed Delivery: Sales Order #1048 for Sterling Offices is 2 days overdue.', time: '1 hour ago' },
-    { id: 3, type: 'warning', category: 'Warning', text: 'Vendor Delay: PO #3029 for Steel Screws has not been confirmed by vendor.', time: '2 hours ago' },
-    { id: 4, type: 'warning', category: 'Warning', text: 'Delayed MO: Manufacturing Order #2041 is delayed at Painting center.', time: '4 hours ago' },
-    { id: 5, type: 'blue', category: 'Info', text: 'Procurement Pending: 3 raw material demands are pending approval.', time: 'Today' }
+    {
+      id: 1,
+      type: 'error',
+      category: 'Critical',
+      title: 'Low Stock: Oak Wood Sheets',
+      text: 'Low Stock: Oak Wood Sheets falls below safety threshold (12 units remaining).',
+      time: '10 mins ago',
+      actionText: 'Inspect Inventory',
+      path: '/inventory',
+      impact: 'Risk of stopping 4 scheduled dining table manufacturing orders.',
+      steps: [
+        'Check existing safety stock and minimum threshold in Inventory Monitor.',
+        'Create an urgent Purchase Order or transfer stock from central warehouse.',
+        'Notify the production supervisor of the supply bottleneck.'
+      ]
+    },
+    {
+      id: 2,
+      type: 'error',
+      category: 'Critical',
+      title: 'Delayed Delivery: Sales Order #1048',
+      text: 'Delayed Delivery: Sales Order #1048 for Sterling Offices is 2 days overdue.',
+      time: '1 hour ago',
+      actionText: 'View Sales Order',
+      path: '/sales',
+      impact: 'Customer satisfaction risk and possible contractual delivery penalty.',
+      steps: [
+        'Review current stage and shipping status in Sales Monitor.',
+        'Expedite carrier dispatch or assign dedicated delivery vehicle.',
+        'Contact customer with updated tracking ETA.'
+      ]
+    },
+    {
+      id: 3,
+      type: 'warning',
+      category: 'Warning',
+      title: 'Vendor Delay: PO #3029',
+      text: 'Vendor Delay: PO #3029 for Steel Screws has not been confirmed by vendor.',
+      time: '2 hours ago',
+      actionText: 'Manage Purchase Order',
+      path: '/purchase',
+      impact: 'Hardware assembly line might experience component starvation.',
+      steps: [
+        'Contact vendor directly to request order acknowledgment.',
+        'Verify delivery commitment or request alternate vendor supply.',
+        'Update PO status in Purchase module.'
+      ]
+    },
+    {
+      id: 4,
+      type: 'warning',
+      category: 'Warning',
+      title: 'Delayed MO: Manufacturing Order #2041',
+      text: 'Delayed MO: Manufacturing Order #2041 is delayed at Painting center.',
+      time: '4 hours ago',
+      actionText: 'Inspect MO',
+      path: '/manufacturing',
+      impact: 'Subsequent finishing and packaging stages are on hold.',
+      steps: [
+        'Check work center capacity and bottleneck status in Manufacturing Monitor.',
+        'Reallocate paint booth technicians or adjust queue priority.',
+        'Update work order completion estimate.'
+      ]
+    },
+    {
+      id: 5,
+      type: 'blue',
+      category: 'Info',
+      title: 'Procurement Demands Pending',
+      text: 'Procurement Pending: 3 raw material demands are pending approval.',
+      time: 'Today',
+      actionText: 'Review Demands',
+      path: '/procurement',
+      impact: 'Materials cannot be ordered until authorized by administrator.',
+      steps: [
+        'Review demand line items against monthly budget.',
+        'Approve or modify requested quantities.',
+        'Auto-generate Purchase Orders for approved suppliers.'
+      ]
+    }
   ]);
 
-  const dismissAlert = (id) => setAlerts(alerts.filter(a => a.id !== id));
+  const [selectedAlert, setSelectedAlert] = useState(null);
+
+  const getAlertDestination = (alert) => {
+    if (user.role === 'owner') {
+      if (alert.path === '/inventory') return '/owner/inventory';
+      if (alert.path === '/sales') return '/owner/sales';
+      if (alert.path === '/purchase') return '/owner/purchase';
+      if (alert.path === '/manufacturing') return '/owner/manufacturing';
+      if (alert.path === '/procurement') return '/owner/approvals';
+    }
+    return alert.path;
+  };
+
+  const handleWorkOnAlert = (alert) => {
+    const dest = getAlertDestination(alert);
+    if (dest) {
+      navigate(dest);
+    }
+  };
+
+  const dismissAlert = (id) => {
+    setAlerts(alerts.filter(a => a.id !== id));
+    if (selectedAlert?.id === id) {
+      setSelectedAlert(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedAlert) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedAlert(null);
+      }
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedAlert]);
 
   useEffect(() => {
     const updateUserData = () => {
@@ -462,61 +580,340 @@ export default function Dashboard() {
             <div style={{ height: '1px', background: 'var(--color-outline-variant)', margin: '16px 0' }} />
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {alerts.map(alert => (
-                <div 
-                  key={alert.id}
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '12px 16px', 
-                    background: alert.type === 'error' ? 'rgba(239, 68, 68, 0.08)' : alert.type === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(59, 130, 246, 0.08)',
-                    borderRadius: 'var(--radius-md)',
-                    borderLeft: `4px solid ${alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)'}`,
-                    borderTop: '1px solid var(--color-outline-variant)',
-                    borderRight: '1px solid var(--color-outline-variant)',
-                    borderBottom: '1px solid var(--color-outline-variant)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      color: alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
-                      {alert.type === 'error' ? <AlertCircle size={18} /> : alert.type === 'warning' ? <AlertTriangle size={18} /> : <Info size={18} />}
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)', marginRight: '8px' }}>
-                        {alert.category}
-                      </span>
-                      <span style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 500 }}>{alert.text}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--color-secondary)', opacity: 0.6 }}>{alert.time}</span>
-                    <button 
-                      onClick={() => dismissAlert(alert.id)}
-                      className="btn-interactive"
-                      style={{ 
-                        background: 'transparent', 
-                        border: 'none', 
-                        color: 'var(--color-secondary)', 
-                        cursor: 'pointer',
-                        padding: '4px',
+              {alerts.map(alert => {
+                const accentColor = alert.type === 'error' ? 'var(--color-error)' : alert.type === 'warning' ? 'var(--color-warning-light, #f59e0b)' : 'var(--color-secondary)';
+                return (
+                  <div 
+                    key={alert.id}
+                    onClick={() => setSelectedAlert(alert)}
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      padding: '12px 16px', 
+                      background: alert.type === 'error' ? 'rgba(239, 68, 68, 0.08)' : alert.type === 'warning' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                      borderRadius: 'var(--radius-md)',
+                      borderLeft: `4px solid ${accentColor}`,
+                      borderTop: '1px solid var(--color-outline-variant)',
+                      borderRight: '1px solid var(--color-outline-variant)',
+                      borderBottom: '1px solid var(--color-outline-variant)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    title="Click to view details and resolution steps"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, marginRight: '16px' }}>
+                      <div style={{
+                        color: accentColor,
                         display: 'flex',
                         alignItems: 'center',
-                        fontSize: '16px',
-                        lineHeight: 1
-                      }}
-                    >
-                      &times;
-                    </button>
+                        flexShrink: 0
+                      }}>
+                        {alert.type === 'error' ? <AlertCircle size={18} /> : alert.type === 'warning' ? <AlertTriangle size={18} /> : <Info size={18} />}
+                      </div>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: accentColor, marginRight: '8px' }}>
+                          {alert.category}
+                        </span>
+                        <span style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 500 }}>{alert.text}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '11px', color: 'var(--color-secondary)', opacity: 0.7 }}>{alert.time}</span>
+                      
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleWorkOnAlert(alert);
+                        }}
+                        className="btn-interactive"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 14px',
+                          borderRadius: 'var(--radius-full)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          background: accentColor,
+                          color: '#ffffff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title={`Navigate to ${alert.actionText || 'work on this'}`}
+                      >
+                        <span>{alert.actionText || 'Work on this'}</span>
+                        <ArrowRight size={13} />
+                      </button>
+
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          dismissAlert(alert.id);
+                        }}
+                        className="btn-interactive"
+                        style={{ 
+                          background: 'transparent', 
+                          border: 'none', 
+                          color: 'var(--color-secondary)', 
+                          cursor: 'pointer',
+                          padding: '4px 6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontSize: '18px',
+                          lineHeight: 1,
+                          opacity: 0.6
+                        }}
+                        title="Dismiss alert"
+                      >
+                        &times;
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
+        )}
+
+        {/* Work on System Alert Modal (Rendered in Portal to prevent transform/animation stacking context clipping) */}
+        {selectedAlert && createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.55)',
+              backdropFilter: 'blur(5px)',
+              WebkitBackdropFilter: 'blur(5px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: '20px'
+            }}
+            onClick={() => setSelectedAlert(null)}
+          >
+            <div
+              style={{
+                background: 'var(--color-canvas, #ffffff)',
+                borderRadius: 'var(--radius-xl, 16px)',
+                width: '100%',
+                maxWidth: '560px',
+                maxHeight: '90vh',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+                border: '1px solid var(--color-outline-variant, #e5e7eb)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: '20px 24px',
+                  borderBottom: '1px solid var(--color-outline-variant, #e5e7eb)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: selectedAlert.type === 'error' ? 'rgba(239, 68, 68, 0.06)' : selectedAlert.type === 'warning' ? 'rgba(245, 158, 11, 0.06)' : 'rgba(59, 130, 246, 0.06)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      color: selectedAlert.type === 'error' ? 'var(--color-error, #ef4444)' : selectedAlert.type === 'warning' ? '#f59e0b' : 'var(--color-primary, #3b82f6)',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {selectedAlert.type === 'error' ? <AlertCircle size={22} /> : selectedAlert.type === 'warning' ? <AlertTriangle size={22} /> : <Info size={22} />}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          color: selectedAlert.type === 'error' ? 'var(--color-error, #ef4444)' : selectedAlert.type === 'warning' ? '#f59e0b' : 'var(--color-primary, #3b82f6)'
+                        }}
+                      >
+                        {selectedAlert.category} Operational Alert
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--color-secondary)', opacity: 0.7 }}>
+                        • {selectedAlert.time}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: '4px 0 0 0', fontSize: '17px', fontWeight: 600, color: 'var(--color-primary)' }}>
+                      {selectedAlert.title || selectedAlert.category}
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedAlert(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-secondary)',
+                    padding: '6px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Close alert"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto' }}>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-secondary)', letterSpacing: '0.05em' }}>
+                    Exception Summary
+                  </label>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: 'var(--color-primary)', lineHeight: 1.5, fontWeight: 500 }}>
+                    {selectedAlert.text}
+                  </p>
+                </div>
+
+                {selectedAlert.impact && (
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      background: 'var(--surface-high, #f8fafc)',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      borderLeft: '3px solid #f59e0b'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#b45309' }}>
+                      Potential Operational Impact
+                    </span>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--color-primary)', lineHeight: 1.4 }}>
+                      {selectedAlert.impact}
+                    </p>
+                  </div>
+                )}
+
+                {selectedAlert.steps && selectedAlert.steps.length > 0 && (
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-secondary)', letterSpacing: '0.05em' }}>
+                      Recommended Resolution Steps
+                    </label>
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedAlert.steps.map((step, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'var(--color-primary)' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: 'var(--color-outline-variant, #e2e8f0)',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span style={{ lineHeight: 1.4 }}>{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  padding: '16px 24px',
+                  borderTop: '1px solid var(--color-outline-variant, #e5e7eb)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'var(--surface-high, #fafafa)'
+                }}
+              >
+                <button
+                  onClick={() => dismissAlert(selectedAlert.id)}
+                  className="btn-interactive"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-md, 8px)',
+                    background: 'transparent',
+                    border: '1px solid var(--color-outline-variant, #cbd5e1)',
+                    color: 'var(--color-secondary)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Mark as Resolved
+                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setSelectedAlert(null)}
+                    className="btn-interactive"
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-secondary)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleWorkOnAlert(selectedAlert);
+                      setSelectedAlert(null);
+                    }}
+                    className="btn-interactive"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 18px',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      background: selectedAlert.type === 'error' ? 'var(--color-error, #ef4444)' : selectedAlert.type === 'warning' ? '#f59e0b' : 'var(--color-primary, #2563eb)',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    <span>Go to {selectedAlert.actionText || 'Module'}</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
         )}
 
         {}

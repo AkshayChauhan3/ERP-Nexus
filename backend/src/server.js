@@ -7,7 +7,7 @@ const app = require('./app');
 
 const PORT = process.env.PORT || 3000;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log('');
   console.log('╔══════════════════════════════════════════════════╗');
   console.log('║       ERP Nexus — The Autonomous Factory OS       ║');
@@ -18,6 +18,13 @@ const server = app.listen(PORT, () => {
   console.log(`║  Env      : ${(process.env.NODE_ENV || 'development').padEnd(38)}║`);
   console.log('╚══════════════════════════════════════════════════╝');
   console.log('');
+
+  try {
+    const notificationStore = require('./modules/intelligence/notification.store');
+    await notificationStore.initStore();
+  } catch (err) {
+    console.warn('⚠️ Notification store initialization notice:', err.message);
+  }
 });
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
