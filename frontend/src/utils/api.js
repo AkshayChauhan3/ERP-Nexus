@@ -1,6 +1,9 @@
 const sanitizeApiUrl = (rawUrl) => {
   if (!rawUrl) return '';
   let cleaned = rawUrl.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(cleaned)) {
+    cleaned = `https://${cleaned}`;
+  }
   if (!cleaned.endsWith('/api')) {
     cleaned += '/api';
   }
@@ -20,7 +23,7 @@ const getBaseUrl = () => {
     }
     // If deployed on Azure Static Web Apps and no custom API URL is set
     if (window.location.hostname.includes('azurestaticapps.net')) {
-      return 'https://erp-nexus-api-dca5fpawh5hhcwa0.eastasia-01.azurewebsites.net/api';
+      return 'https://erp-nexus-backend-ebcfbmecbnc2a4gm.eastasia-01.azurewebsites.net/api';
     }
     // Fallback: direct to port 3000 on current host
     return `${window.location.protocol}//${window.location.hostname}:3000/api`;
@@ -80,7 +83,7 @@ async function request(endpoint, options = {}) {
   } catch (error) {
     console.error('API Request Failed:', error);
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error('Unable to connect to the backend server. Please verify that the backend is running and that your phone is on the same Wi-Fi network.');
+      throw new Error('Unable to connect to the backend server. Please check your internet connection or verify that the backend API service is running on Azure.');
     }
     throw error;
   }
