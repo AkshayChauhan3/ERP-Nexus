@@ -1,6 +1,11 @@
 
 
-const { PrismaClient } = require('@prisma/client');
+let PrismaClient;
+try {
+  ({ PrismaClient } = require('../generated/client'));
+} catch (err) {
+  ({ PrismaClient } = require('@prisma/client'));
+}
 
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development'
