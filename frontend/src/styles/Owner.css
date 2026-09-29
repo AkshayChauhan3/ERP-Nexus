@@ -81,3 +81,36 @@
   background: var(--color-error-container);
   color: var(--color-on-error-container);
 }
+
+/* ── Mobile & Tablet Responsiveness ── */
+@media (max-width: 768px) {
+  .owner-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .owner-title {
+    font-size: 20px;
+  }
+
+  .owner-sub {
+    margin-left: 0;
+    font-size: 12px;
+  }
+
+  .owner-card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .owner-card {
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .owner-card-grid {
+    grid-template-columns: 1fr;
+  }
+}

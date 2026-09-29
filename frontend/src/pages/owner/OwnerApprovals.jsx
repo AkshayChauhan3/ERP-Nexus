@@ -165,8 +165,8 @@ export default function OwnerApprovals() {
                       gap: '16px'
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: '280px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ flex: 1, minWidth: '220px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'var(--color-outline-variant)' }}>
                           {req.module}
                         </span>
@@ -181,7 +181,7 @@ export default function OwnerApprovals() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                       {req.status === 'Pending' ? (
                         <>
                           <button className="btn btn--secondary" style={{ gap: '6px', borderColor: 'var(--color-error)' }} onClick={() => handleReject(req)}>

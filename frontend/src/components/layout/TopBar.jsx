@@ -5,7 +5,8 @@ import {
   Bell, Search, ChevronDown, LogOut, X, Camera, Check,
   AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight,
   Clock, FileText, Package, ShoppingCart, Factory, Warehouse,
-  Users, TrendingUp, BarChart2, Zap, ShoppingBag
+  Users, TrendingUp, BarChart2, Zap, ShoppingBag, Menu,
+  User, Phone, MapPin, Mail, ShieldCheck
 } from 'lucide-react';
 import { api } from '../../utils/api';
 import './TopBar.css';
@@ -477,7 +478,7 @@ const getNavSearchItems = (role) => {
   ];
 };
 
-export default function TopBar() {
+export default function TopBar({ onToggleMobileMenu, isMobileMenuOpen, isSidebarCollapsed }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -771,10 +772,23 @@ export default function TopBar() {
       <header className="topbar">
       {successMsg && <div className="global-toast global-toast--success">{successMsg}</div>}
       
-      {/* Breadcrumbs & Title */}
-      <div className="topbar-left">
-        <span className="topbar-breadcrumb">{meta.breadcrumb}</span>
-        <h1 className="topbar-title">{meta.title}</h1>
+      {/* Breadcrumbs & Title & Mobile Toggle */}
+      <div className="topbar-left-wrapper">
+        {onToggleMobileMenu && (
+          <button 
+            type="button" 
+            className="topbar-mobile-menu-btn"
+            onClick={onToggleMobileMenu}
+            aria-label="Toggle navigation menu"
+            title="Navigation Menu"
+          >
+            <Menu size={20} strokeWidth={2} />
+          </button>
+        )}
+        <div className="topbar-left">
+          <span className="topbar-breadcrumb">{meta.breadcrumb}</span>
+          <h1 className="topbar-title">{meta.title}</h1>
+        </div>
       </div>
 
       {/* TopBar Right Actions */}
@@ -957,13 +971,20 @@ export default function TopBar() {
         </button>
       </div>
 
-      {/* Profile Drawer */}
+      {/* Profile Modal / Drawer */}
       {drawerOpen && (
         <>
           <div className="profile-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
-          <div className="profile-drawer">
+          <div className="profile-drawer" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title">
+            {/* Modal Header */}
             <div className="profile-drawer-header">
-              <h2 className="profile-drawer-title">User Profile</h2>
+              <div className="profile-drawer-header-left">
+                <h2 id="profile-dialog-title" className="profile-drawer-title">Account Profile</h2>
+                <div className="profile-drawer-status-pill">
+                  <span className="profile-status-dot" />
+                  <span>Active Session</span>
+                </div>
+              </div>
               <button 
                 type="button"
                 className="profile-drawer-close" 
@@ -975,9 +996,10 @@ export default function TopBar() {
               </button>
             </div>
 
+            {/* Scrollable Form Body */}
             <div className="profile-drawer-body">
-              {/* Centered Avatar Section */}
-              <div className="profile-avatar-center-wrapper">
+              {/* Executive Hero Identity Banner */}
+              <div className="profile-hero-card">
                 <div 
                   className="profile-avatar-large-circle"
                   onClick={handlePhotoClick}
@@ -990,11 +1012,28 @@ export default function TopBar() {
                       {getInitials(profileForm.name || user.name)}
                     </span>
                   )}
-                  <div className="profile-avatar-cam-badge">
-                    <Camera size={14} color="#ffffff" />
+                  <div className="profile-avatar-cam-badge" title="Upload new photo">
+                    <Camera size={13} color="#ffffff" />
                   </div>
                 </div>
-                <span className="profile-avatar-caption">Click avatar to update photo</span>
+
+                <div className="profile-hero-meta">
+                  <div className="profile-hero-name">{profileForm.name || user.name}</div>
+                  <div className="profile-hero-role-wrapper">
+                    <span 
+                      className="profile-role-tag"
+                      style={{
+                        background: ROLE_BADGE_STYLES[user.role]?.bg || '#f1f5f9',
+                        color: ROLE_BADGE_STYLES[user.role]?.color || '#334155',
+                        borderColor: ROLE_BADGE_STYLES[user.role]?.border || '#e2e8f0',
+                      }}
+                    >
+                      {ROLE_LABELS[user.role] || user.position || user.role}
+                    </span>
+                  </div>
+                  <span className="profile-hero-email">{user.email || 'user@erp-nexus.local'}</span>
+                </div>
+
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -1012,71 +1051,103 @@ export default function TopBar() {
                 </div>
               )}
 
-              {/* Vertical Form Fields */}
-              <form onSubmit={handleSaveProfile} className="profile-drawer-form">
-                <div className="profile-drawer-field">
-                  <label className="profile-drawer-label">FULL NAME</label>
-                  <input
-                    type="text"
-                    className="profile-drawer-input"
-                    value={profileForm.name}
-                    onChange={(e) => setProfileForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. Akshay Purchase"
-                    required
-                  />
+              {/* Form Fields */}
+              <form id="profile-drawer-form" onSubmit={handleSaveProfile} className="profile-drawer-form">
+                <div className="profile-form-grid">
+                  <div className="profile-drawer-field">
+                    <label className="profile-drawer-label">Full Name</label>
+                    <div className="profile-input-wrapper">
+                      <User size={15} className="profile-field-icon" />
+                      <input
+                        type="text"
+                        className="profile-drawer-input"
+                        value={profileForm.name}
+                        onChange={(e) => setProfileForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="e.g. Business Owner"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="profile-drawer-field">
+                    <label className="profile-drawer-label">Mobile Number</label>
+                    <div className="profile-input-wrapper">
+                      <Phone size={15} className="profile-field-icon" />
+                      <input
+                        type="text"
+                        className="profile-drawer-input"
+                        value={profileForm.mobile}
+                        onChange={(e) => setProfileForm(f => ({ ...f, mobile: e.target.value }))}
+                        placeholder="+91 98765 43210"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="profile-drawer-field">
-                  <label className="profile-drawer-label">ADDRESS</label>
-                  <textarea
-                    className="profile-drawer-textarea"
-                    value={profileForm.address}
-                    onChange={(e) => setProfileForm(f => ({ ...f, address: e.target.value }))}
-                    placeholder="Colaba, Mumbai, 400001"
-                    rows={3}
-                  />
+                  <label className="profile-drawer-label">Business / Office Address</label>
+                  <div className="profile-input-wrapper profile-input-wrapper--textarea">
+                    <MapPin size={15} className="profile-field-icon profile-field-icon--textarea" />
+                    <textarea
+                      className="profile-drawer-textarea"
+                      value={profileForm.address}
+                      onChange={(e) => setProfileForm(f => ({ ...f, address: e.target.value }))}
+                      placeholder="e.g. Colaba, Mumbai, Maharashtra 400001"
+                      rows={2}
+                    />
+                  </div>
                 </div>
 
-                <div className="profile-drawer-field">
-                  <label className="profile-drawer-label">MOBILE NUMBER</label>
-                  <input
-                    type="text"
-                    className="profile-drawer-input"
-                    value={profileForm.mobile}
-                    onChange={(e) => setProfileForm(f => ({ ...f, mobile: e.target.value }))}
-                    placeholder="+918000000000"
-                  />
-                </div>
+                <div className="profile-form-grid">
+                  <div className="profile-drawer-field">
+                    <label className="profile-drawer-label">Email ID (System ID)</label>
+                    <div className="profile-input-wrapper">
+                      <Mail size={15} className="profile-field-icon" />
+                      <input
+                        type="email"
+                        className="profile-drawer-input profile-drawer-input-disabled"
+                        value={user.email || ''}
+                        disabled
+                      />
+                    </div>
+                  </div>
 
-                <div className="profile-drawer-field">
-                  <label className="profile-drawer-label">EMAIL ADDRESS</label>
-                  <input
-                    type="email"
-                    className="profile-drawer-input profile-drawer-input-disabled"
-                    value={user.email || ''}
-                    disabled
-                  />
-                </div>
-
-                <div className="profile-drawer-field">
-                  <label className="profile-drawer-label">POSITION</label>
-                  <input
-                    type="text"
-                    className="profile-drawer-input profile-drawer-input-disabled"
-                    value={ROLE_LABELS[user.role] || user.position || user.role || 'User'}
-                    disabled
-                  />
-                </div>
-
-                <div className="profile-drawer-actions">
-                  <button type="submit" className="profile-drawer-save-btn">
-                    Save Changes
-                  </button>
-                  <button type="button" className="profile-drawer-signout-btn" onClick={handleLogout}>
-                    Sign Out
-                  </button>
+                  <div className="profile-drawer-field">
+                    <label className="profile-drawer-label">System Role & Access</label>
+                    <div className="profile-input-wrapper">
+                      <ShieldCheck size={15} className="profile-field-icon" />
+                      <input
+                        type="text"
+                        className="profile-drawer-input profile-drawer-input-disabled"
+                        value={ROLE_LABELS[user.role] || user.position || user.role || 'User'}
+                        disabled
+                      />
+                    </div>
+                  </div>
                 </div>
               </form>
+            </div>
+
+            {/* Dedicated Sticky Footer (Always 100% visible, never cut off) */}
+            <div className="profile-drawer-footer">
+              <button 
+                type="button" 
+                className="profile-drawer-signout-btn" 
+                onClick={handleLogout}
+                title="Sign out of ERP-Nexus"
+              >
+                <LogOut size={15} />
+                <span>Sign Out</span>
+              </button>
+              <button 
+                type="submit" 
+                form="profile-drawer-form" 
+                className="profile-drawer-save-btn"
+                title="Save changes to your profile"
+              >
+                <Check size={15} />
+                <span>Save Changes</span>
+              </button>
             </div>
           </div>
         </>

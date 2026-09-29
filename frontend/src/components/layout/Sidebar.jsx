@@ -5,11 +5,16 @@ import {
   Truck, Settings, Zap, ChevronRight, ChevronLeft, Factory,
   ClipboardList, Users, ShieldAlert, BarChart2, ShoppingBag,
   FileText, Wrench, Cpu, Activity, History, Layers, ArrowRightLeft,
-  CheckCircle, AlertTriangle, DollarSign, Bell
+  CheckCircle, AlertTriangle, DollarSign, Bell, Sparkles, X
 } from 'lucide-react';
 import './Sidebar.css';
 
-export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propToggle }) {
+export default function Sidebar({ 
+  isCollapsed: propCollapsed, 
+  onToggle: propToggle,
+  mobileOpen = false,
+  onCloseMobile
+}) {
   const location = useLocation();
   const [localCollapsed, setLocalCollapsed] = useState(() => {
     try {
@@ -57,6 +62,12 @@ export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propTogg
       window.removeEventListener('auth_data_updated', syncUser);
     };
   }, [location.pathname]);
+
+  const handleNavClick = () => {
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
 
   const isOwner           = user.role === 'owner' || user.login_id === 'owner' || (user.position && user.position.toLowerCase().includes('owner'));
   const isAdmin           = !isOwner && user.role === 'admin';
@@ -146,7 +157,7 @@ export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propTogg
   ];
 
   return (
-    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''} ${mobileOpen ? 'sidebar--mobile-open' : ''}`}>
       {/* Header with Logo & Toggle Button */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
@@ -161,6 +172,7 @@ export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propTogg
           )}
         </div>
 
+        {/* Desktop Collapse Toggle */}
         <button 
           type="button" 
           className="sidebar-collapse-toggle"
@@ -170,6 +182,19 @@ export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propTogg
         >
           {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
+
+        {/* Mobile Close Button */}
+        {onCloseMobile && (
+          <button
+            type="button"
+            className="sidebar-mobile-close-btn"
+            onClick={onCloseMobile}
+            title="Close navigation menu"
+            aria-label="Close navigation menu"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Divider */}
@@ -193,6 +218,7 @@ export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propTogg
               to={path}
               className={`sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}
               title={label}
+              onClick={handleNavClick}
             >
               <span className="sidebar-link-icon">
                 <Icon size={18} strokeWidth={1.75} />
@@ -208,16 +234,27 @@ export default function Sidebar({ isCollapsed: propCollapsed, onToggle: propTogg
 
       {/* Footer Advisor */}
       <div className="sidebar-footer">
-        <NavLink to="/advisor" style={{ textDecoration: 'none' }} title="EN Advisor: AI-powered insights">
-          <div className="sidebar-footer-card" style={{ cursor: 'pointer' }}>
+        <NavLink 
+          to="/advisor" 
+          style={{ textDecoration: 'none' }} 
+          title="EN Advisor: AI-powered business intelligence"
+          onClick={handleNavClick}
+        >
+          <div className="sidebar-footer-card">
             <div className="sidebar-footer-icon">
-              <Zap size={14} strokeWidth={2} />
+              <Sparkles size={16} strokeWidth={2.2} />
             </div>
             {!isCollapsed && (
               <div className="sidebar-footer-info">
-                <span className="sidebar-footer-title">EN Advisor</span>
+                <div className="sidebar-footer-title-row">
+                  <span className="sidebar-footer-title">EN Advisor</span>
+                  <span className="sidebar-advisor-badge">AI</span>
+                </div>
                 <span className="sidebar-footer-sub">AI-powered insights</span>
               </div>
+            )}
+            {!isCollapsed && (
+              <ChevronRight size={14} className="sidebar-advisor-arrow" />
             )}
           </div>
         </NavLink>

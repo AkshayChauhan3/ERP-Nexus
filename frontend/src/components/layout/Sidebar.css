@@ -199,49 +199,105 @@
 .sidebar-footer-card {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
   padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%);
+  border: 1px solid rgba(129, 140, 248, 0.32);
   border-radius: 16px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 18px -2px rgba(79, 70, 229, 0.28), 0 2px 6px -1px rgba(0, 0, 0, 0.12);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-footer-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(165, 180, 252, 0.5), transparent);
 }
 
 .sidebar-footer-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-@keyframes pulse-glow {
-  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); }
-  70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+  border-color: rgba(165, 180, 252, 0.5);
+  box-shadow: 0 8px 26px -2px rgba(99, 102, 241, 0.42), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-footer-icon {
-  width: 28px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  animation: pulse-glow 2s infinite;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.sidebar-footer-card:hover .sidebar-footer-icon {
+  transform: scale(1.08) rotate(3deg);
 }
 
 .sidebar-footer-info {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-footer-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sidebar-footer-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-advisor-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.3);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  color: #f3e8ff;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sidebar-footer-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: #cbd5e1; /* Clear high contrast readable text against dark indigo */
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-advisor-arrow {
+  color: #94a3b8;
+  transition: transform 0.2s ease, color 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sidebar-footer-card:hover .sidebar-advisor-arrow {
+  transform: translateX(3px);
   color: #ffffff;
 }
 
@@ -334,4 +390,54 @@ body:has(.admin-modal-overlay) .sidebar,
 body:has(.profile-drawer-backdrop) .sidebar,
 body:has(.purchase-modal-backdrop) .sidebar {
   pointer-events: none;
+}
+
+/* ── Mobile & Tablet Off-Canvas Drawer ── */
+.sidebar-mobile-close-btn {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px !important;
+    max-width: 85vw;
+    height: 100vh;
+    height: 100dvh;
+    background: #ffffff;
+    box-shadow: none;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+    z-index: 1000;
+  }
+
+  .sidebar.sidebar--mobile-open {
+    transform: translateX(0);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.35);
+  }
+
+  .sidebar-collapse-toggle {
+    display: none !important;
+  }
+
+  .sidebar-mobile-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-low);
+    border: 1px solid var(--color-outline-variant);
+    color: var(--color-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .sidebar-mobile-close-btn:hover {
+    background: var(--surface-high);
+    color: var(--color-primary);
+  }
 }
