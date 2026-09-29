@@ -556,22 +556,32 @@ export default function TopBar() {
 
   // Sync real notifications dynamically from the database based on the active role
   useEffect(() => {
+    let isMounted = true;
+
     const fetchRoleNotifications = async () => {
       try {
         const res = await api.get('/intelligence/notifications');
-        if (res?.success && Array.isArray(res.notifications)) {
-          setNotifications(res.notifications);
+        if (isMounted && res?.success && Array.isArray(res.notifications)) {
+          if (res.notifications.length > 0) {
+            setNotifications(res.notifications);
+          } else {
+            // Retain active role presets if DB query returned 0 rows to prevent empty box glitch
+            setNotifications(prev => (prev && prev.length > 0 ? prev : (ROLE_NOTIFICATIONS[user.role] || ROLE_NOTIFICATIONS.owner || [])));
+          }
           return;
         }
       } catch (err) {
-        // Safe empty state on error
+        // Retain notifications on transient network glitch instead of wiping to empty
+        console.warn('Could not refresh notifications:', err.message || err);
       }
-      setNotifications([]);
     };
 
     fetchRoleNotifications();
-    const interval = setInterval(fetchRoleNotifications, 45000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchRoleNotifications, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [user.role, pathname]);
 
   // Close notifications popover on click outside

@@ -309,7 +309,13 @@ async function initStore() {
           INSERT INTO app_notifications (
             id, role, type, category, title, message, path, action_text, status, is_read, created_at, updated_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-          ON CONFLICT (id) DO NOTHING
+          ON CONFLICT (id) DO UPDATE SET
+            updated_at = NOW(),
+            title = EXCLUDED.title,
+            message = EXCLUDED.message,
+            path = EXCLUDED.path,
+            action_text = EXCLUDED.action_text
+          WHERE app_notifications.status NOT IN ('dismissed', 'completed')
         `, b.id, b.role, b.type, b.category, b.title, b.message, b.path, b.actionText, b.status, b.isRead);
       } catch (err) {}
     }
@@ -356,6 +362,18 @@ async function syncLiveAlerts(role, user, liveAlerts = []) {
           alert.entityType || null,
           alert.entityId ? String(alert.entityId) : null
         );
+      } else if (existing[0].status !== 'dismissed' && existing[0].status !== 'completed') {
+        // If alert is still an active live operational condition, refresh its details and update timestamp
+        await prisma.$executeRawUnsafe(
+          `UPDATE app_notifications 
+           SET title = $2, message = $3, path = $4, action_text = $5, updated_at = NOW()
+           WHERE id = $1`,
+          alert.id,
+          alert.title || alert.category || 'Notification',
+          alert.message || '',
+          alert.path || '/dashboard',
+          alert.actionText || 'View'
+        );
       }
     } catch (e) {
       console.warn(`⚠️ Failed to sync notification ${alert.id}:`, e.message);
@@ -364,7 +382,7 @@ async function syncLiveAlerts(role, user, liveAlerts = []) {
 }
 
 /**
- * Fetch active notifications (unread, read, unresolved) within the last 48 hours.
+ * Fetch active notifications (unread, read, unresolved).
  * Excludes dismissed and completed notifications.
  */
 async function getActiveNotifications(role, user) {
@@ -374,19 +392,22 @@ async function getActiveNotifications(role, user) {
   try {
     const rows = await prisma.$queryRawUnsafe(
       `SELECT id, type, category, title, message, path, action_text AS "actionText", 
-              status, is_read AS "isRead", created_at AS "createdAt", completed_at AS "completedAt"
+              status, is_read AS "isRead", created_at AS "createdAt", completed_at AS "completedAt",
+              updated_at AS "updatedAt"
        FROM app_notifications
        WHERE (role = $1 OR role = 'all')
          AND status IN ('active', 'read')
-         AND created_at >= NOW() - INTERVAL '48 HOURS'
-       ORDER BY created_at DESC
+       ORDER BY 
+         CASE WHEN is_read = false THEN 0 ELSE 1 END ASC,
+         updated_at DESC,
+         created_at DESC
        LIMIT 50`,
       normalizedRole
     );
 
     return rows.map(r => ({
       ...r,
-      time: formatRelativeTime(r.createdAt)
+      time: formatRelativeTime(r.updatedAt || r.createdAt)
     }));
   } catch (err) {
     console.error('Error in getActiveNotifications:', err);
@@ -395,7 +416,7 @@ async function getActiveNotifications(role, user) {
 }
 
 /**
- * Fetch notification history (all statuses: active, read, dismissed, completed) within the last 48 hours.
+ * Fetch notification history (all statuses: active, read, dismissed, completed).
  */
 async function getNotificationHistory(role, user) {
   await initStore();
@@ -408,16 +429,15 @@ async function getNotificationHistory(role, user) {
               updated_at AS "updatedAt"
        FROM app_notifications
        WHERE (role = $1 OR role = 'all')
-         AND created_at >= NOW() - INTERVAL '48 HOURS'
-       ORDER BY created_at DESC
+       ORDER BY updated_at DESC, created_at DESC
        LIMIT 100`,
       normalizedRole
     );
 
     return rows.map(r => ({
       ...r,
-      time: formatRelativeTime(r.createdAt),
-      formattedTimestamp: new Date(r.createdAt).toLocaleString('en-IN', {
+      time: formatRelativeTime(r.updatedAt || r.createdAt),
+      formattedTimestamp: new Date(r.updatedAt || r.createdAt).toLocaleString('en-IN', {
         dateStyle: 'medium',
         timeStyle: 'short'
       })
@@ -483,8 +503,7 @@ async function markAllRead(role, user) {
       `UPDATE app_notifications 
        SET is_read = true, status = 'read', updated_at = NOW()
        WHERE (role = $1 OR role = 'all')
-         AND status = 'active'
-         AND created_at >= NOW() - INTERVAL '48 HOURS'`,
+         AND status = 'active'`,
       normalizedRole
     );
     return true;
