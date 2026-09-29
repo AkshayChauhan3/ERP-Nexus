@@ -268,6 +268,12 @@ async function initStore() {
       `);
     } catch (e) {}
 
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE advisor_resolutions ALTER COLUMN user_id TYPE VARCHAR(100);
+      `);
+    } catch (e) {}
+
     // 2. Create indices for fast lookup & filtering
     await prisma.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS idx_notifs_role_created ON app_notifications (role, created_at DESC);
@@ -602,21 +608,35 @@ async function resolveAdvisorRecommendation(key, role, user, actionType = 'COMPL
  */
 async function isAdvisorRecommendationResolved(key, role) {
   await initStore();
-  const normalizedRole = (role || 'admin').toLowerCase().trim();
-
   try {
     const rows = await prisma.$queryRawUnsafe(
       `SELECT id FROM advisor_resolutions 
-       WHERE recommendation_key = $1 AND role = $2
-         AND resolved_at >= NOW() - INTERVAL '48 HOURS'
+       WHERE recommendation_key = $1
+         AND resolved_at >= NOW() - INTERVAL '30 DAYS'
        LIMIT 1`,
-      key,
-      normalizedRole
+      key
     );
     return Array.isArray(rows) && rows.length > 0;
   } catch (err) {
     console.error(`Error checking advisor resolution for ${key}:`, err);
     return false;
+  }
+}
+
+/**
+ * Fetch all recently resolved recommendation keys
+ */
+async function getAllResolvedRecommendationKeys() {
+  await initStore();
+  try {
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT DISTINCT recommendation_key FROM advisor_resolutions 
+       WHERE resolved_at >= NOW() - INTERVAL '30 DAYS'`
+    );
+    return Array.isArray(rows) ? rows.map(r => r.recommendation_key) : [];
+  } catch (err) {
+    console.error('Error fetching resolved recommendation keys:', err);
+    return [];
   }
 }
 
@@ -648,5 +668,6 @@ module.exports = {
   completeNotification,
   resolveByEntity,
   resolveAdvisorRecommendation,
-  isAdvisorRecommendationResolved
+  isAdvisorRecommendationResolved,
+  getAllResolvedRecommendationKeys
 };

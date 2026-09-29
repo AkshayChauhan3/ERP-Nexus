@@ -295,18 +295,32 @@ export default function Advisor() {
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                      <span style={{ 
-                        display: 'inline-block', 
-                        padding: '4px 12px', 
-                        borderRadius: '20px', 
-                        fontSize: '11px', 
-                        fontWeight: 700, 
-                        backgroundColor: priorityStyle.bg, 
-                        color: priorityStyle.color,
-                        border: priorityStyle.border
-                      }}>
-                        {rec.priority}
-                      </span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ 
+                          display: 'inline-block', 
+                          padding: '4px 12px', 
+                          borderRadius: '20px', 
+                          fontSize: '11px', 
+                          fontWeight: 700, 
+                          backgroundColor: priorityStyle.bg, 
+                          color: priorityStyle.color,
+                          border: priorityStyle.border
+                        }}>
+                          {rec.priority}
+                        </span>
+                        {rec.category && (
+                          <span style={{
+                            fontSize: '11px',
+                            background: 'var(--color-surface-container, rgba(0,0,0,0.05))',
+                            color: 'var(--color-secondary, #666)',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            fontWeight: 600
+                          }}>
+                            {rec.category}
+                          </span>
+                        )}
+                      </div>
                       <Sparkles size={16} style={{ color: '#f59e0b', opacity: 0.8 }} />
                     </div>
                     

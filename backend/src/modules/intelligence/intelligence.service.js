@@ -83,11 +83,47 @@ async function getDashboardStats() {
   };
 }
 
+const GEMINI_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-flash-latest',
+  'gemini-3.8-flash',
+  'gemini-pro-latest'
+];
+
+/**
+ * Robust Gemini AI caller with automatic model fallback
+ */
+async function callGeminiWithFallback(apiKey, prompt) {
+  const genAI = new GoogleGenerativeAI(apiKey.trim());
+  let lastErr = null;
+
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      if (text) {
+        return { text, modelName };
+      }
+    } catch (err) {
+      lastErr = err;
+      console.warn(`⚠️ Gemini model [${modelName}] failed: ${err.message}. Trying fallback model...`);
+    }
+  }
+
+  throw lastErr || new Error('All Gemini candidate models failed');
+}
+
 /**
  * Resolve authenticated user's role mapping accurately
  */
 async function resolveMappedRole(role, user) {
   let mappedRole = (role || user?.role || '').toLowerCase().trim();
+
+  // Business Owner identification takes top precedence
+  if (user?.login_id === 'owner' || user?.profile?.position?.toLowerCase().includes('owner') || user?.profile?.position?.toLowerCase().includes('ceo')) {
+    return 'owner';
+  }
 
   if (user?.id && (!mappedRole || mappedRole === 'user' || mappedRole === 'null')) {
     try {
@@ -96,8 +132,8 @@ async function resolveMappedRole(role, user) {
         include: { profile: true, module_access: { include: { module: true } } }
       });
       if (dbUser) {
-        if (dbUser.is_admin) mappedRole = 'admin';
-        else if (dbUser.login_id === 'owner') mappedRole = 'owner';
+        if (dbUser.login_id === 'owner') mappedRole = 'owner';
+        else if (dbUser.is_admin) mappedRole = 'admin';
         else if (dbUser.module_access?.[0]?.module?.module_name) {
           mappedRole = dbUser.module_access[0].module.module_name.toLowerCase();
         } else if (dbUser.profile?.position) {
@@ -120,239 +156,270 @@ async function resolveMappedRole(role, user) {
     }
   }
 
-  return mappedRole || 'admin';
+  return mappedRole || 'owner';
 }
 
 /**
  * Role-Based EN Advisor Recommendations
- * Analyzes live database data, queries Gemini if key exists, and provides
- * actionable payloads (e.g. prefilled PO creation) while filtering resolved tasks.
+ * Scans live business operations using Gemini AI, with distinct role-specific heuristic fallbacks
+ * and persistent database resolution tracking.
  */
 async function getAdvisorRecommendations(role, user) {
   const mappedRole = await resolveMappedRole(role, user);
   const now = new Date();
 
-  // 1. Gather live operational data for the current role
-  const allInventory = await prisma.inventory.findMany({
-    include: { product: true },
-    orderBy: { on_hand_qty: 'asc' }
-  });
+  // Fetch all already resolved keys so neither AI nor heuristics repeat them
+  const resolvedKeys = await notificationStore.getAllResolvedRecommendationKeys();
+  const isResolved = (key) => resolvedKeys.includes(key);
+
+  // 1. Live operational data queries across all modules
+  const [
+    allInventory,
+    pendingMOs,
+    overdueDeliveries,
+    draftQuotes,
+    pendingBills,
+    pendingPOs,
+    pendingTransfers,
+    pendingUsersCount,
+    recentAuditLogs,
+    defaultVendor,
+    stats
+  ] = await Promise.all([
+    prisma.inventory.findMany({
+      include: { product: true },
+      orderBy: { on_hand_qty: 'asc' }
+    }),
+    prisma.manufacturingOrder.findMany({
+      where: { status: { in: ['in_progress', 'confirmed'] } },
+      include: { product: true, work_orders: true },
+      orderBy: { created_at: 'desc' },
+      take: 6
+    }),
+    prisma.salesOrder.findMany({
+      where: { status: 'confirmed', expected_delivery_date: { lt: now } },
+      include: { customer: true, lines: { include: { product: true } } },
+      take: 6
+    }),
+    prisma.salesQuotation.findMany({
+      where: { status: 'Draft' },
+      include: { customer: true },
+      take: 5
+    }),
+    prisma.vendorBill.findMany({
+      where: { status: 'pending_payment' },
+      include: { vendor: true },
+      take: 6
+    }),
+    prisma.purchaseOrder.findMany({
+      where: { status: { in: ['draft', 'confirmed'] } },
+      include: { vendor: true, lines: true },
+      take: 5
+    }),
+    prisma.stockTransfer.findMany({
+      where: { status: 'Pending' },
+      include: { product: true, source_warehouse: true, destination_warehouse: true },
+      take: 5
+    }),
+    prisma.user.count({
+      where: { status: 'PENDING' }
+    }),
+    prisma.auditLog.findMany({
+      orderBy: { created_at: 'desc' },
+      take: 5
+    }),
+    prisma.vendor.findFirst({
+      where: { is_active: true },
+      orderBy: { created_at: 'asc' }
+    }),
+    getDashboardStats()
+  ]);
 
   const lowStockItems = allInventory
     .filter(i => Number(i.on_hand_qty) < Number(i.reorder_level))
     .slice(0, 8);
 
-  const pendingMOs = await prisma.manufacturingOrder.findMany({
-    where: { status: { in: ['in_progress', 'confirmed'] } },
-    include: { product: true, work_orders: true },
-    orderBy: { created_at: 'desc' },
-    take: 6
-  });
+  // 2. Comprehensive Operational Snapshot for Gemini AI Scanner
+  const operationalSnapshot = {
+    role: mappedRole,
+    userName: user?.name || user?.login_id || 'User',
+    financials: {
+      todaySales: stats.todaySales,
+      monthlySales: stats.monthlySales,
+      todayPurchases: stats.todayPurchases,
+      monthlyPurchases: stats.monthlyPurchases,
+      inventoryValue: stats.invValue,
+      unpaidBillsCount: pendingBills.length,
+      unpaidBillsTotal: pendingBills.reduce((acc, b) => acc + Number(b.total_amount || 0), 0)
+    },
+    inventory: {
+      lowStockCount: lowStockItems.length,
+      lowStockItems: lowStockItems.map(i => ({
+        productId: i.product_id,
+        name: i.product.name,
+        sku: i.product.sku,
+        type: i.product.type,
+        onHand: Number(i.on_hand_qty),
+        reorderLevel: Number(i.reorder_level),
+        deficit: Math.max(0, Number(i.reorder_level) - Number(i.on_hand_qty)),
+        costPrice: Number(i.product.cost_price || 150),
+        unit: i.product.unit || 'units'
+      })),
+      pendingTransfers: pendingTransfers.map(t => ({
+        id: t.id,
+        transferNumber: t.transfer_number,
+        product: t.product?.name,
+        qty: Number(t.qty),
+        from: t.source_warehouse?.name,
+        to: t.destination_warehouse?.name
+      }))
+    },
+    manufacturing: {
+      activeMOCount: pendingMOs.length,
+      activeMOs: pendingMOs.map(m => ({
+        id: m.id,
+        moNumber: m.mo_number,
+        product: m.product?.name,
+        targetQty: Number(m.quantity),
+        producedQty: Number(m.produced_qty || 0),
+        progressPercent: m.quantity > 0 ? Math.round((Number(m.produced_qty || 0) / Number(m.quantity)) * 100) : 0,
+        status: m.status,
+        workOrdersCount: m.work_orders?.length || 0
+      }))
+    },
+    sales: {
+      overdueDeliveriesCount: overdueDeliveries.length,
+      overdueOrders: overdueDeliveries.map(so => ({
+        id: so.id,
+        orderNumber: so.order_number,
+        customer: so.customer?.name,
+        expectedDate: so.expected_delivery_date,
+        totalItems: so.lines?.length || 0
+      })),
+      draftQuotesCount: draftQuotes.length,
+      draftQuotes: draftQuotes.map(q => ({
+        id: q.id,
+        quoteNumber: q.quotation_number,
+        customer: q.customer?.name,
+        amount: Number(q.amount)
+      }))
+    },
+    procurement: {
+      pendingPOCount: pendingPOs.length,
+      pendingPOs: pendingPOs.map(p => ({
+        id: p.id,
+        poNumber: p.po_number,
+        vendor: p.vendor?.name,
+        status: p.status
+      })),
+      pendingBills: pendingBills.map(b => ({
+        id: b.id,
+        billNumber: b.bill_number,
+        vendor: b.vendor?.name,
+        amount: Number(b.total_amount),
+        dueDate: b.due_date
+      }))
+    },
+    administration: {
+      pendingUsersCount,
+      activeUsers: stats.activeUsers,
+      recentAuditEvents: recentAuditLogs.map(a => ({
+        id: a.id,
+        model: a.model_name,
+        action: a.action
+      }))
+    }
+  };
 
-  const overdueDeliveries = await prisma.salesOrder.findMany({
-    where: { status: 'confirmed', expected_delivery_date: { lt: now } },
-    include: { customer: true, lines: { include: { product: true } } },
-    take: 6
-  });
+  // 3. Try Gemini AI Deep Scan if API key is configured
+  const apiKey = process.env.GEMINI_API_KEY;
+  const hasValidKey = apiKey && apiKey.trim().length > 10 && !apiKey.includes('your-') && !apiKey.includes('dummy');
 
-  const defaultVendor = await prisma.vendor.findFirst({
-    where: { is_active: true },
-    orderBy: { created_at: 'asc' }
-  });
+  if (hasValidKey) {
+    try {
+      const prompt = `You are the autonomous Executive AI Advisor for ERP-Nexus (Shiv Furniture Works Factory OS).
+You are analyzing the live business data specifically for the logged-in user:
+- Role: ${mappedRole.toUpperCase()}
+- User: ${user?.name || user?.login_id || 'User'}
 
-  // 2. Build candidate recommendations based on the authenticated role
+The business currently has the following real-time operational status:
+${JSON.stringify(operationalSnapshot, null, 2)}
+
+Already resolved recommendations (DO NOT repeat or suggest these again):
+${JSON.stringify(resolvedKeys)}
+
+TASK:
+Scan the live business data above through the specific lens and responsibility of the "${mappedRole}" role.
+Identify the 3 most impactful bottlenecks, risks, or strategic actions for this specific role.
+For each recommendation, state clearly WHAT thing the team can work on, WHY it matters, and suggest a concrete SOLUTION.
+
+Required JSON Structure for each item in the array:
+- "id": A unique, stable identifier starting with "rec-${mappedRole.substring(0, 3)}-" followed by a specific entity or metric key (e.g. rec-pur-low-[productId], rec-own-bill-[billId], rec-sal-so-[orderId], rec-adm-user-pending, rec-mfg-mo-[moId]).
+- "priority": "High Priority" | "Medium" | "Low"
+- "category": A clear category (e.g. "Procurement", "Production", "Treasury", "Fulfillment", "Security", "Warehouse")
+- "title": A crisp, professional 4-7 word title explaining WHAT needs attention.
+- "description": A 2-3 sentence executive diagnosis explaining the exact bottleneck from the data, WHY it impacts operations/revenue, and suggesting a concrete SOLUTION.
+- "action_label": Action button text (e.g. "Create PO", "View Work Orders", "Inspect Deliveries", "Review Bills", "Approve Users", "Review Quotations", "View Inventory", "View Analytics").
+- "action_type": One of: "CREATE_PO", "VIEW_WORK_ORDERS", "NAVIGATE", "VIEW_ANALYTICS"
+- "action_payload": JSON object with appropriate deep-link path and data:
+   - For "CREATE_PO": { "productId": "...", "productName": "...", "vendorId": "${defaultVendor?.id || ''}", "vendorName": "${defaultVendor?.name || 'Primary Supplier'}", "suggestedQty": 20, "costPrice": 150, "unit": "units" }
+   - For "VIEW_WORK_ORDERS": { "targetPath": "/manufacturing/work-orders", "moId": "..." }
+   - For "VIEW_ANALYTICS": { "targetPath": "${mappedRole === 'owner' ? '/owner/financials' : '/sales/analytics'}" }
+   - For "NAVIGATE": { "targetPath": "..." (e.g. "/users", "/purchase/vendor-bills", "/sales/deliveries", "/inventory/transfers", "/audit-logs") }
+
+Return ONLY a valid JSON array of 3 recommendation objects. No markdown backticks, no explanatory text.`;
+
+      const aiResponse = await callGeminiWithFallback(apiKey, prompt);
+      const cleanJson = aiResponse.text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const activeAiRecs = parsed.filter(item => item && item.id && !resolvedKeys.includes(item.id));
+        if (activeAiRecs.length > 0) {
+          console.log(`✅ EN Advisor: Gemini AI (${aiResponse.modelName}) generated ${activeAiRecs.length} personalized recommendations for role: ${mappedRole}`);
+          return activeAiRecs.slice(0, 3);
+        }
+      }
+    } catch (aiErr) {
+      console.warn('⚠️ EN Advisor: Gemini AI scan encountered an issue, seamlessly using distinct role heuristic fallback. Error:', aiErr.message);
+    }
+  }
+
+  // 4. Distinct Role-Specific Heuristic Fallbacks
+  // Ensures EVERY role sees unique, tailored insights with zero overlap
   let rawCandidates = [];
 
-  if (mappedRole === 'purchase' || mappedRole === 'inventory') {
-    // A. Low stock procurement recommendations (Action: Create PO)
-    for (const item of lowStockItems) {
-      const recKey = `rec-pur-low-${item.product_id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
-        const suggestedQty = Math.max(
-          Math.ceil(Number(item.reorder_level || 15) * 2 - Number(item.on_hand_qty || 0)),
-          10
-        );
+  if (mappedRole === 'owner') {
+    // OWNER: Strategic Financials, Working Capital, High-stakes fulfillment
+    // A. Working Capital: Pending Vendor Invoices vs Revenue
+    if (pendingBills.length > 0) {
+      const recKey = `rec-own-treasury-bills`;
+      if (!isResolved(recKey)) {
+        const totalDue = pendingBills.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
         rawCandidates.push({
           id: recKey,
           priority: 'High Priority',
-          title: `Urgent Procurement: ${item.product.name}`,
-          description: `Stock has fallen to ${item.on_hand_qty} ${item.product.unit_of_measure || 'units'} (safety threshold: ${item.reorder_level || 15}). Generate a purchase order now to prevent stockouts.`,
-          action_label: 'Create PO',
-          action_type: 'CREATE_PO',
-          action_payload: {
-            productId: item.product_id,
-            productName: item.product.name,
-            vendorId: defaultVendor?.id || null,
-            vendorName: defaultVendor?.name || 'Primary Supplier',
-            suggestedQty,
-            costPrice: Number(item.product.cost_price || 250),
-            unit: item.product.unit_of_measure || 'units'
-          }
-        });
-      }
-    }
-
-    // B. Pending Inbound Shipments
-    const pendingPOs = await prisma.purchaseOrder.findMany({
-      where: { status: 'confirmed' },
-      include: { vendor: true, lines: true },
-      take: 2
-    });
-    for (const po of pendingPOs) {
-      const recKey = `rec-pur-po-${po.id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
-        rawCandidates.push({
-          id: recKey,
-          priority: 'Medium',
-          title: `Inspect Inbound PO #${po.po_number}`,
-          description: `Shipment from ${po.vendor?.name || 'Vendor'} (${po.lines?.length || 1} items) is in transit. Verify loading dock readiness for goods receipt.`,
-          action_label: 'View Goods Receipts',
+          category: 'Treasury & Cash Flow',
+          title: `Working Capital: ₹${totalDue.toLocaleString('en-IN')} Due in Vendor Bills`,
+          description: `${pendingBills.length} vendor bill(s) await payment authorization. Review upcoming cash outflows to protect supplier credit terms without straining operating liquidity.`,
+          action_label: 'Review Bills',
           action_type: 'NAVIGATE',
-          action_payload: {
-            targetPath: '/purchase/goods-receipts'
-          }
+          action_payload: { targetPath: '/owner/financials' }
         });
       }
     }
 
-    // C. Healthy State Fallback
-    if (rawCandidates.length === 0) {
-      rawCandidates.push({
-        id: 'rec-pur-healthy',
-        priority: 'Low',
-        title: 'Inventory & Procurement In Balance',
-        description: 'All raw materials and components are safely above minimum reorder points. Good time to review vendor pricing contracts.',
-        action_label: 'View Catalog',
-        action_type: 'NAVIGATE',
-        action_payload: { targetPath: '/purchase/materials' }
-      });
-    }
-  } 
-  else if (mappedRole === 'manufacturing') {
-    // A. Active Manufacturing Orders in progress
-    for (const mo of pendingMOs) {
-      const recKey = `rec-mfg-mo-${mo.id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
-        const isDelayed = mo.status === 'in_progress' && Number(mo.produced_qty) < Number(mo.quantity) / 2;
-        rawCandidates.push({
-          id: recKey,
-          priority: isDelayed ? 'High Priority' : 'Medium',
-          title: `Production Run: MO #${mo.mo_number} (${mo.product?.name || 'Product'})`,
-          description: `Output currently at ${mo.produced_qty || 0}/${mo.quantity} units. Ensure work centers maintain scheduled cycle time to prevent assembly lag.`,
-          action_label: 'View Work Orders',
-          action_type: 'VIEW_WORK_ORDERS',
-          action_payload: {
-            targetPath: '/manufacturing/work-orders',
-            moId: mo.id,
-            moNumber: mo.mo_number
-          }
-        });
-      }
-    }
-
-    // B. Work Center alerts
-    const activeWOs = await prisma.workOrder.findMany({
-      where: { status: 'in_progress' },
-      take: 2
-    });
-    for (const wo of activeWOs) {
-      const recKey = `rec-mfg-wo-${wo.id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
-        rawCandidates.push({
-          id: recKey,
-          priority: 'Medium',
-          title: `Work Center: ${wo.work_center}`,
-          description: `Work order #${wo.wo_number} (${wo.operation}) is active on the factory floor. Monitor machine run time and operator throughput.`,
-          action_label: 'Inspect Work Centers',
-          action_type: 'NAVIGATE',
-          action_payload: { targetPath: '/manufacturing/work-centers' }
-        });
-      }
-    }
-
-    // C. Healthy Fallback
-    if (rawCandidates.length === 0) {
-      rawCandidates.push({
-        id: 'rec-mfg-healthy',
-        priority: 'Low',
-        title: 'Factory Line Running Smoothly',
-        description: 'All work centers are operating within standard parameters. Review upcoming production schedules or inspect BOM revisions.',
-        action_label: 'View BOMs',
-        action_type: 'NAVIGATE',
-        action_payload: { targetPath: '/manufacturing/bom' }
-      });
-    }
-  } 
-  else if (mappedRole === 'sales') {
-    // A. Overdue Deliveries
-    for (const so of overdueDeliveries) {
-      const recKey = `rec-sal-overdue-${so.id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
-        rawCandidates.push({
-          id: recKey,
-          priority: 'High Priority',
-          title: `Overdue Delivery: SO #${so.order_number}`,
-          description: `Sales Order #${so.order_number} for customer ${so.customer?.name || 'Client'} has surpassed its expected delivery date. Follow up with logistics or customer.`,
-          action_label: 'Inspect Deliveries',
-          action_type: 'NAVIGATE',
-          action_payload: { targetPath: '/sales/deliveries' }
-        });
-      }
-    }
-
-    // B. Draft Quotations pending signoff
-    const draftQuotes = await prisma.salesQuotation.findMany({
-      where: { status: 'Draft' },
-      include: { customer: true },
-      take: 2
-    });
-    for (const q of draftQuotes) {
-      const recKey = `rec-sal-quote-${q.id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
-        rawCandidates.push({
-          id: recKey,
-          priority: 'Medium',
-          title: `Quote Follow-up: #${q.quotation_number}`,
-          description: `Quotation for ${q.customer?.name || 'Customer'} (₹${Number(q.amount).toLocaleString('en-IN')}) is awaiting customer acceptance. Initiate sales follow-up.`,
-          action_label: 'Review Quotations',
-          action_type: 'NAVIGATE',
-          action_payload: { targetPath: '/sales/quotations' }
-        });
-      }
-    }
-
-    // C. Healthy Fallback
-    if (rawCandidates.length === 0) {
-      rawCandidates.push({
-        id: 'rec-sal-healthy',
-        priority: 'Low',
-        title: 'Sales Deliveries On Track',
-        description: 'No overdue orders or critical fulfillment bottlenecks. Great window to review revenue conversion metrics and plan future campaigns.',
-        action_label: 'View Analytics',
-        action_type: 'VIEW_ANALYTICS',
-        action_payload: { targetPath: '/sales/analytics' }
-      });
-    }
-  } 
-  else {
-    // Business Owner / Admin: Cross-stream strategic insights
-    // 1. Critical Procurement
+    // B. Critical Material Shortages Threatening Production Output
     if (lowStockItems.length > 0) {
       const topLow = lowStockItems[0];
       const recKey = `rec-own-low-${topLow.product_id}`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
+      if (!isResolved(recKey)) {
         rawCandidates.push({
           id: recKey,
           priority: 'High Priority',
-          title: 'Urgent Procurement Required',
-          description: `${lowStockItems.length} item(s) below reorder level (${lowStockItems.slice(0, 3).map(i => i.product.name).join(', ')}). Authorize purchase orders immediately to avoid production stops.`,
+          category: 'Procurement Risk',
+          title: `Authorize Replenishment: ${topLow.product.name}`,
+          description: `${lowStockItems.length} essential materials are below safety threshold. Authorize a bulk purchase order to guarantee uninterrupted assembly lines.`,
           action_label: 'Create PO',
           action_type: 'CREATE_PO',
           action_payload: {
@@ -362,102 +429,289 @@ async function getAdvisorRecommendations(role, user) {
             vendorName: defaultVendor?.name || 'Primary Supplier',
             suggestedQty: Math.max(Math.ceil(Number(topLow.reorder_level || 15) * 2 - Number(topLow.on_hand_qty || 0)), 15),
             costPrice: Number(topLow.product.cost_price || 250),
-            unit: topLow.product.unit_of_measure || 'units'
+            unit: topLow.product.unit || 'units'
           }
         });
       }
     }
 
-    // 2. Active Manufacturing Orders
-    if (pendingMOs.length > 0) {
-      const recKey = `rec-own-mos`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
+    // C. Delivery Commitments & Client Satisfaction
+    if (overdueDeliveries.length > 0) {
+      const recKey = `rec-own-overdue-so`;
+      if (!isResolved(recKey)) {
         rawCandidates.push({
           id: recKey,
-          priority: 'Medium',
-          title: `${pendingMOs.length} Active Manufacturing Order(s)`,
-          description: `Production active for: ${pendingMOs.slice(0, 4).map(m => m.product?.name).filter(Boolean).join(', ')}. Monitor work center utilization to maintain factory output commitments.`,
-          action_label: 'View Work Orders',
-          action_type: 'VIEW_WORK_ORDERS',
-          action_payload: { targetPath: mappedRole === 'owner' ? '/owner/manufacturing' : '/manufacturing/work-orders' }
+          priority: 'High Priority',
+          category: 'Fulfillment Risk',
+          title: `${overdueDeliveries.length} Overdue Client Delivery Order(s)`,
+          description: `Key customer commitments (${overdueDeliveries.slice(0, 2).map(o => o.customer?.name).filter(Boolean).join(', ')}) are past delivery date. Clear warehouse dispatch blockers.`,
+          action_label: 'View Deliveries',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/owner/sales' }
         });
       }
     }
 
-    // 3. Deliveries & Revenue
-    if (overdueDeliveries.length > 0) {
-      const recKey = `rec-own-overdue`;
-      const isResolved = await notificationStore.isAdvisorRecommendationResolved(recKey, mappedRole);
-      if (!isResolved) {
+    if (rawCandidates.length === 0) {
+      rawCandidates.push({
+        id: 'rec-own-healthy',
+        priority: 'Low',
+        category: 'Strategic Growth',
+        title: 'Strong Operating Margins & Factory Equilibrium',
+        description: 'All primary factory KPIs and delivery targets are performing on schedule. Opportunity to evaluate expansion into new commercial customer segments.',
+        action_label: 'View Analytics',
+        action_type: 'VIEW_ANALYTICS',
+        action_payload: { targetPath: '/owner/financials' }
+      });
+    }
+  } 
+  else if (mappedRole === 'admin') {
+    // ADMIN: System Health, User Approvals, Security & Audit Logs
+    // A. Pending Employee Registrations
+    if (pendingUsersCount > 0) {
+      const recKey = `rec-adm-pending-users`;
+      if (!isResolved(recKey)) {
         rawCandidates.push({
           id: recKey,
           priority: 'High Priority',
-          title: `${overdueDeliveries.length} Overdue Delivery Commitment(s)`,
-          description: `Orders for ${overdueDeliveries.slice(0, 3).map(o => o.customer?.name).join(', ')} are past expected delivery date. Inspect fulfillment blockers.`,
-          action_label: 'View Analytics',
-          action_type: 'VIEW_ANALYTICS',
-          action_payload: { targetPath: mappedRole === 'owner' ? '/owner/sales' : '/sales/analytics' }
+          category: 'Access Control',
+          title: `${pendingUsersCount} User Account(s) Awaiting Approval`,
+          description: `New employee onboarding requests are pending administrative review. Verify department credentials and grant role-based module access.`,
+          action_label: 'Approve Users',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/users' }
         });
       }
-    } else {
+    }
+
+    // B. Security & Audit Trail Inspection
+    const recKeyAudit = `rec-adm-audit-logs`;
+    if (!isResolved(recKeyAudit)) {
       rawCandidates.push({
-        id: 'rec-own-ontrack',
+        id: recKeyAudit,
+        priority: 'Medium',
+        category: 'Security & Compliance',
+        title: 'Review System Audit Trails & Data Security',
+        description: `${recentAuditLogs.length} state modification logs recorded recently. Audit transaction integrity to ensure zero unauthorized privilege escalations.`,
+        action_label: 'Inspect Logs',
+        action_type: 'NAVIGATE',
+        action_payload: { targetPath: '/audit-logs' }
+      });
+    }
+
+    // C. System & Database Health
+    if (rawCandidates.length < 3) {
+      rawCandidates.push({
+        id: 'rec-adm-system-health',
         priority: 'Low',
-        title: 'All Deliveries On Track',
-        description: 'Zero overdue deliveries across client accounts. Analyze conversion rates and capital allocation to plan future expansion.',
+        category: 'System Performance',
+        title: 'Database Synchronized & Cloud Services Active',
+        description: 'Supabase PostgreSQL pooler and Azure App Service runtime are operating with normal response latencies across all API endpoints.',
+        action_label: 'System Status',
+        action_type: 'NAVIGATE',
+        action_payload: { targetPath: '/dashboard' }
+      });
+    }
+  } 
+  else if (mappedRole === 'purchase') {
+    // PURCHASE: Low stock procurement, Inbound PO tracking, Vendor bills
+    for (const item of lowStockItems) {
+      const recKey = `rec-pur-low-${item.product_id}`;
+      if (!isResolved(recKey)) {
+        const suggestedQty = Math.max(
+          Math.ceil(Number(item.reorder_level || 15) * 2 - Number(item.on_hand_qty || 0)),
+          10
+        );
+        rawCandidates.push({
+          id: recKey,
+          priority: 'High Priority',
+          category: 'Stock Replenishment',
+          title: `Replenish ${item.product.name}`,
+          description: `On-hand stock is at ${item.on_hand_qty} ${item.product.unit || 'units'} (safety minimum: ${item.reorder_level || 15}). Generate a purchase order to prevent supply bottlenecks.`,
+          action_label: 'Create PO',
+          action_type: 'CREATE_PO',
+          action_payload: {
+            productId: item.product_id,
+            productName: item.product.name,
+            vendorId: defaultVendor?.id || null,
+            vendorName: defaultVendor?.name || 'Primary Supplier',
+            suggestedQty,
+            costPrice: Number(item.product.cost_price || 250),
+            unit: item.product.unit || 'units'
+          }
+        });
+      }
+      if (rawCandidates.length >= 2) break;
+    }
+
+    // Inbound Shipments
+    if (pendingPOs.length > 0) {
+      const po = pendingPOs[0];
+      const recKey = `rec-pur-inbound-${po.id}`;
+      if (!isResolved(recKey)) {
+        rawCandidates.push({
+          id: recKey,
+          priority: 'Medium',
+          category: 'Logistics Dock',
+          title: `Verify Inbound Shipment for PO #${po.po_number}`,
+          description: `PO #${po.po_number} with ${po.vendor?.name || 'Supplier'} is confirmed. Ensure loading dock readiness for physical goods receipt and barcode tagging.`,
+          action_label: 'View Goods Receipts',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/purchase/goods-receipts' }
+        });
+      }
+    }
+
+    if (rawCandidates.length === 0) {
+      rawCandidates.push({
+        id: 'rec-pur-healthy',
+        priority: 'Low',
+        category: 'Supplier Contracts',
+        title: 'Procurement Pipeline In Balance',
+        description: 'All raw materials are safely stocked above reorder thresholds. Suitable time to review supplier pricing discounts and lead-time contracts.',
+        action_label: 'View Catalog',
+        action_type: 'NAVIGATE',
+        action_payload: { targetPath: '/purchase/materials' }
+      });
+    }
+  } 
+  else if (mappedRole === 'inventory') {
+    // INVENTORY: Warehouse capacity, Pending stock transfers, Safety stock
+    if (pendingTransfers.length > 0) {
+      const tr = pendingTransfers[0];
+      const recKey = `rec-inv-transfer-${tr.id}`;
+      if (!isResolved(recKey)) {
+        rawCandidates.push({
+          id: recKey,
+          priority: 'High Priority',
+          category: 'Inter-facility Transfer',
+          title: `Process Transfer #${tr.transfer_number} (${tr.product?.name || 'Material'})`,
+          description: `Transfer of ${tr.qty} units from ${tr.source_warehouse?.name || 'Source'} to ${tr.destination_warehouse?.name || 'Destination'} is pending. Complete shipment dispatch.`,
+          action_label: 'Inspect Transfers',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/inventory/transfers' }
+        });
+      }
+    }
+
+    if (lowStockItems.length > 0) {
+      const topLow = lowStockItems[0];
+      const recKey = `rec-inv-low-${topLow.product_id}`;
+      if (!isResolved(recKey)) {
+        rawCandidates.push({
+          id: recKey,
+          priority: 'High Priority',
+          category: 'Stock Deficit',
+          title: `Critical Reorder Trigger: ${topLow.product.name}`,
+          description: `Warehouse SKU ${topLow.product.sku || ''} is below minimum storage point. Verify physical stock count and initiate reorder requisition.`,
+          action_label: 'View Inventory',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/inventory/overview' }
+        });
+      }
+    }
+
+    if (rawCandidates.length === 0) {
+      rawCandidates.push({
+        id: 'rec-inv-healthy',
+        priority: 'Low',
+        category: 'Warehouse Audit',
+        title: 'Warehouse Stock Distributed Evenly',
+        description: 'No pending stock transfer delays or inventory variances detected across warehouses. Proceed with scheduled cycle count audits.',
+        action_label: 'Stock Alerts',
+        action_type: 'NAVIGATE',
+        action_payload: { targetPath: '/inventory/alerts' }
+      });
+    }
+  } 
+  else if (mappedRole === 'manufacturing') {
+    // MANUFACTURING: Active MOs, Work orders, Bottlenecks
+    for (const mo of pendingMOs) {
+      const recKey = `rec-mfg-mo-${mo.id}`;
+      if (!isResolved(recKey)) {
+        const isDelayed = mo.status === 'in_progress' && Number(mo.produced_qty) < Number(mo.quantity) / 2;
+        rawCandidates.push({
+          id: recKey,
+          priority: isDelayed ? 'High Priority' : 'Medium',
+          category: 'Production Line',
+          title: `Production Run: MO #${mo.mo_number} (${mo.product?.name || 'Product'})`,
+          description: `Output at ${mo.produced_qty || 0}/${mo.quantity} units. Ensure work centers maintain scheduled cycle time to meet factory delivery commitments.`,
+          action_label: 'View Work Orders',
+          action_type: 'VIEW_WORK_ORDERS',
+          action_payload: {
+            targetPath: '/manufacturing/work-orders',
+            moId: mo.id,
+            moNumber: mo.mo_number
+          }
+        });
+      }
+      if (rawCandidates.length >= 2) break;
+    }
+
+    if (rawCandidates.length === 0) {
+      rawCandidates.push({
+        id: 'rec-mfg-healthy',
+        priority: 'Low',
+        category: 'Shop Floor',
+        title: 'Assembly Lines Running At Standard Throughput',
+        description: 'All work centers are operating within scheduled parameters. Review upcoming production runs or inspect BOM component revisions.',
+        action_label: 'View BOMs',
+        action_type: 'NAVIGATE',
+        action_payload: { targetPath: '/manufacturing/bom' }
+      });
+    }
+  } 
+  else if (mappedRole === 'sales') {
+    // SALES: Overdue Deliveries, Quotation Follow-up, Customer fulfillment
+    for (const so of overdueDeliveries) {
+      const recKey = `rec-sal-overdue-${so.id}`;
+      if (!isResolved(recKey)) {
+        rawCandidates.push({
+          id: recKey,
+          priority: 'High Priority',
+          category: 'Delivery Fulfillment',
+          title: `Overdue Delivery: SO #${so.order_number}`,
+          description: `Sales order for ${so.customer?.name || 'Client'} has surpassed its promised delivery date. Follow up with logistics or customer support.`,
+          action_label: 'Inspect Deliveries',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/sales/deliveries' }
+        });
+      }
+      if (rawCandidates.length >= 2) break;
+    }
+
+    for (const q of draftQuotes) {
+      const recKey = `rec-sal-quote-${q.id}`;
+      if (!isResolved(recKey)) {
+        rawCandidates.push({
+          id: recKey,
+          priority: 'Medium',
+          category: 'Deal Pipeline',
+          title: `Quote Follow-up: #${q.quotation_number}`,
+          description: `Quotation for ${q.customer?.name || 'Customer'} (₹${Number(q.amount).toLocaleString('en-IN')}) is in Draft. Contact client to secure order confirmation.`,
+          action_label: 'Review Quotations',
+          action_type: 'NAVIGATE',
+          action_payload: { targetPath: '/sales/quotations' }
+        });
+      }
+      if (rawCandidates.length >= 3) break;
+    }
+
+    if (rawCandidates.length === 0) {
+      rawCandidates.push({
+        id: 'rec-sal-healthy',
+        priority: 'Low',
+        category: 'Revenue Optimization',
+        title: 'All Orders Delivered On Time',
+        description: 'Zero overdue shipments across client accounts. Analyze conversion rates and customer repeat purchase patterns to grow sales pipeline.',
         action_label: 'View Analytics',
         action_type: 'VIEW_ANALYTICS',
-        action_payload: { targetPath: mappedRole === 'owner' ? '/owner/financials' : '/reports' }
+        action_payload: { targetPath: '/sales/analytics' }
       });
     }
   }
 
-  // Limit to at most 3 top actionable recommendations
-  const finalRecs = rawCandidates.slice(0, 3);
-
-  // 3. Try Gemini AI if a valid API key exists
-  const apiKey = process.env.GEMINI_API_KEY;
-  const hasValidKey = apiKey && apiKey.trim().length > 10 && !apiKey.includes('your-') && !apiKey.includes('dummy');
-
-  if (hasValidKey && finalRecs.length > 0) {
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-      const prompt = `You are an autonomous AI executive advisor for Nexus ERP.
-The currently logged-in user role is: "${mappedRole}".
-Analyze the following operational data and synthesize updated recommendations matching the user's role and responsibilities.
-
-CURRENT OPERATIONAL DATA:
-${JSON.stringify(finalRecs, null, 2)}
-
-INSTRUCTIONS:
-1. Retain the existing 'id', 'action_label', 'action_type', and 'action_payload' fields exactly as provided for functional execution.
-2. Polish 'title' and 'description' to provide crisp, professional, role-relevant insights.
-3. Return ONLY a valid JSON array of objects with keys: id, priority, title, description, action_label, action_type, action_payload.
-4. No markdown fences, no explanatory text.`;
-
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-      const jsonText = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-      const parsed = JSON.parse(jsonText);
-
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        console.log(`✅ EN Advisor: Gemini AI generated ${parsed.length} recommendations for role: ${mappedRole}`);
-        // Ensure action payloads are retained
-        return parsed.map((p, idx) => ({
-          ...finalRecs[idx],
-          ...p,
-          action_payload: finalRecs[idx]?.action_payload || p.action_payload
-        }));
-      }
-    } catch (aiErr) {
-      console.warn('⚠️ EN Advisor: Gemini AI scan failed, using smart live heuristic recommendations. Error:', aiErr.message);
-    }
-  }
-
-  return finalRecs;
+  return rawCandidates.slice(0, 3);
 }
 
 /**
@@ -468,9 +722,11 @@ async function resolveAdvisorRecommendation(key, actionType, user) {
   const ok = await notificationStore.resolveAdvisorRecommendation(key, mappedRole, user, actionType);
 
   // If recommendation is tied to low stock, auto-resolve matching inventory notifications
-  if (key && key.includes('rec-pur-low-')) {
-    const productId = key.replace('rec-pur-low-', '');
-    await notificationStore.resolveByEntity('inventory', productId);
+  if (key && (key.includes('low-') || key.includes('rec-pur-low-') || key.includes('rec-own-low-'))) {
+    const parts = key.split('low-');
+    if (parts[1]) {
+      await notificationStore.resolveByEntity('inventory', parts[1]);
+    }
   }
 
   return ok;
@@ -480,13 +736,10 @@ async function getBusinessSummary() {
   const stats = await getDashboardStats();
 
   const apiKey = process.env.GEMINI_API_KEY;
-  const hasValidKey = apiKey && apiKey.trim().length > 10 && !apiKey.includes('your-') && !apiKey.includes('dummy') && !apiKey.includes('AIza...');
+  const hasValidKey = apiKey && apiKey.trim().length > 10 && !apiKey.includes('your-') && !apiKey.includes('dummy');
 
   if (hasValidKey) {
     try {
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
       const prompt = `You are a Chief Financial Officer reporting to the CEO. Write a 2-paragraph executive summary based on the following ERP system metrics.
       Focus on strategic insights, bottlenecks (if any), and overall health.
       
@@ -502,8 +755,8 @@ async function getBusinessSummary() {
 
       Make it read like a professional business narrative, without markdown bullets. Include positive reinforcement for good numbers, and constructive warnings for bottlenecks like low stock or pending approvals.`;
 
-      const result = await model.generateContent(prompt);
-      return result.response.text().trim();
+      const aiResponse = await callGeminiWithFallback(apiKey, prompt);
+      return aiResponse.text;
     } catch (err) {
       console.warn('⚠️ EN Advisor: Gemini summary failed, using template fallback. Error:', err.message);
     }
