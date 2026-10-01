@@ -215,34 +215,37 @@
   background: var(--color-error-container);
 }
 
-/* ── Executive Profile Modal ── */
+/* ── Executive Profile Modal (Flex Centered in Document Body) ── */
 .profile-drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
   animation: fadeIn 0.2s ease both;
+  overflow: hidden;
 }
 
 .profile-drawer {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 92%;
-  max-width: 480px;
-  max-height: 88vh;
-  max-height: 88dvh;
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   background: #ffffff;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08);
-  border-radius: 24px;
-  z-index: 1001;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
   animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   overflow: hidden;
+  margin: auto;
 }
 
 .profile-drawer-header {
@@ -434,6 +437,15 @@
   letter-spacing: 0.02em;
 }
 
+.profile-user-handle {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .profile-hero-email {
   font-size: 12px;
   color: #64748b;
@@ -557,7 +569,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
+  padding: 14px 22px;
   border-top: 1px solid #eef2f6;
   background: #f8fafc;
   flex-shrink: 0;
@@ -568,12 +580,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 40px;
+  gap: 8px;
+  height: 42px;
   padding: 0 16px;
-  background: #ffffff;
-  color: #ef4444;
-  border: 1.5px solid rgba(239, 68, 68, 0.3);
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1.5px solid rgba(225, 29, 72, 0.3);
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
@@ -582,17 +594,19 @@
 }
 
 .profile-drawer-signout-btn:hover {
-  background: #fef2f2;
-  border-color: #ef4444;
+  background: #ffe4e6;
+  border-color: #e11d48;
+  color: #be123c;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.2);
 }
 
 .profile-drawer-save-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 40px;
+  gap: 8px;
+  height: 42px;
   padding: 0 22px;
   background: #0f172a;
   color: #ffffff;
@@ -1117,10 +1131,15 @@
   }
 
   /* Responsive Profile Modal */
+  .profile-drawer-backdrop {
+    padding: 12px;
+  }
+
   .profile-drawer {
-    width: 95%;
+    width: 100%;
     max-width: 440px;
-    max-height: 92vh;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     border-radius: 18px;
   }
 

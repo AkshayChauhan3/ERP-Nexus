@@ -971,15 +971,23 @@ export default function TopBar({ onToggleMobileMenu, isMobileMenuOpen, isSidebar
         </button>
       </div>
 
-      {/* Profile Modal / Drawer */}
-      {drawerOpen && (
-        <>
-          <div className="profile-drawer-backdrop" onClick={() => setDrawerOpen(false)} />
-          <div className="profile-drawer" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title">
+      {/* Profile Modal / Drawer (Mounted in Portal to prevent clipping from header backdrop-filter) */}
+      {drawerOpen && createPortal(
+        <div 
+          className="profile-drawer-backdrop" 
+          onClick={() => setDrawerOpen(false)}
+        >
+          <div 
+            className="profile-drawer" 
+            role="dialog" 
+            aria-modal="true" 
+            aria-labelledby="profile-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="profile-drawer-header">
               <div className="profile-drawer-header-left">
-                <h2 id="profile-dialog-title" className="profile-drawer-title">Account Profile</h2>
+                <h2 id="profile-dialog-title" className="profile-drawer-title">User Profile</h2>
                 <div className="profile-drawer-status-pill">
                   <span className="profile-status-dot" />
                   <span>Active Session</span>
@@ -1030,6 +1038,7 @@ export default function TopBar({ onToggleMobileMenu, isMobileMenuOpen, isSidebar
                     >
                       {ROLE_LABELS[user.role] || user.position || user.role}
                     </span>
+                    <span className="profile-user-handle">@{user.login_id || user.username || 'user'}</span>
                   </div>
                   <span className="profile-hero-email">{user.email || 'user@erp-nexus.local'}</span>
                 </div>
@@ -1134,10 +1143,10 @@ export default function TopBar({ onToggleMobileMenu, isMobileMenuOpen, isSidebar
                 type="button" 
                 className="profile-drawer-signout-btn" 
                 onClick={handleLogout}
-                title="Sign out of ERP-Nexus"
+                title="Quit and Logout from ERP-Nexus"
               >
-                <LogOut size={15} />
-                <span>Sign Out</span>
+                <LogOut size={16} />
+                <span>Logout / Quit</span>
               </button>
               <button 
                 type="submit" 
@@ -1145,12 +1154,13 @@ export default function TopBar({ onToggleMobileMenu, isMobileMenuOpen, isSidebar
                 className="profile-drawer-save-btn"
                 title="Save changes to your profile"
               >
-                <Check size={15} />
+                <Check size={16} />
                 <span>Save Changes</span>
               </button>
             </div>
           </div>
-        </>
+        </div>,
+        document.body
       )}
     </header>
 
